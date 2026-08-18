@@ -12,14 +12,25 @@ let gisInited = false;
 let onAuthChangeCallback = null;
 
 /**
- * Load a script tag dynamically
+ * Load a script tag dynamically.
+ * If the tag already exists, wait for the global object rather than resolving instantly.
  */
 function loadScript(src) {
   return new Promise((resolve, reject) => {
-    if (document.querySelector(`script[src="${src}"]`)) {
-      resolve();
+    // If the global is already populated, skip entirely
+    const isGapi = src.includes('api.js');
+    const isGis = src.includes('gsi/client');
+    if (isGapi && window.gapi?.load) { resolve(); return; }
+    if (isGis && window.google?.accounts?.oauth2) { resolve(); return; }
+
+    const existing = document.querySelector(`script[src="${src}"]`);
+    if (existing) {
+      // Tag was injected before but may not have fired onload yet — attach listeners
+      existing.addEventListener('load', resolve);
+      existing.addEventListener('error', reject);
       return;
     }
+
     const script = document.createElement('script');
     script.src = src;
     script.async = true;
@@ -31,9 +42,10 @@ function loadScript(src) {
 }
 
 /**
- * Initialize the GAPI client library
+ * Initialize the GAPI client library (skip if already done)
  */
 async function initGapiClient() {
+  if (gapiInited) return;
   await new Promise((resolve) => window.gapi.load('client', resolve));
   await window.gapi.client.init({
     discoveryDocs: DISCOVERY_DOCS,

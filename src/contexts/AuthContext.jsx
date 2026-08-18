@@ -4,20 +4,21 @@
  */
 
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { initGoogleAuth, signIn as googleSignIn, signOut as googleSignOut, getCurrentUser } from '../services/googleAuth';
+import { initGoogleAuth, signIn as googleSignIn, signOut as googleSignOut } from '../services/googleAuth';
 import { STORAGE_KEYS } from '../config/constants';
 import { getAccessControl } from '../services/googleSheets';
 
 const AuthContext = createContext(null);
 
 /**
- * Check if an email is in the active access control list.
- * Returns the ACL entry or null. Skips check when setup is not complete.
+ * Check if email is in the active ACL.
+ * Returns the entry or null. Skips silently when not yet set up.
+ * Only call AFTER gapi is fully initialised (i.e. after initGoogleAuth resolves).
  */
 async function fetchAccessEntry(email) {
   const spreadsheetId = localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID);
   const setupComplete = localStorage.getItem(STORAGE_KEYS.SETUP_COMPLETE) === 'true';
-  if (!setupComplete || !spreadsheetId) return null; // Skip — not set up yet
+  if (!setupComplete || !spreadsheetId) return null;
   const acl = await getAccessControl();
   return acl.find(u => u.email === email && u.status === 'Active') || null;
 }
@@ -33,37 +34,33 @@ export function AuthProvider({ children }) {
 
     async function init() {
       try {
-        const userData = await initGoogleAuth(async (updatedUser) => {
-          if (!mounted) return;
-          if (!updatedUser) { setUser(null); return; }
-          // For token refreshes, re-validate access
-          try {
-            await fetchAccessEntry(updatedUser.email);
-            setUser(updatedUser);
-          } catch {
-            setUser(updatedUser); // Fail open on refresh errors
-          }
+        // initGoogleAuth resolves with existing session data (or null).
+        // We pass a simple callback that only updates user state — no ACL calls here
+        // because gapi may not be ready when the callback fires.
+        const userData = await initGoogleAuth((updatedUser) => {
+          if (mounted) setUser(updatedUser);
         });
-        if (mounted) {
-          if (userData) {
-            // Re-validate stored session against ACL
-            try {
-              const entry = await fetchAccessEntry(userData.email);
-              const setupComplete = localStorage.getItem(STORAGE_KEYS.SETUP_COMPLETE) === 'true';
-              if (setupComplete && entry === null) {
-                // User was in ACL before but now missing — block silently
-                googleSignOut();
-                setUser(null);
-                setAccessDenied(true);
-              } else {
-                setUser(userData);
-              }
-            } catch {
-              setUser(userData); // Fail open if ACL check errors
+
+        if (!mounted) return;
+
+        if (userData) {
+          // GAPI is now initialised — safe to check ACL
+          try {
+            const entry = await fetchAccessEntry(userData.email);
+            const setupComplete = localStorage.getItem(STORAGE_KEYS.SETUP_COMPLETE) === 'true';
+            if (setupComplete && entry === null) {
+              googleSignOut();
+              setAccessDenied(true);
+              setUser(null);
+            } else {
+              setUser(userData);
             }
+          } catch {
+            setUser(userData); // Fail open — network issue shouldn't block auth
           }
-          setLoading(false);
         }
+
+        setLoading(false);
       } catch (err) {
         console.error('Auth init error:', err);
         if (mounted) {
