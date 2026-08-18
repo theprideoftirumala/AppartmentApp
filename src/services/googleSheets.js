@@ -933,59 +933,88 @@ export async function addWaterTankerLog(data) {
 // ═══════════════════════════════════════════════════════════════
 
 /**
- * Update monthly summary (calculate from maintenance + expenses)
+ * Update monthly summary with full financial picture for Google Sheets clarity.
+ * Columns: Month | Collection | Misc Funds | Total Expenses | Net Balance | Cumulative | Collection% | Pending Flats | Status
  */
 export async function updateMonthlySummary(month) {
   return withAuth(async () => {
     const spreadsheetId = getSpreadsheetId();
 
-    const [maintenance, expenses] = await Promise.all([
+    const [maintenance, expenses, miscFundsData] = await Promise.all([
       getMaintenanceRecords(month),
       getExpenses(month),
+      getMiscFunds(month).catch(() => []),
     ]);
 
     const totalCollection = maintenance.reduce((sum, r) => sum + r.amountPaid, 0);
+    const totalMiscFunds = miscFundsData.reduce((sum, f) => sum + f.amount, 0);
     const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
-    const netBalance = totalCollection - totalExpenses;
+    const netBalance = totalCollection + totalMiscFunds - totalExpenses;
     const paidCount = maintenance.filter(r => r.status === 'PAID').length;
     const collectionPct = maintenance.length > 0
       ? Math.round((paidCount / maintenance.length) * 100)
       : 0;
     const pendingFlats = maintenance
-      .filter(r => r.status === 'PENDING')
-      .map(r => r.flat)
+      .filter(r => r.status !== 'PAID')
+      .map(r => `${r.flat}(${r.status})`)
       .join(', ');
+    const statusLabel = netBalance >= 0 ? 'SURPLUS' : 'DEFICIT';
 
-    // Check if this month already exists
+    // Get existing summaries to check if month row exists and compute cumulative
     const existing = await window.gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: `'${SHEET_NAMES.MONTHLY_SUMMARY}'!A2:A50`,
+      range: `'${SHEET_NAMES.MONTHLY_SUMMARY}'!A2:I100`,
     });
 
     const rows = existing.result.values || [];
     const rowIndex = rows.findIndex(r => r[0] === month);
 
+    // Compute cumulative balance (sum of all net balances up to and including this month)
+    let cumulativeBalance = netBalance;
+    rows.forEach((r, i) => {
+      if (r[0] !== month && i !== rowIndex) {
+        const nb = Number(r[4]) || 0;
+        cumulativeBalance += nb;
+      }
+    });
+
     const summaryRow = [
       month,
       String(totalCollection),
+      String(totalMiscFunds),
       String(totalExpenses),
       String(netBalance),
-      '', // Cumulative — calculated separately
+      String(cumulativeBalance),
       `${collectionPct}%`,
       pendingFlats,
+      statusLabel,
     ];
+
+    // Ensure headers are present (first write only)
+    const headerCheck = await window.gapi.client.sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `'${SHEET_NAMES.MONTHLY_SUMMARY}'!A1:I1`,
+    });
+    if (!headerCheck.result.values?.[0]?.[0]) {
+      await window.gapi.client.sheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: `'${SHEET_NAMES.MONTHLY_SUMMARY}'!A1`,
+        valueInputOption: 'RAW',
+        resource: { values: [['Month', 'Collection (₹)', 'Misc Funds (₹)', 'Expenses (₹)', 'Net Balance (₹)', 'Cumulative (₹)', 'Collection %', 'Pending Flats', 'Status']] },
+      });
+    }
 
     if (rowIndex >= 0) {
       await window.gapi.client.sheets.spreadsheets.values.update({
         spreadsheetId,
-        range: `'${SHEET_NAMES.MONTHLY_SUMMARY}'!A${rowIndex + 2}:G${rowIndex + 2}`,
+        range: `'${SHEET_NAMES.MONTHLY_SUMMARY}'!A${rowIndex + 2}:I${rowIndex + 2}`,
         valueInputOption: 'RAW',
         resource: { values: [summaryRow] },
       });
     } else {
       await window.gapi.client.sheets.spreadsheets.values.append({
         spreadsheetId,
-        range: `'${SHEET_NAMES.MONTHLY_SUMMARY}'!A:G`,
+        range: `'${SHEET_NAMES.MONTHLY_SUMMARY}'!A:I`,
         valueInputOption: 'RAW',
         insertDataOption: 'INSERT_ROWS',
         resource: { values: [summaryRow] },

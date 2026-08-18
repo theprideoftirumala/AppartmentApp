@@ -409,13 +409,17 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Deficit Warning */}
-      {config.DEFICIT_LAST_YEAR < 0 && (
-        <div className="deficit-banner mt-6 animate-fade-in">
+      {/* Deficit/Opening Balance Note */}
+      {config.DEFICIT_LAST_YEAR !== 0 && (
+        <div className={`deficit-banner mt-6 animate-fade-in ${config.DEFICIT_LAST_YEAR < 0 ? 'deficit-banner-danger' : 'deficit-banner-info'}`}>
           <AlertCircle size={20} />
           <div>
-            <strong>Last Year Deficit: {formatCurrency(Math.abs(config.DEFICIT_LAST_YEAR))}</strong>
-            <p className="text-sm">Consider collecting ₹{Math.abs(Math.round(config.DEFICIT_LAST_YEAR / 10))} extra per flat to recover.</p>
+            <strong>Opening Balance (Aug 2026 Handover): {formatCurrency(config.DEFICIT_LAST_YEAR)}</strong>
+            <p className="text-sm">
+              {config.DEFICIT_LAST_YEAR < 0
+                ? `Deficit of ${formatCurrency(Math.abs(config.DEFICIT_LAST_YEAR))} carried forward. This is reflected in the Current Balance.`
+                : `Surplus of ${formatCurrency(config.DEFICIT_LAST_YEAR)} carried forward as opening balance.`}
+            </p>
           </div>
         </div>
       )}

@@ -6,7 +6,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Building2, Receipt, FileBarChart,
   Bell, Phone, Settings, LogOut, ExternalLink,
-  ChevronLeft, Shield
+  ChevronLeft, Shield, HelpCircle
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useApp } from '../../contexts/AppContext';
@@ -88,10 +88,23 @@ export default function Sidebar() {
               target="_blank"
               rel="noopener noreferrer"
               className="sidebar-link"
+              title={userRole === 'Owner' ? 'Open and edit the spreadsheet' : 'View spreadsheet (read-only)'}
             >
               <ExternalLink size={20} />
               <span>Open Sheet</span>
             </a>
+          )}
+
+          {/* Help — owners only */}
+          {userRole === 'Owner' && (
+            <NavLink
+              to="/help"
+              className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
+              onClick={() => setSidebarOpen(false)}
+            >
+              <HelpCircle size={20} />
+              <span>Help</span>
+            </NavLink>
           )}
         </nav>
 

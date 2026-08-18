@@ -188,27 +188,37 @@ export default function Reminders() {
                   <p className="reminder-card-desc">{reminder.description}</p>
                 )}
 
+                {/* Completion checkbox area */}
+                {isOwner !== false && (
+                  <button
+                    className={`reminder-complete-btn ${urgency === 'overdue' ? 'reminder-complete-overdue' : ''}`}
+                    onClick={() => handleComplete(reminder.id)}
+                    title="Mark as done — updates last completed date and schedules next due"
+                  >
+                    <span className="reminder-checkbox">
+                      <Check size={14} />
+                    </span>
+                    <span>Mark Done</span>
+                  </button>
+                )}
+
                 <div className="reminder-card-footer">
-                  <span className="text-xs text-muted">
-                    {reminder.assignedTo && `Assigned: ${reminder.assignedTo}`}
-                  </span>
+                  <div className="reminder-meta">
+                    {reminder.assignedTo && (
+                      <span className="text-xs text-muted">👤 {reminder.assignedTo}</span>
+                    )}
+                    {reminder.lastCompleted && (
+                      <span className="text-xs text-muted">Last done: {reminder.lastCompleted}</span>
+                    )}
+                  </div>
                   {isOwner !== false && (
-                    <div className="flex gap-1">
-                      <button
-                        className="btn btn-success btn-sm"
-                        onClick={() => handleComplete(reminder.id)}
-                        title="Mark completed"
-                      >
-                        <Check size={14} />
-                      </button>
-                      <button
-                        className="btn btn-ghost btn-sm text-danger"
-                        onClick={() => handleDelete(reminder.id)}
-                        title="Delete"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
+                    <button
+                      className="btn btn-ghost btn-sm text-danger"
+                      onClick={() => handleDelete(reminder.id)}
+                      title="Delete reminder"
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   )}
                 </div>
               </div>
@@ -250,7 +260,7 @@ function AddReminderForm({ onSave, saving, onClose }) {
       </div>
       <div className="form-group">
         <label className="form-label">Description</label>
-        <textarea className="form-textarea" value={formData.description} onChange={e => update('description', e.target.value)} placeholder="Details about the task" rows={3} />
+        <textarea className="form-textarea" value={formData.description} onChange={e => update('description', e.target.value)} placeholder="Details about the task — what to do, who to call" rows={3} />
       </div>
       <div className="form-row">
         <div className="form-group">
@@ -266,7 +276,7 @@ function AddReminderForm({ onSave, saving, onClose }) {
       </div>
       <div className="form-group">
         <label className="form-label">Assigned To</label>
-        <input type="text" className="form-input" value={formData.assignedTo} onChange={e => update('assignedTo', e.target.value)} placeholder="Person responsible" />
+        <input type="text" className="form-input" value={formData.assignedTo} onChange={e => update('assignedTo', e.target.value)} placeholder="Treasurer / President / Flat owner name" />
       </div>
       <div className="form-actions">
         <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>

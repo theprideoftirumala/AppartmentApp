@@ -730,3 +730,296 @@ tbody tr:last-child td {
     color: black;
   }
 }
+
+/* ─── Info Bubble / Tooltip ────────────────────────────────── */
+.info-bubble-wrap {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 5px;
+  position: relative;
+  cursor: help;
+  vertical-align: middle;
+}
+
+.info-bubble-icon {
+  color: var(--color-primary-light);
+  opacity: 0.7;
+  transition: opacity var(--transition-fast);
+}
+
+.info-bubble-wrap:hover .info-bubble-icon,
+.info-bubble-wrap:focus .info-bubble-icon {
+  opacity: 1;
+}
+
+.info-bubble-tip {
+  position: absolute;
+  z-index: 100;
+  width: 260px;
+  background: var(--color-surface);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  box-shadow: var(--shadow-lg);
+  pointer-events: none;
+}
+
+.info-bubble-top {
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.info-bubble-bottom {
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* ─── WhatsApp Button ──────────────────────────────────────── */
+.btn-whatsapp {
+  background: #25D366;
+  color: white;
+  border: none;
+}
+
+.btn-whatsapp:hover:not(:disabled) {
+  background: #1da851;
+  transform: translateY(-1px);
+}
+
+/* ─── Read-only Input ──────────────────────────────────────── */
+.input-readonly {
+  opacity: 0.65;
+  cursor: not-allowed;
+  background: rgba(255, 255, 255, 0.02) !important;
+}
+
+/* ─── Config Note ──────────────────────────────────────────── */
+.config-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: rgba(255, 220, 100, 0.07);
+  border: 1px solid rgba(255, 220, 100, 0.2);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+}
+
+.config-note svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--color-warning-light);
+}
+
+.config-note code {
+  background: rgba(255, 255, 255, 0.06);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: var(--font-size-xs);
+  font-family: monospace;
+}
+
+/* ─── Reminder Completion Button ───────────────────────────── */
+.reminder-complete-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  margin: var(--space-3) 0;
+  background: rgba(40, 167, 69, 0.08);
+  border: 1.5px dashed rgba(40, 167, 69, 0.4);
+  border-radius: var(--radius-md);
+  color: var(--color-success-light);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: left;
+}
+
+.reminder-complete-btn:hover {
+  background: rgba(40, 167, 69, 0.15);
+  border-style: solid;
+  transform: translateY(-1px);
+}
+
+.reminder-complete-overdue {
+  background: rgba(220, 53, 69, 0.08);
+  border-color: rgba(220, 53, 69, 0.4);
+  color: var(--color-danger-light);
+}
+
+.reminder-complete-overdue:hover {
+  background: rgba(220, 53, 69, 0.15);
+}
+
+.reminder-checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  border: 2px solid currentColor;
+  flex-shrink: 0;
+  transition: all var(--transition-fast);
+}
+
+.reminder-complete-btn:hover .reminder-checkbox {
+  background: currentColor;
+  color: white;
+}
+
+.reminder-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* ─── Help Page Layout ─────────────────────────────────────── */
+.help-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+@media (max-width: 768px) {
+  .help-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.help-nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  position: sticky;
+  top: var(--space-6);
+}
+
+.help-nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: left;
+}
+
+.help-nav-item:hover {
+  background: var(--glass-bg);
+  color: var(--color-text);
+}
+
+.help-nav-item-active {
+  background: var(--glass-bg);
+  border-color: var(--glass-border);
+  color: var(--color-primary-light);
+  font-weight: var(--font-weight-medium);
+}
+
+.help-content {
+  min-height: 400px;
+}
+
+.help-section-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+  color: var(--color-primary-light);
+}
+
+.help-section-header h2 {
+  font-size: var(--font-size-xl);
+  color: var(--color-text);
+}
+
+.help-accordion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.help-item {
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.help-item-open {
+  border-color: rgba(79, 124, 255, 0.3);
+}
+
+.help-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--space-4) var(--space-5);
+  background: var(--glass-bg);
+  border: none;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  text-align: left;
+  gap: var(--space-3);
+}
+
+.help-item-header:hover {
+  background: var(--glass-bg-hover);
+}
+
+.help-item-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+
+.help-item-body {
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--glass-border);
+}
+
+.help-item-body p {
+  font-size: var(--font-size-sm);
+  line-height: 1.7;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-2);
+}
+
+.help-item-body p:last-child {
+  margin-bottom: 0;
+}
+
+/* ─── Dashboard Deficit Banner ─────────────────────────────── */
+.deficit-banner-info {
+  background: rgba(50, 80, 200, 0.08);
+  border-color: rgba(50, 80, 200, 0.25);
+}
+
+.deficit-banner-danger {
+  background: rgba(220, 53, 69, 0.08);
+  border-color: rgba(220, 53, 69, 0.25);
+}
+
+/* ─── Settings form label flex ─────────────────────────────── */
+.config-field-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}

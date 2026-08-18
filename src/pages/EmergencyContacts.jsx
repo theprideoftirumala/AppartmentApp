@@ -1,9 +1,10 @@
 /**
  * Emergency Contacts Page
+ * Supports call, WhatsApp chat, WhatsApp share, and contact sharing
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { Phone, Plus, Trash2, Search } from 'lucide-react';
+import { Phone, Plus, Trash2, Search, MessageCircle, Share2 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
 import { getEmergencyContacts, addEmergencyContact, deleteEmergencyContact, addAuditLog } from '../services/googleSheets';
@@ -12,6 +13,26 @@ import Modal from '../components/common/Modal';
 import EmptyState from '../components/common/EmptyState';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Navbar from '../components/common/Navbar';
+
+function cleanPhone(phone) {
+  return phone?.replace(/[\s\-+()]/g, '') || '';
+}
+
+function waLink(phone) {
+  const clean = cleanPhone(phone);
+  const intl = clean.startsWith('0') ? '91' + clean.slice(1) : clean.startsWith('91') ? clean : '91' + clean;
+  return `https://wa.me/${intl}`;
+}
+
+function shareContact(contact) {
+  const text = `*${contact.name}*\nCategory: ${contact.category || 'Emergency'}\nPhone: ${contact.phone}${contact.altPhone ? ` / ${contact.altPhone}` : ''}${contact.role ? `\nRole: ${contact.role}` : ''}${contact.notes ? `\nNote: ${contact.notes}` : ''}`;
+  if (navigator.share) {
+    navigator.share({ title: contact.name, text }).catch(() => { });
+  } else {
+    const waText = encodeURIComponent(text);
+    window.open(`https://wa.me/?text=${waText}`, '_blank', 'noopener');
+  }
+}
 
 export default function EmergencyContacts() {
   const { showToast, isOwner } = useApp();
@@ -64,7 +85,19 @@ export default function EmergencyContacts() {
     }
   };
 
-  // Group contacts by category
+  const handleShareAll = () => {
+    if (!contacts.length) return;
+    const text = contacts.map(c =>
+      `*${c.name}* (${c.category})\n📞 ${c.phone}${c.altPhone ? ` / ${c.altPhone}` : ''}`
+    ).join('\n\n');
+    const msg = `*Emergency Contacts — The Pride of Tirumala*\n\n${text}`;
+    if (navigator.share) {
+      navigator.share({ title: 'Emergency Contacts', text: msg }).catch(() => { });
+    } else {
+      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
+    }
+  };
+
   let filtered = contacts;
   if (searchQuery) {
     const q = searchQuery.toLowerCase();
@@ -91,11 +124,16 @@ export default function EmergencyContacts() {
           <h1 className="page-title">Emergency Contacts</h1>
           <p className="page-subtitle">{contacts.length} contacts saved</p>
         </div>
-        {isOwner !== false && (
-          <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
-            <Plus size={16} /> Add Contact
+        <div className="flex gap-2">
+          <button className="btn btn-secondary btn-sm" onClick={handleShareAll} title="Share all contacts via WhatsApp">
+            <MessageCircle size={15} /> Share All
           </button>
-        )}
+          {isOwner !== false && (
+            <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
+              <Plus size={16} /> Add Contact
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Search */}
@@ -105,7 +143,7 @@ export default function EmergencyContacts() {
           <input
             type="text"
             className="form-input search-input"
-            placeholder="Search contacts..."
+            placeholder="Search contacts by name, category, or phone..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
           />
@@ -137,22 +175,46 @@ export default function EmergencyContacts() {
                       <div className="contact-name">{contact.name}</div>
                       {contact.role && <div className="contact-role text-muted text-xs">{contact.role}</div>}
                       <a href={`tel:${contact.phone}`} className="contact-phone">
-                        <Phone size={14} /> {contact.phone}
+                        <Phone size={13} /> {contact.phone}
                       </a>
                       {contact.altPhone && (
                         <a href={`tel:${contact.altPhone}`} className="contact-phone text-muted">
-                          <Phone size={14} /> {contact.altPhone}
+                          <Phone size={13} /> {contact.altPhone}
                         </a>
                       )}
-                      {contact.notes && <p className="contact-notes text-xs text-muted">{contact.notes}</p>}
+                      {contact.notes && <p className="contact-notes text-xs text-muted mt-1">{contact.notes}</p>}
                     </div>
                     <div className="contact-actions">
-                      <a href={`tel:${contact.phone}`} className="btn btn-success btn-sm btn-icon" title="Call">
-                        <Phone size={16} />
+                      <a
+                        href={`tel:${contact.phone}`}
+                        className="btn btn-success btn-sm btn-icon"
+                        title={`Call ${contact.name}`}
+                      >
+                        <Phone size={15} />
                       </a>
+                      <a
+                        href={waLink(contact.phone)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn btn-whatsapp btn-sm btn-icon"
+                        title={`WhatsApp ${contact.name}`}
+                      >
+                        <MessageCircle size={15} />
+                      </a>
+                      <button
+                        className="btn btn-secondary btn-sm btn-icon"
+                        onClick={() => shareContact(contact)}
+                        title="Share contact"
+                      >
+                        <Share2 size={15} />
+                      </button>
                       {isOwner !== false && (
-                        <button className="btn btn-ghost btn-sm btn-icon text-danger" onClick={() => handleDelete(contact.originalIndex)} title="Delete">
-                          <Trash2 size={16} />
+                        <button
+                          className="btn btn-ghost btn-sm btn-icon text-danger"
+                          onClick={() => handleDelete(contact.originalIndex)}
+                          title="Delete"
+                        >
+                          <Trash2 size={15} />
                         </button>
                       )}
                     </div>
@@ -164,7 +226,6 @@ export default function EmergencyContacts() {
         </div>
       )}
 
-      {/* Add Contact Modal */}
       <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="Add Emergency Contact">
         <AddContactForm onSave={handleAdd} saving={saving} onClose={() => setShowAddModal(false)} />
       </Modal>

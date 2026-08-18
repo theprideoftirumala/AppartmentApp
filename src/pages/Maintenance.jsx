@@ -93,6 +93,19 @@ export default function Maintenance() {
   const handleAddMiscFund = async (formData) => {
     try {
       setSaving(true);
+
+      // Duplicate check: same flat + amount + date
+      const duplicate = miscFunds.find(f =>
+        f.flat === formData.flat &&
+        Number(f.amount) === Number(formData.amount) &&
+        f.date === formData.date
+      );
+      if (duplicate) {
+        showToast(`Duplicate: Flat ${formData.flat} already has a ₹${formData.amount} misc fund entry on ${formData.date}.`, 'error');
+        setSaving(false);
+        return;
+      }
+
       await addMiscFund({ ...formData, collectedBy: user?.name || user?.email || '' });
       await addAuditLog(user.email, 'ADD_MISC_FUND', `Flat ${formData.flat}: ₹${formData.amount} — ${formData.description}`);
       showToast(`Misc fund recorded for flat ${formData.flat}`, 'success');

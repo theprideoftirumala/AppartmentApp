@@ -48,6 +48,19 @@ export default function Expenses() {
   const handleAddExpense = async (formData, files) => {
     try {
       setSaving(true);
+
+      // Duplicate check: same description + amount + date
+      const duplicate = expenses.find(e =>
+        e.description?.toLowerCase().trim() === formData.description?.toLowerCase().trim() &&
+        Number(e.amount) === Number(formData.amount) &&
+        e.date === formData.date
+      );
+      if (duplicate) {
+        showToast(`Duplicate detected: "${formData.description}" for ₹${formData.amount} on ${formData.date} already exists.`, 'error');
+        setSaving(false);
+        return;
+      }
+
       let receiptLink = '';
 
       // Upload receipt if provided

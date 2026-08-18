@@ -14,7 +14,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   Download, RefreshCw, Send, Share2, FileText,
   IndianRupee, Receipt, Activity, Shield, Eye, Users,
-  Loader, CalendarDays
+  Loader, CalendarDays, Mail
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import {
@@ -211,6 +211,24 @@ export default function Reports() {
     }
   };
 
+  const handleEmailShare = async () => {
+    if (!reportData) return;
+    const subject = encodeURIComponent(`${reportData.apartmentName} — ${reportData.month} Monthly Report`);
+    const body = encodeURIComponent(
+      `Dear Residents,\n\nPlease find the monthly financial report for ${reportData.month} below.\n\n` +
+      `Collection: ${reportData.totalCollection ? '\u20b9' + reportData.totalCollection.toLocaleString('en-IN') : '-'}\n` +
+      `Expenses: ${reportData.totalExpenses ? '\u20b9' + reportData.totalExpenses.toLocaleString('en-IN') : '-'}\n` +
+      `Net Balance: ${reportData.netBalance >= 0 ? 'Surplus' : 'Deficit'} \u20b9${Math.abs(reportData.netBalance).toLocaleString('en-IN')}\n\n` +
+      `Please download the PDF report from the TPT Expense Tracker app for complete details.\n\n` +
+      `Note: This report may be updated if any expenses are added later.\n\nRegards,\nTPT Management`
+    );
+    // Download PDF first so user can attach manually
+    downloadReport(reportData);
+    // Open mail client
+    window.open(`mailto:?subject=${subject}&body=${body}`, '_self');
+    showToast('PDF downloaded — attach it to the email that opened.', 'info');
+  };
+
   const handleUpdateSummary = async () => {
     try {
       setGenerating(true);
@@ -264,7 +282,10 @@ export default function Reports() {
             <Download size={14} /> PDF
           </button>
           <button className="btn btn-success btn-sm" onClick={handleShare} disabled={!reportData || loading || sharing}>
-            <Send size={14} /> {sharing ? 'Sharing...' : 'Send'}
+            <Send size={14} /> {sharing ? 'Sharing...' : 'WhatsApp'}
+          </button>
+          <button className="btn btn-secondary btn-sm" onClick={handleEmailShare} disabled={!reportData || loading} title="Download PDF and open email client">
+            <Mail size={14} /> Email
           </button>
         </div>
       </div>

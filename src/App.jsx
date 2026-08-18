@@ -21,6 +21,7 @@ import Reports from './pages/Reports';
 import Reminders from './pages/Reminders';
 import EmergencyContacts from './pages/EmergencyContacts';
 import Settings from './pages/Settings';
+import Help from './pages/Help';
 
 function AppLayout({ children }) {
   const { user } = useAuth();
@@ -95,6 +96,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <Settings />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/help"
+          element={
+            <ProtectedRoute requireOwner>
+              <Help />
             </ProtectedRoute>
           }
         />

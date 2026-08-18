@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   Settings as SettingsIcon, Users, Shield, Database, Trash2,
   Plus, ExternalLink, Download, UserPlus, UserMinus, Save,
-  RefreshCw, AlertTriangle, Key, Eye
+  RefreshCw, AlertTriangle, Key, Eye, Lock
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -24,6 +24,7 @@ import {
 } from '../services/googleDrive';
 import { DEFAULT_CONFIG, FLATS, USER_ROLES } from '../config/constants';
 import { formatDate, formatCurrency, isValidEmail } from '../utils/helpers';
+import { InfoBubble } from '../components/common/Tooltip';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Modal from '../components/common/Modal';
 import Navbar from '../components/common/Navbar';
@@ -253,29 +254,59 @@ export default function Settings() {
         {activeTab === 'config' && (
           <div className="card">
             <h3 className="card-title mb-4">Apartment Configuration</h3>
-            <p className="text-muted text-sm mb-6">These values are stored in the Configuration sheet and can be edited from Google Sheets directly.</p>
+            <p className="text-muted text-sm mb-6">
+              These values are stored in the <strong>Configuration</strong> sheet in Google Drive and control the app behaviour.
+              {userRole !== 'Owner' && ' (Read-only for your role)'}
+            </p>
 
             <div className="settings-grid">
               {[
-                { key: 'APARTMENT_NAME', label: 'Apartment Name', type: 'text' },
-                { key: 'MONTHLY_MAINTENANCE', label: 'Monthly Maintenance (₹)', type: 'number' },
-                { key: 'CORPUS_FUND', label: 'Corpus Fund (₹)', type: 'number' },
-                { key: 'DEFICIT_LAST_YEAR', label: 'Deficit from Last Year (₹)', type: 'number' },
-                { key: 'FISCAL_YEAR_START', label: 'Fiscal Year Start (YYYY-MM)', type: 'text' },
-                { key: 'TREASURER_FLAT', label: 'Treasurer Flat', type: 'select', options: FLATS },
-                { key: 'PRESIDENT_FLAT', label: 'President Flat', type: 'select', options: FLATS },
-                { key: 'LATE_FEE', label: 'Late Fee (₹)', type: 'number' },
-                { key: 'LATE_FEE_AFTER_DAY', label: 'Late Fee After Day', type: 'number' },
-                { key: 'EMERGENCY_RESERVE', label: 'Emergency Reserve (₹)', type: 'number' },
+                {
+                  key: 'APARTMENT_NAME', label: 'Apartment Name', type: 'text',
+                  info: 'Name displayed on reports and the dashboard header.'
+                },
+                {
+                  key: 'MONTHLY_MAINTENANCE', label: 'Monthly Maintenance (₹)', type: 'number',
+                  info: 'Fixed amount every flat pays per month. Currently ₹3,000 per flat × 10 flats = ₹30,000 expected per month.'
+                },
+                {
+                  key: 'CORPUS_FUND', label: 'Corpus Fund (₹)', type: 'number', readonly: true,
+                  info: 'One-time corpus amount collected from flat owners. Edit directly in the Configuration sheet in Google Drive.'
+                },
+                {
+                  key: 'DEFICIT_LAST_YEAR', label: 'Deficit from August 2026 (Handover) ₹', type: 'number', readonly: true,
+                  info: 'Opening balance/deficit as on 31 Aug 2026 (handover). To change this value, update DEFAULT_CONFIG.DEFICIT_LAST_YEAR in src/config/constants.js and the DEFICIT_LAST_YEAR row in the Configuration sheet.'
+                },
+                {
+                  key: 'FISCAL_YEAR_START', label: 'Fiscal Year Start (YYYY-MM)', type: 'text',
+                  info: 'Start month of the financial year. For TPT this is 2026-09 (September 2026).'
+                },
+                {
+                  key: 'TREASURER_FLAT', label: 'Treasurer Flat', type: 'select', options: FLATS,
+                  info: 'Flat number of the current Treasurer. Shown on PDF reports and footer.'
+                },
+                {
+                  key: 'PRESIDENT_FLAT', label: 'President Flat', type: 'select', options: FLATS,
+                  info: 'Flat number of the current President. Shown on PDF reports and footer.'
+                },
               ].map(field => (
                 <ConfigField
                   key={field.key}
                   field={field}
                   value={config[field.key]}
                   onSave={(value) => handleSaveConfig(field.key, value)}
-                  disabled={isOwner === false}
+                  disabled={isOwner === false || field.readonly}
                 />
               ))}
+            </div>
+
+            <div className="config-note mt-6">
+              <AlertTriangle size={16} />
+              <p>
+                <strong>Corpus Fund</strong> and <strong>Deficit from August 2026 (Handover)</strong> are read-only here.
+                Edit them directly in the <em>Configuration</em> sheet in Google Drive, or update <code>DEFAULT_CONFIG</code> in
+                <code>src/config/constants.js</code> before initial setup.
+              </p>
             </div>
           </div>
         )}
@@ -563,29 +594,36 @@ function ConfigField({ field, value, onSave, disabled }) {
     setEditing(false);
   };
 
+  const isReadonly = disabled || field.readonly;
+
   return (
     <div className="config-field">
-      <label className="config-field-label">{field.label}</label>
+      <label className="config-field-label">
+        {field.label}
+        {field.readonly && <Lock size={12} style={{ marginLeft: 4, opacity: 0.5 }} title="Read-only" />}
+        {field.info && <InfoBubble text={field.info} />}
+      </label>
       <div className="config-field-input">
         {field.type === 'select' ? (
           <select
             className="form-select"
             value={editValue}
             onChange={e => { setEditValue(e.target.value); setEditing(true); }}
-            disabled={disabled}
+            disabled={isReadonly}
           >
             {field.options.map(o => <option key={o} value={o}>{o}</option>)}
           </select>
         ) : (
           <input
             type={field.type}
-            className="form-input"
+            className={`form-input ${isReadonly ? 'input-readonly' : ''}`}
             value={editValue}
             onChange={e => { setEditValue(e.target.value); setEditing(true); }}
-            disabled={disabled}
+            disabled={isReadonly}
+            readOnly={isReadonly}
           />
         )}
-        {editing && (
+        {editing && !isReadonly && (
           <button className="btn btn-primary btn-sm" onClick={handleSave}>
             <Save size={14} />
           </button>

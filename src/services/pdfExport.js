@@ -180,7 +180,7 @@ export function generateMonthlyReport(reportData) {
   doc.setFontSize(7.5);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(80, 80, 80);
-  doc.text(`Monthly Maintenance: ${formatCurrency(config?.MONTHLY_MAINTENANCE || 3000)} per flat  |  Total Flats: 10  |  Expected: ${formatCurrency((config?.MONTHLY_MAINTENANCE || 3000) * 10)}  |  Deficit Carry Forward: ${formatCurrency(config?.DEFICIT_LAST_YEAR || 0)}`, margin + 4, y + 6);
+  doc.text(`Monthly Maintenance: ${formatCurrency(config?.MONTHLY_MAINTENANCE || 3000)} per flat  |  Total Flats: 10  |  Expected: ${formatCurrency((config?.MONTHLY_MAINTENANCE || 3000) * 10)}  |  Opening Balance (Aug 2026): ${formatCurrency(config?.DEFICIT_LAST_YEAR || 0)}`, margin + 4, y + 6);
 
   const paidCount = (maintenance || []).filter(r => r.status === 'PAID').length;
   const pendingCount = (maintenance || []).filter(r => r.status === 'PENDING').length;
@@ -188,6 +188,22 @@ export function generateMonthlyReport(reportData) {
   doc.text(`Collection: ${paidCount} Paid  |  ${pendingCount} Pending  |  ${partialCount} Partial  |  ${Math.round(paidCount / Math.max((maintenance || []).length, 1) * 100)}% collected`, margin + 4, y + 11.5);
 
   y += 20;
+
+  // ─── Remaining / Deficit Summary ──────────────────────
+  const isDeficit = netBalance < 0;
+  const bgColor = isDeficit ? [255, 240, 240] : [235, 250, 240];
+  const textColor = isDeficit ? [180, 40, 40] : [30, 130, 60];
+  doc.setFillColor(...bgColor);
+  doc.roundedRect(margin, y, contentWidth, 12, 2, 2, 'F');
+  doc.setFontSize(8.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...textColor);
+  const balanceLabel = isDeficit ? 'DEFICIT THIS MONTH' : 'SURPLUS / REMAINING FUNDS';
+  doc.text(`${balanceLabel}: ${formatCurrency(Math.abs(netBalance))}`, margin + 4, y + 5);
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`(Collection ${formatCurrency(totalCollection)} + Misc ${formatCurrency(totalMiscFunds || 0)}) - Expenses ${formatCurrency(totalExpenses)} = ${formatCurrency(netBalance)}`, margin + 4, y + 9.5);
+  y += 16;
 
   // ═══════════════════════════════════════════════════════
   // SECTION 1: RECEIVED PAYMENT SUMMARY
@@ -545,6 +561,29 @@ export function generateMonthlyReport(reportData) {
     });
     y += 6;
   }
+
+  // ─── Important Note ─────────────────────────────────────
+  y = checkPageBreak(doc, y, margin, 30);
+  doc.setFillColor(255, 248, 220);
+  doc.roundedRect(margin, y, contentWidth, 22, 2, 2, 'F');
+  doc.setDrawColor(200, 160, 0);
+  doc.roundedRect(margin, y, contentWidth, 22, 2, 2, 'S');
+
+  doc.setFontSize(8.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(120, 80, 0);
+  doc.text('IMPORTANT NOTE:', margin + 4, y + 7);
+
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 70, 0);
+  const noteText = 'The expenses shown in this report are not final. Any missed or pending expenses may be added to the sheet at a later date.';
+  const noteText2 = 'This report is shared only for your information and reference. The Google Sheet is the final source of truth.';
+  const noteLines1 = doc.splitTextToSize(noteText, contentWidth - 10);
+  const noteLines2 = doc.splitTextToSize(noteText2, contentWidth - 10);
+  doc.text(noteLines1, margin + 4, y + 12);
+  doc.text(noteLines2, margin + 4, y + 12 + (noteLines1.length * 4));
+  y += 28;
 
   // ─── Final Footer on all pages ─────────────────────────
   const totalPages = doc.internal.getNumberOfPages();
