@@ -59,6 +59,7 @@ export const SHEET_NAMES = {
   FLATS: 'Flats',
   MAINTENANCE: 'Maintenance',
   EXPENSES: 'Expenses',
+  MISC_FUNDS: 'Misc Funds',
   EMERGENCY_CONTACTS: 'Emergency Contacts',
   REMINDERS: 'Reminders',
   ACCESS_CONTROL: 'Access Control',
@@ -107,7 +108,14 @@ export const SHEET_HEADERS = {
     'Join Date', 'ID Proof Type', 'ID Proof Number', 'Emergency Contact',
     'Emergency Phone', 'Photo Drive Link', 'Status', 'Remarks',
   ],
+  [SHEET_NAMES.MISC_FUNDS]: [
+    'ID', 'Date', 'Month', 'Flat', 'Amount', 'Description',
+    'Payment Mode', 'Collected By', 'Remarks',
+  ],
 };
+
+// ─── Maintenance Constraints ───────────────────────────────────
+export const MAINTENANCE_MIN_DATE = '2026-09-01';
 
 // ─── Expense Categories ─────────────────────────────────────────
 export const EXPENSE_CATEGORIES = [
@@ -208,6 +216,27 @@ export function generateFiscalMonths(startMonth = '2026-09') {
 
 // ─── Default Reminders ──────────────────────────────────────────
 export const DEFAULT_REMINDERS = [
+  {
+    title: 'Take Monthly Data Backup',
+    description: 'Take a backup of the Google Sheet before month end. Go to Settings → Backups → Create Backup.',
+    frequency: 'Monthly',
+    assignedTo: 'Treasurer',
+    nextDueType: 'end_of_month',
+  },
+  {
+    title: 'Export Expenses PDF — Month End',
+    description: 'Export monthly expenses PDF report and share in the WhatsApp group. Go to Reports → Export PDF.',
+    frequency: 'Monthly',
+    assignedTo: 'Treasurer',
+    nextDueType: 'end_of_month',
+  },
+  {
+    title: 'Share Expenses PDF — New Month',
+    description: 'Share previous month\'s expenses PDF summary in the WhatsApp group on the 1st of every month.',
+    frequency: 'Monthly',
+    assignedTo: 'Treasurer',
+    nextDueType: 'start_of_month',
+  },
   {
     title: 'Lift Maintenance Check',
     description: 'Call lift maintenance person for monthly inspection',

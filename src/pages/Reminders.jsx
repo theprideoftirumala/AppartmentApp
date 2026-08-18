@@ -8,7 +8,7 @@ import { Bell, Plus, Check, Trash2, Clock, AlertCircle, Calendar } from 'lucide-
 import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
 import { getReminders, addReminder, completeReminder, deleteReminder, addAuditLog } from '../services/googleSheets';
-import { daysUntil, getRelativeTime, calculateNextDue } from '../utils/helpers';
+import { daysUntil, getRelativeTime, calculateNextDue, getLastDayOfCurrentMonth, getFirstDayOfNextMonth } from '../utils/helpers';
 import { REMINDER_FREQUENCIES, DEFAULT_REMINDERS } from '../config/constants';
 import Modal from '../components/common/Modal';
 import EmptyState from '../components/common/EmptyState';
@@ -52,7 +52,7 @@ export default function Reminders() {
       setShowAddModal(false);
       fetchData();
     } catch (err) {
-      showToast('Failed to add reminder', 'error');
+      showToast(err.message || 'Failed to add reminder', 'error');
     } finally {
       setSaving(false);
     }
@@ -64,7 +64,7 @@ export default function Reminders() {
       showToast('Marked as completed', 'success');
       fetchData();
     } catch (err) {
-      showToast('Failed to update reminder', 'error');
+      showToast(err.message || 'Failed to update reminder', 'error');
     }
   };
 
@@ -75,24 +75,37 @@ export default function Reminders() {
       showToast('Reminder deleted', 'success');
       fetchData();
     } catch (err) {
-      showToast('Failed to delete reminder', 'error');
+      showToast(err.message || 'Failed to delete reminder', 'error');
     }
   };
 
   const handleAddDefaults = async () => {
     try {
       setSaving(true);
+      // Only add reminders that don't already exist (match by title)
+      const existingTitles = new Set(reminders.map(r => r.title));
+      let added = 0;
       for (const reminder of DEFAULT_REMINDERS) {
+        if (existingTitles.has(reminder.title)) continue;
+        let nextDue;
+        if (reminder.nextDueType === 'end_of_month') nextDue = getLastDayOfCurrentMonth();
+        else if (reminder.nextDueType === 'start_of_month') nextDue = getFirstDayOfNextMonth();
+        else nextDue = calculateNextDue(null, reminder.frequency);
+
         await addReminder({
-          ...reminder,
+          title: reminder.title,
+          description: reminder.description,
+          frequency: reminder.frequency,
+          assignedTo: reminder.assignedTo || '',
+          nextDue,
           createdBy: user?.name || user?.email || '',
-          nextDue: calculateNextDue(null, reminder.frequency),
         });
+        added++;
       }
-      showToast('Default reminders added!', 'success');
+      showToast(added > 0 ? `${added} default reminder(s) added!` : 'All default reminders already exist.', 'success');
       fetchData();
     } catch (err) {
-      showToast('Failed to add default reminders', 'error');
+      showToast(err.message || 'Failed to add default reminders', 'error');
     } finally {
       setSaving(false);
     }

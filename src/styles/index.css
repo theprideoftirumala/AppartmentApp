@@ -57,18 +57,40 @@ body::before {
 }
 
 /* ─── Typography ───────────────────────────────────────────── */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-weight: var(--font-weight-semibold);
   line-height: var(--line-height-tight);
   color: var(--color-text);
 }
 
-h1 { font-size: var(--font-size-3xl); }
-h2 { font-size: var(--font-size-2xl); }
-h3 { font-size: var(--font-size-xl); }
-h4 { font-size: var(--font-size-lg); }
-h5 { font-size: var(--font-size-md); }
-h6 { font-size: var(--font-size-base); }
+h1 {
+  font-size: var(--font-size-3xl);
+}
+
+h2 {
+  font-size: var(--font-size-2xl);
+}
+
+h3 {
+  font-size: var(--font-size-xl);
+}
+
+h4 {
+  font-size: var(--font-size-lg);
+}
+
+h5 {
+  font-size: var(--font-size-md);
+}
+
+h6 {
+  font-size: var(--font-size-base);
+}
 
 p {
   color: var(--color-text-secondary);
@@ -118,7 +140,9 @@ a:hover {
 }
 
 /* ─── Form Elements ────────────────────────────────────────── */
-input, textarea, select {
+input,
+textarea,
+select {
   font-family: var(--font-family);
   font-size: var(--font-size-base);
 }
@@ -293,6 +317,17 @@ input, textarea, select {
 .form-error {
   font-size: var(--font-size-xs);
   color: var(--color-danger);
+}
+
+.form-error-text {
+  font-size: var(--font-size-xs);
+  color: var(--color-danger);
+  margin-top: var(--space-1);
+}
+
+.input-error {
+  border-color: var(--color-danger) !important;
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.15);
 }
 
 /* ─── Cards ────────────────────────────────────────────────── */
@@ -474,6 +509,7 @@ tbody tr:last-child td {
 }
 
 @media (max-width: 768px) {
+
   .grid-cols-2,
   .grid-cols-3,
   .grid-cols-4 {
@@ -482,6 +518,7 @@ tbody tr:last-child td {
 }
 
 @media (min-width: 769px) and (max-width: 1024px) {
+
   .grid-cols-3,
   .grid-cols-4 {
     grid-template-columns: repeat(2, 1fr);
@@ -489,34 +526,111 @@ tbody tr:last-child td {
 }
 
 /* ─── Flex Utilities ───────────────────────────────────────── */
-.flex { display: flex; }
-.flex-col { flex-direction: column; }
-.flex-wrap { flex-wrap: wrap; }
-.items-center { align-items: center; }
-.items-start { align-items: flex-start; }
-.justify-between { justify-content: space-between; }
-.justify-center { justify-content: center; }
-.gap-1 { gap: var(--space-1); }
-.gap-2 { gap: var(--space-2); }
-.gap-3 { gap: var(--space-3); }
-.gap-4 { gap: var(--space-4); }
-.gap-6 { gap: var(--space-6); }
+.flex {
+  display: flex;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.flex-wrap {
+  flex-wrap: wrap;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.items-start {
+  align-items: flex-start;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.gap-1 {
+  gap: var(--space-1);
+}
+
+.gap-2 {
+  gap: var(--space-2);
+}
+
+.gap-3 {
+  gap: var(--space-3);
+}
+
+.gap-4 {
+  gap: var(--space-4);
+}
+
+.gap-6 {
+  gap: var(--space-6);
+}
 
 /* ─── Text Utilities ───────────────────────────────────────── */
-.text-center { text-align: center; }
-.text-right { text-align: right; }
-.text-muted { color: var(--color-text-muted); }
-.text-secondary { color: var(--color-text-secondary); }
-.text-success { color: var(--color-success); }
-.text-warning { color: var(--color-warning); }
-.text-danger { color: var(--color-danger); }
-.text-primary { color: var(--color-primary); }
-.text-sm { font-size: var(--font-size-sm); }
-.text-xs { font-size: var(--font-size-xs); }
-.text-lg { font-size: var(--font-size-lg); }
-.font-medium { font-weight: var(--font-weight-medium); }
-.font-semibold { font-weight: var(--font-weight-semibold); }
-.font-bold { font-weight: var(--font-weight-bold); }
+.text-center {
+  text-align: center;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.text-muted {
+  color: var(--color-text-muted);
+}
+
+.text-secondary {
+  color: var(--color-text-secondary);
+}
+
+.text-success {
+  color: var(--color-success);
+}
+
+.text-warning {
+  color: var(--color-warning);
+}
+
+.text-danger {
+  color: var(--color-danger);
+}
+
+.text-primary {
+  color: var(--color-primary);
+}
+
+.text-sm {
+  font-size: var(--font-size-sm);
+}
+
+.text-xs {
+  font-size: var(--font-size-xs);
+}
+
+.text-lg {
+  font-size: var(--font-size-lg);
+}
+
+.font-medium {
+  font-weight: var(--font-weight-medium);
+}
+
+.font-semibold {
+  font-weight: var(--font-weight-semibold);
+}
+
+.font-bold {
+  font-weight: var(--font-weight-bold);
+}
+
 .truncate {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -524,13 +638,33 @@ tbody tr:last-child td {
 }
 
 /* ─── Spacing Utilities ────────────────────────────────────── */
-.mt-2 { margin-top: var(--space-2); }
-.mt-4 { margin-top: var(--space-4); }
-.mt-6 { margin-top: var(--space-6); }
-.mt-8 { margin-top: var(--space-8); }
-.mb-2 { margin-bottom: var(--space-2); }
-.mb-4 { margin-bottom: var(--space-4); }
-.mb-6 { margin-bottom: var(--space-6); }
+.mt-2 {
+  margin-top: var(--space-2);
+}
+
+.mt-4 {
+  margin-top: var(--space-4);
+}
+
+.mt-6 {
+  margin-top: var(--space-6);
+}
+
+.mt-8 {
+  margin-top: var(--space-8);
+}
+
+.mb-2 {
+  margin-bottom: var(--space-2);
+}
+
+.mb-4 {
+  margin-bottom: var(--space-4);
+}
+
+.mb-6 {
+  margin-bottom: var(--space-6);
+}
 
 /* ─── Misc Utilities ───────────────────────────────────────── */
 .sr-only {
@@ -562,6 +696,7 @@ tbody tr:last-child td {
   .mobile-only {
     display: none;
   }
+
   .desktop-only {
     display: block;
   }
@@ -573,7 +708,7 @@ tbody tr:last-child td {
     background: white;
     color: black;
   }
-  
+
   body::before {
     display: none;
   }

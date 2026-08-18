@@ -228,3 +228,21 @@ export function formatFileSize(bytes) {
   }
   return `${size.toFixed(1)} ${units[unitIndex]}`;
 }
+
+/**
+ * Get the last day of the current month as YYYY-MM-DD
+ */
+export function getLastDayOfCurrentMonth() {
+  const now = new Date();
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  return lastDay.toISOString().split('T')[0];
+}
+
+/**
+ * Get the first day of next month as YYYY-MM-DD
+ */
+export function getFirstDayOfNextMonth() {
+  const now = new Date();
+  const firstDay = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  return firstDay.toISOString().split('T')[0];
+}

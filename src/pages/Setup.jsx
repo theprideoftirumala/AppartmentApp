@@ -5,18 +5,18 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FolderPlus, FileSpreadsheet, CheckCircle, Loader, Shield, ArrowRight } from 'lucide-react';
+import { FolderPlus, FileSpreadsheet, CheckCircle, Loader, Shield, ArrowRight, Search } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useApp } from '../contexts/AppContext';
-import { setupFolderStructure } from '../services/googleDrive';
-import { createSpreadsheet } from '../services/googleSheets';
-import { addAccessControl, addAuditLog } from '../services/googleSheets';
-import { STORAGE_KEYS, APP_NAME } from '../config/constants';
+import { setupFolderStructure, findExistingSpreadsheet } from '../services/googleDrive';
+import { createSpreadsheet, addAccessControl, addAuditLog, addReminder, getAccessControl, parseApiError } from '../services/googleSheets';
+import { STORAGE_KEYS, APP_NAME, SHEET_FILE_NAME, DEFAULT_REMINDERS } from '../config/constants';
+import { calculateNextDue, getLastDayOfCurrentMonth, getFirstDayOfNextMonth } from '../utils/helpers';
 
 const STEPS = [
   { id: 'welcome', title: 'Welcome', icon: Shield },
-  { id: 'folders', title: 'Create Folders', icon: FolderPlus },
-  { id: 'sheet', title: 'Create Spreadsheet', icon: FileSpreadsheet },
+  { id: 'folders', title: 'Set Up Folders', icon: FolderPlus },
+  { id: 'sheet', title: 'Connect Sheet', icon: FileSpreadsheet },
   { id: 'done', title: 'All Set!', icon: CheckCircle },
 ];
 
@@ -27,7 +27,7 @@ export default function Setup() {
   const [currentStep, setCurrentStep] = useState(0);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState(null);
-  const [results, setResults] = useState({ folderId: null, spreadsheetId: null });
+  const [results, setResults] = useState({ folderId: null, spreadsheetId: null, foundExisting: false });
 
   // Check if already set up
   const existingSpreadsheetId = localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID);
@@ -44,35 +44,81 @@ export default function Setup() {
     setError(null);
 
     try {
-      // Step 1: Create folders
+      // Step 1: Create/find folders
       setCurrentStep(1);
       const folders = await setupFolderStructure();
 
-      // Step 2: Create spreadsheet
+      // Step 2: Search Drive for existing spreadsheet — never create duplicates
       setCurrentStep(2);
-      const spreadsheetId = await createSpreadsheet(folders.rootId);
+      let spreadsheetId = null;
+      let foundExisting = false;
 
-      // Add current user as owner
-      await addAccessControl({
-        email: user.email,
-        role: 'Owner',
-        flat: '',
-        addedBy: 'System',
-      });
+      const existingSheet = await findExistingSpreadsheet(SHEET_FILE_NAME);
+      if (existingSheet) {
+        // Reuse the existing spreadsheet — it is the source of truth
+        spreadsheetId = existingSheet.id;
+        localStorage.setItem(STORAGE_KEYS.SPREADSHEET_ID, spreadsheetId);
+        foundExisting = true;
 
-      // Log setup
-      await addAuditLog(user.email, 'SETUP', 'Initial app setup completed');
+        // Verify the current user is in the access control list
+        let aclEntries = [];
+        try {
+          aclEntries = await getAccessControl();
+        } catch {
+          // ACL read failed — allow reconnect for the sheet owner
+        }
+        const isAuthorized = aclEntries.some(u => u.email === user.email && u.status === 'Active');
 
-      setResults({ folderId: folders.rootId, spreadsheetId });
+        if (!isAuthorized && aclEntries.length > 0) {
+          // Sheet exists and has users, but this user is not listed
+          setError(`Access denied. Your email (${user.email}) is not authorized to use this app. Contact the Treasurer or President to be added.`);
+          setProcessing(false);
+          setCurrentStep(0);
+          return;
+        }
+
+        if (!isAuthorized) {
+          // Sheet is empty ACL (edge case) — add as owner
+          await addAccessControl({ email: user.email, role: 'Owner', flat: '', addedBy: 'System' });
+        }
+      } else {
+        // No existing spreadsheet — create a fresh one
+        spreadsheetId = await createSpreadsheet(folders.rootId);
+
+        // Add current user as Owner
+        await addAccessControl({ email: user.email, role: 'Owner', flat: '', addedBy: 'System' });
+
+        // Seed default reminders so they're ready to use
+        for (const reminder of DEFAULT_REMINDERS) {
+          let nextDue;
+          if (reminder.nextDueType === 'end_of_month') nextDue = getLastDayOfCurrentMonth();
+          else if (reminder.nextDueType === 'start_of_month') nextDue = getFirstDayOfNextMonth();
+          else nextDue = calculateNextDue(null, reminder.frequency);
+
+          await addReminder({
+            title: reminder.title,
+            description: reminder.description,
+            frequency: reminder.frequency,
+            assignedTo: reminder.assignedTo || '',
+            nextDue,
+            createdBy: 'System',
+          });
+        }
+
+        await addAuditLog(user.email, 'SETUP', 'Initial app setup completed');
+      }
+
+      setResults({ folderId: folders.rootId, spreadsheetId, foundExisting });
 
       // Step 3: Done
       setCurrentStep(3);
       completeSetup();
-      showToast('Setup complete! Welcome to your expense tracker.', 'success');
+      showToast(foundExisting ? 'Reconnected to existing data. Welcome back!' : 'Setup complete! Welcome to your expense tracker.', 'success');
     } catch (err) {
       console.error('Setup error:', err);
-      setError(err.message || 'Setup failed. Please try again.');
+      setError(parseApiError(err) || err.message || 'Setup failed. Please try again.');
       setProcessing(false);
+      setCurrentStep(0);
     }
   };
 
@@ -102,11 +148,11 @@ export default function Setup() {
                 <Shield size={48} />
               </div>
               <h2>Welcome to {APP_NAME}</h2>
-              <p>Let's set up your apartment expense tracker. This will:</p>
+              <p>Let's connect your apartment expense tracker. This will:</p>
               <ul className="setup-checklist">
-                <li>Create a <strong>TPT-AppartmentApp</strong> folder in your Google Drive</li>
-                <li>Create subfolders for expenses evidence and backups</li>
-                <li>Create a Google Sheet with all required data sheets</li>
+                <li>Search for an existing <strong>TPT-MaintenanceTracker</strong> in your Google Drive</li>
+                <li>Create it only if it doesn't already exist</li>
+                <li>Set up the required folder structure</li>
                 <li>Set you up as the first Owner</li>
               </ul>
 
@@ -116,7 +162,7 @@ export default function Setup() {
                   onClick={handleSetup}
                   disabled={processing}
                 >
-                  Start Setup <ArrowRight size={18} />
+                  <Search size={18} /> Connect or Create <ArrowRight size={18} />
                 </button>
 
                 {existingSpreadsheetId && (
@@ -124,7 +170,7 @@ export default function Setup() {
                     className="btn btn-secondary"
                     onClick={handleConnectExisting}
                   >
-                    Use Existing Setup
+                    Use Stored Setup
                   </button>
                 )}
               </div>
@@ -137,8 +183,8 @@ export default function Setup() {
               <h3>{STEPS[currentStep].title}...</h3>
               <p className="text-muted">
                 {currentStep === 1
-                  ? 'Creating folder structure in your Google Drive...'
-                  : 'Creating the maintenance tracker spreadsheet...'}
+                  ? 'Setting up folder structure in your Google Drive...'
+                  : 'Searching for existing spreadsheet or creating new one...'}
               </p>
             </div>
           )}
@@ -149,11 +195,11 @@ export default function Setup() {
                 <CheckCircle size={56} />
               </div>
               <h2>All Set! 🎉</h2>
-              <p>Your expense tracker is ready to use.</p>
+              <p>{results.foundExisting ? 'Reconnected to your existing data.' : 'Your expense tracker is ready to use.'}</p>
 
               <div className="setup-summary card">
-                <p><strong>Google Drive:</strong> TPT-AppartmentApp folder created</p>
-                <p><strong>Spreadsheet:</strong> TPT-MaintenanceTracker created with 10 sheets</p>
+                <p><strong>Google Drive:</strong> TPT-AppartmentApp folder ready</p>
+                <p><strong>Spreadsheet:</strong> {results.foundExisting ? 'Reconnected to existing TPT-MaintenanceTracker' : 'TPT-MaintenanceTracker created with all sheets'}</p>
                 <p><strong>Your Role:</strong> Owner</p>
               </div>
 

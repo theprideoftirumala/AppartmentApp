@@ -22,6 +22,7 @@
   .sidebar {
     transform: translateX(-100%);
   }
+
   .sidebar.sidebar-open {
     transform: translateX(0);
   }
@@ -30,7 +31,7 @@
 .sidebar-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.6);
+  background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(4px);
   z-index: calc(var(--z-sidebar) - 1);
 }
@@ -327,6 +328,36 @@
   font-size: var(--font-size-sm);
 }
 
+.login-access-denied {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  padding: var(--space-4);
+  background: rgba(var(--color-danger-rgb, 220, 38, 38), 0.08);
+  border: 1px solid rgba(var(--color-danger-rgb, 220, 38, 38), 0.3);
+  border-radius: var(--radius-md);
+  color: var(--color-danger);
+  font-size: var(--font-size-sm);
+  text-align: left;
+  margin-bottom: var(--space-4);
+}
+
+.login-access-denied svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.login-access-denied strong {
+  display: block;
+  margin-bottom: var(--space-1);
+}
+
+.login-access-denied p {
+  margin: 0;
+  opacity: 0.85;
+  line-height: 1.5;
+}
+
 .login-note {
   margin-top: var(--space-6);
   font-size: var(--font-size-xs);
@@ -551,10 +582,25 @@
   justify-content: center;
 }
 
-.stat-icon-primary { background: hsla(220, 90%, 56%, 0.15); color: var(--color-primary-light); }
-.stat-icon-success { background: var(--color-success-bg); color: var(--color-success-light); }
-.stat-icon-danger { background: var(--color-danger-bg); color: var(--color-danger-light); }
-.stat-icon-warning { background: var(--color-warning-bg); color: var(--color-warning-light); }
+.stat-icon-primary {
+  background: hsla(220, 90%, 56%, 0.15);
+  color: var(--color-primary-light);
+}
+
+.stat-icon-success {
+  background: var(--color-success-bg);
+  color: var(--color-success-light);
+}
+
+.stat-icon-danger {
+  background: var(--color-danger-bg);
+  color: var(--color-danger-light);
+}
+
+.stat-icon-warning {
+  background: var(--color-warning-bg);
+  color: var(--color-warning-light);
+}
 
 .stat-card-value {
   font-size: var(--font-size-xl);
@@ -611,9 +657,20 @@
   justify-content: center;
 }
 
-.flat-status-paid { background: var(--color-success-bg); color: var(--color-success-light); }
-.flat-status-pending { background: var(--color-danger-bg); color: var(--color-danger-light); }
-.flat-status-partial { background: var(--color-warning-bg); color: var(--color-warning-light); }
+.flat-status-paid {
+  background: var(--color-success-bg);
+  color: var(--color-success-light);
+}
+
+.flat-status-pending {
+  background: var(--color-danger-bg);
+  color: var(--color-danger-light);
+}
+
+.flat-status-partial {
+  background: var(--color-warning-bg);
+  color: var(--color-warning-light);
+}
 
 /* Expense Breakdown */
 .expense-breakdown {
@@ -678,10 +735,21 @@
   flex-shrink: 0;
 }
 
-.reminder-overdue .reminder-dot { background: var(--color-danger); }
-.reminder-urgent .reminder-dot { background: var(--color-warning); }
-.reminder-soon .reminder-dot { background: var(--color-primary); }
-.reminder-normal .reminder-dot { background: var(--color-text-muted); }
+.reminder-overdue .reminder-dot {
+  background: var(--color-danger);
+}
+
+.reminder-urgent .reminder-dot {
+  background: var(--color-warning);
+}
+
+.reminder-soon .reminder-dot {
+  background: var(--color-primary);
+}
+
+.reminder-normal .reminder-dot {
+  background: var(--color-text-muted);
+}
 
 .reminder-info {
   display: flex;
@@ -861,10 +929,21 @@
   gap: var(--space-2);
 }
 
-.report-income { background: var(--color-success-bg); }
-.report-expense { background: var(--color-danger-bg); }
-.report-surplus { background: var(--color-success-bg); }
-.report-deficit { background: var(--color-danger-bg); }
+.report-income {
+  background: var(--color-success-bg);
+}
+
+.report-expense {
+  background: var(--color-danger-bg);
+}
+
+.report-surplus {
+  background: var(--color-success-bg);
+}
+
+.report-deficit {
+  background: var(--color-danger-bg);
+}
 
 .report-summary-label {
   font-size: var(--font-size-xs);
@@ -878,10 +957,21 @@
   font-weight: var(--font-weight-bold);
 }
 
-.report-income .report-summary-value { color: var(--color-success-light); }
-.report-expense .report-summary-value { color: var(--color-danger-light); }
-.report-surplus .report-summary-value { color: var(--color-success-light); }
-.report-deficit .report-summary-value { color: var(--color-danger-light); }
+.report-income .report-summary-value {
+  color: var(--color-success-light);
+}
+
+.report-expense .report-summary-value {
+  color: var(--color-danger-light);
+}
+
+.report-surplus .report-summary-value {
+  color: var(--color-success-light);
+}
+
+.report-deficit .report-summary-value {
+  color: var(--color-danger-light);
+}
 
 /* ─── Reminders Page ───────────────────────────────────────── */
 .reminder-grid {
@@ -909,10 +999,21 @@
   height: 3px;
 }
 
-.reminder-card-overdue::before { background: var(--color-danger); }
-.reminder-card-urgent::before { background: var(--color-warning); }
-.reminder-card-soon::before { background: var(--color-primary); }
-.reminder-card-normal::before { background: var(--glass-border); }
+.reminder-card-overdue::before {
+  background: var(--color-danger);
+}
+
+.reminder-card-urgent::before {
+  background: var(--color-warning);
+}
+
+.reminder-card-soon::before {
+  background: var(--color-primary);
+}
+
+.reminder-card-normal::before {
+  background: var(--glass-border);
+}
 
 .reminder-card:hover {
   border-color: var(--glass-border-hover);
@@ -933,10 +1034,21 @@
   font-weight: var(--font-weight-semibold);
 }
 
-.reminder-card-overdue .reminder-card-urgency { color: var(--color-danger-light); }
-.reminder-card-urgent .reminder-card-urgency { color: var(--color-warning-light); }
-.reminder-card-soon .reminder-card-urgency { color: var(--color-primary-light); }
-.reminder-card-normal .reminder-card-urgency { color: var(--color-text-muted); }
+.reminder-card-overdue .reminder-card-urgency {
+  color: var(--color-danger-light);
+}
+
+.reminder-card-urgent .reminder-card-urgency {
+  color: var(--color-warning-light);
+}
+
+.reminder-card-soon .reminder-card-urgency {
+  color: var(--color-primary-light);
+}
+
+.reminder-card-normal .reminder-card-urgency {
+  color: var(--color-text-muted);
+}
 
 .reminder-card-title {
   font-size: var(--font-size-base);
@@ -1127,9 +1239,17 @@
   animation: fadeInScale var(--transition-base);
 }
 
-.modal-md { max-width: 500px; }
-.modal-lg { max-width: 680px; }
-.modal-xl { max-width: 900px; }
+.modal-md {
+  max-width: 500px;
+}
+
+.modal-lg {
+  max-width: 680px;
+}
+
+.modal-xl {
+  max-width: 900px;
+}
 
 .modal-header {
   display: flex;

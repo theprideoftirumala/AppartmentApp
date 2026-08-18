@@ -12,16 +12,17 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useApp } from '../contexts/AppContext';
-import { getDashboardData, getAccessControl } from '../services/googleSheets';
+import { getDashboardData, getAccessControl, parseApiError } from '../services/googleSheets';
 import { formatCurrency, getCurrentMonthLabel, getCollectionPercentage, daysUntil, getRelativeTime, groupExpensesByCategory } from '../utils/helpers';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Navbar from '../components/common/Navbar';
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const { dashboardData, setDashboardData, setConfig, setUserRole, showToast, setLastSync } = useApp();
   const [loading, setLoading] = useState(!dashboardData);
   const [refreshing, setRefreshing] = useState(false);
+  const [accessError, setAccessError] = useState(null);
   const navigate = useNavigate();
   const currentMonth = getCurrentMonthLabel();
 
@@ -35,34 +36,39 @@ export default function Dashboard() {
       setConfig(data.config);
       setLastSync(new Date().toISOString());
 
-      // Determine user role
-      const accessList = data.maintenance ? [] : []; // placeholder
-      // Check access control from the fetched data (we'd need to add that to batch)
-      // For now, check if user email matches any owner
+      // Determine user role from Access Control sheet
       const userEmail = user?.email;
       if (userEmail) {
-        // Check Access Control sheet data
         try {
           const acl = await getAccessControl();
           const userAccess = acl.find(a => a.email === userEmail && a.status === 'Active');
           if (userAccess) {
             setUserRole(userAccess.role);
           } else {
-            setUserRole('Owner'); // First user is owner
+            // User authenticated with Google but not in ACL — deny access
+            signOut();
+            navigate('/login');
+            showToast(`Access denied: ${userEmail} is not authorized. Contact the Treasurer or President.`, 'error');
+            return;
           }
-        } catch {
-          setUserRole('Owner');
+        } catch (aclErr) {
+          console.warn('ACL check failed in dashboard:', aclErr);
+          // If this is the first load after setup (ACL may not have current user yet), default safely
+          const setupComplete = localStorage.getItem('tpt_setup_complete') === 'true';
+          if (!setupComplete) setUserRole('Owner');
         }
       }
 
     } catch (err) {
       console.error('Dashboard fetch error:', err);
-      showToast('Failed to load data. Please refresh.', 'error');
+      const msg = parseApiError(err);
+      setAccessError(msg);
+      showToast(msg, 'error');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user, setDashboardData, setConfig, setUserRole, showToast, setLastSync]);
+  }, [user, setDashboardData, setConfig, setUserRole, showToast, setLastSync, signOut, navigate]);
 
   useEffect(() => {
     fetchData();
@@ -74,6 +80,24 @@ export default function Dashboard() {
         <Navbar />
         <div className="full-page-center">
           <LoadingSpinner text="Loading dashboard..." />
+        </div>
+      </div>
+    );
+  }
+
+  if (accessError) {
+    return (
+      <div className="main-content">
+        <Navbar />
+        <div className="full-page-center">
+          <div className="card" style={{ maxWidth: 480, textAlign: 'center', padding: '2rem' }}>
+            <AlertCircle size={40} style={{ color: 'var(--color-danger)', margin: '0 auto 1rem' }} />
+            <h3>Unable to Load Data</h3>
+            <p className="text-muted mt-2" style={{ whiteSpace: 'pre-wrap' }}>{accessError}</p>
+            <button className="btn btn-primary mt-4" onClick={() => { setAccessError(null); fetchData(); }}>
+              <RefreshCw size={16} /> Retry
+            </button>
+          </div>
         </div>
       </div>
     );

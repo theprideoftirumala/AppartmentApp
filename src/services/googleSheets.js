@@ -4,7 +4,7 @@
  * Google Sheet is the single source of truth / database
  */
 
-import { SHEET_NAMES, SHEET_HEADERS, DEFAULT_CONFIG, FLATS, STORAGE_KEYS } from '../config/constants';
+import { SHEET_NAMES, SHEET_HEADERS, DEFAULT_CONFIG, FLATS, STORAGE_KEYS, SHEET_FILE_NAME } from '../config/constants';
 import { ensureValidToken } from './googleAuth';
 
 /**
@@ -20,6 +20,30 @@ function getSpreadsheetId() {
 async function withAuth(fn) {
   await ensureValidToken();
   return fn();
+}
+
+/**
+ * Parse a Google API error into a user-friendly message.
+ */
+export function parseApiError(error) {
+  if (!navigator.onLine) {
+    return 'You appear to be offline. Please check your internet connection.';
+  }
+  const apiErr = error?.result?.error || error?.error;
+  if (apiErr) {
+    const { code, message } = apiErr;
+    switch (code) {
+      case 400: return `Bad request: ${message}`;
+      case 401: return 'Session expired. Please sign in again.';
+      case 403: return `Permission denied: ${message}. Ensure the spreadsheet is shared with your account.`;
+      case 404: return 'Resource not found. The Google Sheet or folder may have been deleted or moved.';
+      case 429: return 'Google API quota exceeded. Please wait a moment and try again.';
+      case 500:
+      case 503: return 'Google Sheets service is temporarily unavailable. Please try again.';
+      default: return message || 'An unexpected Google API error occurred.';
+    }
+  }
+  return error?.message || 'An unexpected error occurred. Please try again.';
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -39,7 +63,7 @@ export async function createSpreadsheet(folderId) {
     const response = await window.gapi.client.sheets.spreadsheets.create({
       resource: {
         properties: {
-          title: 'TPT-MaintenanceTracker',
+          title: SHEET_FILE_NAME,
         },
         sheets: sheetNames.map((name, index) => ({
           properties: {
@@ -1140,6 +1164,146 @@ export async function getDashboardData() {
     localStorage.setItem(STORAGE_KEYS.LAST_SYNC, new Date().toISOString());
 
     return dashboardData;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MISC FUNDS
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Ensure the Misc Funds sheet exists (for setups created before this feature).
+ * Creates the sheet + headers if missing. Safe to call multiple times.
+ */
+async function ensureMiscFundsSheet(spreadsheetId) {
+  const meta = await window.gapi.client.sheets.spreadsheets.get({
+    spreadsheetId,
+    fields: 'sheets.properties.title',
+  });
+  const titles = (meta.result.sheets || []).map(s => s.properties.title);
+  if (titles.includes(SHEET_NAMES.MISC_FUNDS)) return;
+
+  await window.gapi.client.sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    resource: {
+      requests: [{
+        addSheet: {
+          properties: {
+            title: SHEET_NAMES.MISC_FUNDS,
+            gridProperties: { frozenRowCount: 1 },
+          },
+        },
+      }],
+    },
+  });
+
+  await window.gapi.client.sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `'${SHEET_NAMES.MISC_FUNDS}'!A1`,
+    valueInputOption: 'RAW',
+    resource: { values: [SHEET_HEADERS[SHEET_NAMES.MISC_FUNDS]] },
+  });
+}
+
+/**
+ * Get misc fund records, optionally filtered by month
+ */
+export async function getMiscFunds(month = null) {
+  return withAuth(async () => {
+    const spreadsheetId = getSpreadsheetId();
+    await ensureMiscFundsSheet(spreadsheetId);
+
+    const response = await window.gapi.client.sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `'${SHEET_NAMES.MISC_FUNDS}'!A2:I2000`,
+    });
+
+    const rows = response.result.values || [];
+    let records = rows.map(row => ({
+      id: row[0] || '',
+      date: row[1] || '',
+      month: row[2] || '',
+      flat: row[3] || '',
+      amount: Number(row[4]) || 0,
+      description: row[5] || '',
+      paymentMode: row[6] || '',
+      collectedBy: row[7] || '',
+      remarks: row[8] || '',
+    }));
+
+    if (month) records = records.filter(r => r.month === month);
+    return records;
+  });
+}
+
+/**
+ * Add a new misc fund entry
+ */
+export async function addMiscFund(data) {
+  return withAuth(async () => {
+    const spreadsheetId = getSpreadsheetId();
+    await ensureMiscFundsSheet(spreadsheetId);
+
+    const id = `MISC-${Date.now()}`;
+    await window.gapi.client.sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: `'${SHEET_NAMES.MISC_FUNDS}'!A:I`,
+      valueInputOption: 'RAW',
+      insertDataOption: 'INSERT_ROWS',
+      resource: {
+        values: [[
+          id,
+          data.date || new Date().toISOString().split('T')[0],
+          data.month || '',
+          data.flat || '',
+          String(data.amount || 0),
+          data.description || '',
+          data.paymentMode || '',
+          data.collectedBy || '',
+          data.remarks || '',
+        ]],
+      },
+    });
+    return id;
+  });
+}
+
+/**
+ * Delete a misc fund entry by ID
+ */
+export async function deleteMiscFund(fundId) {
+  return withAuth(async () => {
+    const spreadsheetId = getSpreadsheetId();
+
+    const response = await window.gapi.client.sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `'${SHEET_NAMES.MISC_FUNDS}'!A2:A2000`,
+    });
+    const rows = response.result.values || [];
+    const rowIndex = rows.findIndex(r => r[0] === fundId);
+    if (rowIndex < 0) return;
+
+    const sheetMeta = await window.gapi.client.sheets.spreadsheets.get({
+      spreadsheetId,
+      fields: 'sheets.properties',
+    });
+    const sheet = sheetMeta.result.sheets.find(s => s.properties.title === SHEET_NAMES.MISC_FUNDS);
+
+    await window.gapi.client.sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      resource: {
+        requests: [{
+          deleteDimension: {
+            range: {
+              sheetId: sheet.properties.sheetId,
+              dimension: 'ROWS',
+              startIndex: rowIndex + 1,
+              endIndex: rowIndex + 2,
+            },
+          },
+        }],
+      },
+    });
   });
 }
 

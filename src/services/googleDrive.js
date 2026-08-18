@@ -22,6 +22,31 @@ function getRootFolderId() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// SPREADSHEET DISCOVERY
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Search Google Drive for an existing spreadsheet by name.
+ * Returns the first match or null — prevents creating duplicates.
+ * @param {string} name - Exact spreadsheet name to search
+ * @returns {{ id, name, webViewLink } | null}
+ */
+export async function findExistingSpreadsheet(name) {
+  return withAuth(async () => {
+    const safeName = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const query = `name='${safeName}' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`;
+    const response = await window.gapi.client.drive.files.list({
+      q: query,
+      fields: 'files(id, name, webViewLink)',
+      spaces: 'drive',
+      pageSize: 5,
+    });
+    const files = response.result.files || [];
+    return files.length > 0 ? files[0] : null;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
 // FOLDER MANAGEMENT
 // ═══════════════════════════════════════════════════════════════
 
