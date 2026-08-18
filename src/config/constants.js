@@ -218,21 +218,21 @@ export function generateFiscalMonths(startMonth = '2026-09') {
 export const DEFAULT_REMINDERS = [
   {
     title: 'Take Monthly Data Backup',
-    description: 'Take a backup of the Google Sheet before month end. Go to Settings → Backups → Create Backup.',
+    description: 'Take a backup of the Google Sheet before month end. Go to Settings > Backups > Create Backup.',
     frequency: 'Monthly',
     assignedTo: 'Treasurer',
     nextDueType: 'end_of_month',
   },
   {
-    title: 'Export Expenses PDF — Month End',
-    description: 'Export monthly expenses PDF report and share in the WhatsApp group. Go to Reports → Export PDF.',
+    title: 'Export Expenses PDF - Month End',
+    description: 'Export monthly expenses PDF report and share in the WhatsApp group. Go to Reports > Export PDF.',
     frequency: 'Monthly',
     assignedTo: 'Treasurer',
     nextDueType: 'end_of_month',
   },
   {
-    title: 'Share Expenses PDF — New Month',
-    description: 'Share previous month\'s expenses PDF summary in the WhatsApp group on the 1st of every month.',
+    title: 'Share Expenses PDF - New Month',
+    description: "Share previous month's expenses PDF summary in the WhatsApp group on the 1st of every month.",
     frequency: 'Monthly',
     assignedTo: 'Treasurer',
     nextDueType: 'start_of_month',
