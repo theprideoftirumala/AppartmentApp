@@ -1483,6 +1483,47 @@
   margin-top: var(--space-6);
 }
 
+/* ─── Quick Export Panel ───────────────────────────────── */
+.quick-export-panel {
+  margin-bottom: var(--space-6);
+  background: linear-gradient(135deg, rgba(79, 124, 255, 0.06), rgba(99, 179, 99, 0.04));
+  border: 1px solid rgba(79, 124, 255, 0.2);
+}
+
+.quick-export-header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  color: var(--color-primary);
+}
+
+.quick-export-header h3 {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  margin: 0;
+  color: var(--color-text);
+}
+
+.quick-export-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.quick-export-hint {
+  flex: 1;
+  min-width: 0;
+}
+
+.quick-export-hint code {
+  background: var(--glass-bg);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+}
+
 /* ─── Report Tabs ──────────────────────────────────────── */
 .report-tabs {
   display: flex;

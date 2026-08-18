@@ -97,8 +97,10 @@ export function generateMonthlyReport(reportData) {
     config,
     maintenance,
     expenses,
+    miscFunds,
     totalCollection,
     totalExpenses,
+    totalMiscFunds,
     netBalance,
     cumulativeBalance,
     flats,
@@ -149,9 +151,9 @@ export function generateMonthlyReport(reportData) {
   const cardWidth = contentWidth / 4 - 3;
   const summaryCards = [
     { label: 'Total Collection', value: formatCurrency(totalCollection), color: [40, 167, 69], bg: [235, 250, 240] },
+    { label: 'Misc Funds', value: formatCurrency(totalMiscFunds || 0), color: [50, 80, 200], bg: [230, 240, 255] },
     { label: 'Total Expenses', value: formatCurrency(totalExpenses), color: [220, 53, 69], bg: [255, 235, 238] },
     { label: 'Net Balance', value: formatCurrency(netBalance), color: netBalance >= 0 ? [40, 167, 69] : [220, 53, 69], bg: netBalance >= 0 ? [235, 250, 240] : [255, 235, 238] },
-    { label: 'Cumulative Bal.', value: formatCurrency(cumulativeBalance), color: cumulativeBalance >= 0 ? [50, 80, 150] : [220, 53, 69], bg: [230, 240, 255] },
   ];
 
   summaryCards.forEach((card, i) => {
@@ -179,7 +181,7 @@ export function generateMonthlyReport(reportData) {
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(80, 80, 80);
   doc.text(`Monthly Maintenance: ${formatCurrency(config?.MONTHLY_MAINTENANCE || 3000)} per flat  |  Total Flats: 10  |  Expected: ${formatCurrency((config?.MONTHLY_MAINTENANCE || 3000) * 10)}  |  Deficit Carry Forward: ${formatCurrency(config?.DEFICIT_LAST_YEAR || 0)}`, margin + 4, y + 6);
-  
+
   const paidCount = (maintenance || []).filter(r => r.status === 'PAID').length;
   const pendingCount = (maintenance || []).filter(r => r.status === 'PENDING').length;
   const partialCount = (maintenance || []).filter(r => r.status === 'PARTIAL').length;
@@ -249,10 +251,58 @@ export function generateMonthlyReport(reportData) {
   y += 14;
 
   // ═══════════════════════════════════════════════════════
-  // SECTION 2: EXPENSES REPORT
+  // SECTION 2: MISC FUNDS
+  // ═══════════════════════════════════════════════════════
+  if (miscFunds && miscFunds.length > 0) {
+    y = checkPageBreak(doc, y, margin, 30);
+    y = drawSectionHeader(doc, '2. MISC FUNDS FROM FLAT OWNERS', y, pageWidth, margin);
+    y += 2;
+
+    const mfColWidths = [18, 30, 55, 25, 25, 27];
+    y = drawTableHeader(doc, ['Flat', 'Amount', 'Description', 'Date', 'Mode', 'Collected By'], mfColWidths, y, margin, contentWidth);
+
+    miscFunds.forEach((fund, index) => {
+      y = checkPageBreak(doc, y, margin, 7);
+      const bg = index % 2 === 0 ? [255, 255, 255] : [248, 249, 252];
+      doc.setFillColor(...bg);
+      doc.rect(margin, y, contentWidth, 7, 'F');
+
+      doc.setFontSize(7.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(60, 60, 60);
+
+      let colX = margin + 2;
+      const rowData = [
+        fund.flat,
+        formatCurrency(fund.amount),
+        (fund.description || '-').substring(0, 28),
+        fund.date || '-',
+        fund.paymentMode || '-',
+        (fund.collectedBy || '-').substring(0, 14),
+      ];
+      rowData.forEach((val, i) => {
+        if (i === 1) { doc.setFont('helvetica', 'bold'); doc.setTextColor(50, 80, 200); }
+        doc.text(String(val), colX, y + 5);
+        if (i === 1) { doc.setFont('helvetica', 'normal'); doc.setTextColor(60, 60, 60); }
+        colX += mfColWidths[i];
+      });
+      y += 7;
+    });
+
+    doc.setFillColor(230, 240, 255);
+    doc.rect(margin, y, contentWidth, 8, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(50, 80, 200);
+    doc.text(`TOTAL MISC FUNDS: ${formatCurrency(totalMiscFunds || 0)}  (${miscFunds.length} contribution(s))`, margin + 4, y + 5.5);
+    y += 14;
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // SECTION 3: EXPENSES REPORT
   // ═══════════════════════════════════════════════════════
   y = checkPageBreak(doc, y, margin, 40);
-  y = drawSectionHeader(doc, '2. EXPENSES REPORT', y, pageWidth, margin);
+  y = drawSectionHeader(doc, '3. EXPENSES REPORT', y, pageWidth, margin);
   y += 2;
 
   if (expenses && expenses.length > 0) {
@@ -365,7 +415,7 @@ export function generateMonthlyReport(reportData) {
   // SECTION 3: WATCHMAN DETAILS
   // ═══════════════════════════════════════════════════════
   y = checkPageBreak(doc, y, margin, 35);
-  y = drawSectionHeader(doc, '3. WATCHMAN DETAILS', y, pageWidth, margin);
+  y = drawSectionHeader(doc, '4. WATCHMAN DETAILS', y, pageWidth, margin);
   y += 2;
 
   const activeWatchmen = (watchman || []).filter(w => w.status === 'Active');
@@ -403,7 +453,7 @@ export function generateMonthlyReport(reportData) {
   // SECTION 4: ACTIVITIES PERFORMED THIS MONTH
   // ═══════════════════════════════════════════════════════
   y = checkPageBreak(doc, y, margin, 30);
-  y = drawSectionHeader(doc, '4. ACTIVITIES PERFORMED THIS MONTH', y, pageWidth, margin);
+  y = drawSectionHeader(doc, '5. ACTIVITIES PERFORMED THIS MONTH', y, pageWidth, margin);
   y += 2;
 
   if (activities && activities.length > 0) {
@@ -482,7 +532,7 @@ export function generateMonthlyReport(reportData) {
   // ═══════════════════════════════════════════════════════
   if (remindersCompleted && remindersCompleted.length > 0) {
     y = checkPageBreak(doc, y, margin, 20);
-    y = drawSectionHeader(doc, '5. REMINDERS / TASKS COMPLETED', y, pageWidth, margin);
+    y = drawSectionHeader(doc, '6. REMINDERS / TASKS COMPLETED', y, pageWidth, margin);
     y += 2;
 
     remindersCompleted.forEach((r, i) => {

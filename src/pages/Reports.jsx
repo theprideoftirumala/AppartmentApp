@@ -1,7 +1,9 @@
 /**
  * Reports Page
  * Comprehensive monthly report with:
+ * - Quick Export panel (select any month, export PDF instantly)
  * - Payment Received Summary
+ * - Misc Funds
  * - Expenses Report (detailed + category)
  * - Activities Performed
  * - Watchman Details
@@ -11,13 +13,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Download, RefreshCw, Send, Share2, FileText,
-  IndianRupee, Receipt, Activity, Shield, Eye, Users
+  IndianRupee, Receipt, Activity, Shield, Eye, Users,
+  Loader, CalendarDays
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import {
   getMaintenanceRecords, getExpenses, getConfiguration, getFlats,
   updateMonthlySummary, getMonthlySummaries,
   getWatchmanDetails, getAuditLogForMonth, getReminders,
+  getMiscFunds, parseApiError,
 } from '../services/googleSheets';
 import { downloadReport, shareReport } from '../services/pdfExport';
 import { formatCurrency, formatDate, getCurrentMonthLabel, getFiscalMonthOptions, groupExpensesByCategory } from '../utils/helpers';
@@ -34,12 +38,18 @@ export default function Reports() {
   const [generating, setGenerating] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [activeSection, setActiveSection] = useState('summary');
+
+  // Quick-export panel state — independent of the viewed report
+  const [quickMonth, setQuickMonth] = useState(getCurrentMonthLabel());
+  const [quickExporting, setQuickExporting] = useState(false);
+  const [quickSharing, setQuickSharing] = useState(false);
+
   const monthOptions = getFiscalMonthOptions();
 
   const loadReport = useCallback(async () => {
     try {
       setLoading(true);
-      const [maintenance, expenses, config, flats, watchman, activities, reminders] = await Promise.all([
+      const [maintenance, expenses, config, flats, watchman, activities, reminders, miscFunds] = await Promise.all([
         getMaintenanceRecords(selectedMonth),
         getExpenses(selectedMonth),
         getConfiguration(),
@@ -47,11 +57,13 @@ export default function Reports() {
         getWatchmanDetails(),
         getAuditLogForMonth(selectedMonth).catch(() => []),
         getReminders().catch(() => []),
+        getMiscFunds(selectedMonth).catch(() => []),
       ]);
 
       const totalCollection = maintenance.reduce((s, r) => s + r.amountPaid, 0);
       const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
-      const netBalance = totalCollection - totalExpenses;
+      const totalMiscFunds = miscFunds.reduce((s, f) => s + f.amount, 0);
+      const netBalance = totalCollection + totalMiscFunds - totalExpenses;
 
       // Find reminders completed in this month
       const remindersCompleted = reminders.filter(r => {
@@ -74,17 +86,19 @@ export default function Reports() {
         config,
         maintenance,
         expenses,
+        miscFunds,
         flats,
         watchman: watchman.filter(w => w.status === 'Active'),
         activities,
         remindersCompleted,
         totalCollection,
         totalExpenses,
+        totalMiscFunds,
         netBalance,
         cumulativeBalance: netBalance + (config.DEFICIT_LAST_YEAR || 0),
       });
     } catch (err) {
-      showToast('Failed to load report data', 'error');
+      showToast(parseApiError(err) || 'Failed to load report data', 'error');
       console.error(err);
     } finally {
       setLoading(false);
@@ -109,9 +123,9 @@ export default function Reports() {
     if (!reportData) return;
     try {
       downloadReport(reportData);
-      showToast('PDF report downloaded!', 'success');
+      showToast(`PDF downloaded: TPT_Report_${reportData.month}.pdf`, 'success');
     } catch (err) {
-      showToast('Failed to generate PDF', 'error');
+      showToast(parseApiError(err) || 'Failed to generate PDF', 'error');
     }
   };
 
@@ -124,13 +138,76 @@ export default function Reports() {
         showToast('Report shared successfully!', 'success');
       } else if (result.downloaded) {
         showToast('Report downloaded! Share from your file manager.', 'info');
-      } else if (result.cancelled) {
-        // User cancelled sharing
       }
     } catch (err) {
-      showToast('Failed to share report', 'error');
+      showToast(parseApiError(err) || 'Failed to share report', 'error');
     } finally {
       setSharing(false);
+    }
+  };
+
+  // Load data for any month without changing the viewed report, then export
+  async function fetchMonthData(month) {
+    const [maintenance, expenses, config, flats, watchman, activities, reminders, miscFunds] = await Promise.all([
+      getMaintenanceRecords(month),
+      getExpenses(month),
+      getConfiguration(),
+      getFlats(),
+      getWatchmanDetails(),
+      getAuditLogForMonth(month).catch(() => []),
+      getReminders().catch(() => []),
+      getMiscFunds(month).catch(() => []),
+    ]);
+    const totalCollection = maintenance.reduce((s, r) => s + r.amountPaid, 0);
+    const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
+    const totalMiscFunds = miscFunds.reduce((s, f) => s + f.amount, 0);
+    const netBalance = totalCollection + totalMiscFunds - totalExpenses;
+    return {
+      month,
+      apartmentName: config.APARTMENT_NAME || 'The Pride of Tirumala',
+      config,
+      maintenance,
+      expenses,
+      miscFunds,
+      flats,
+      watchman: watchman.filter(w => w.status === 'Active'),
+      activities,
+      remindersCompleted: [],
+      totalCollection,
+      totalExpenses,
+      totalMiscFunds,
+      netBalance,
+      cumulativeBalance: netBalance + (config.DEFICIT_LAST_YEAR || 0),
+    };
+  }
+
+  const handleQuickDownload = async () => {
+    try {
+      setQuickExporting(true);
+      const data = await fetchMonthData(quickMonth);
+      downloadReport(data);
+      showToast(`PDF downloaded: TPT_Report_${quickMonth}.pdf`, 'success');
+    } catch (err) {
+      showToast(parseApiError(err) || 'Failed to export report', 'error');
+    } finally {
+      setQuickExporting(false);
+    }
+  };
+
+  const handleQuickShare = async () => {
+    try {
+      setQuickSharing(true);
+      const data = await fetchMonthData(quickMonth);
+      const result = await shareReport(data);
+      if (result.shared) {
+        showToast(`Report for ${quickMonth} shared!`, 'success');
+      } else if (result.downloaded) {
+        showToast('Downloaded. Share from your files app.', 'info');
+      }
+    } catch (err) {
+      showToast(parseApiError(err) || 'Failed to share report', 'error');
+    } finally {
+      setQuickSharing(false);
     }
   };
 
@@ -141,7 +218,7 @@ export default function Reports() {
       showToast('Monthly summary updated in Google Sheet', 'success');
       loadSummaries();
     } catch (err) {
-      showToast('Failed to update summary', 'error');
+      showToast(parseApiError(err) || 'Failed to update summary', 'error');
     } finally {
       setGenerating(false);
     }
@@ -154,6 +231,7 @@ export default function Reports() {
   const sections = [
     { id: 'summary', label: 'Summary', icon: IndianRupee },
     { id: 'payments', label: 'Payments', icon: Users },
+    { id: 'miscfunds', label: 'Misc Funds', icon: IndianRupee },
     { id: 'expenses', label: 'Expenses', icon: Receipt },
     { id: 'activities', label: 'Activities', icon: Activity },
     { id: 'watchman', label: 'Watchman', icon: Shield },
@@ -188,6 +266,52 @@ export default function Reports() {
           <button className="btn btn-success btn-sm" onClick={handleShare} disabled={!reportData || loading || sharing}>
             <Send size={14} /> {sharing ? 'Sharing...' : 'Send'}
           </button>
+        </div>
+      </div>
+
+      {/* ── Quick Export Panel ─────────────────────────────── */}
+      <div className="card quick-export-panel animate-fade-in">
+        <div className="quick-export-header">
+          <CalendarDays size={20} />
+          <div>
+            <h3>Export Any Month Report</h3>
+            <p className="text-muted text-sm">Select a month and download or share its PDF report instantly</p>
+          </div>
+        </div>
+        <div className="quick-export-controls">
+          <select
+            className="form-select"
+            value={quickMonth}
+            onChange={e => setQuickMonth(e.target.value)}
+            style={{ minWidth: 140 }}
+          >
+            {monthOptions.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+          <button
+            className="btn btn-primary"
+            onClick={handleQuickDownload}
+            disabled={quickExporting || quickSharing}
+          >
+            {quickExporting ? (
+              <><Loader size={15} className="animate-spin" /> Generating...</>
+            ) : (
+              <><Download size={15} /> Download PDF</>
+            )}
+          </button>
+          <button
+            className="btn btn-success"
+            onClick={handleQuickShare}
+            disabled={quickExporting || quickSharing}
+          >
+            {quickSharing ? (
+              <><Loader size={15} className="animate-spin" /> Preparing...</>
+            ) : (
+              <><Send size={15} /> Share via WhatsApp</>
+            )}
+          </button>
+          <span className="quick-export-hint text-muted text-xs">
+            File: <code>TPT_Report_{quickMonth}.pdf</code>
+          </span>
         </div>
       </div>
 
@@ -226,6 +350,13 @@ export default function Reports() {
                       {reportData.maintenance.filter(m => m.status === 'PAID').length}/{reportData.maintenance.length} flats paid
                     </span>
                   </div>
+                  {reportData.totalMiscFunds > 0 && (
+                    <div className="report-summary-card report-surplus">
+                      <span className="report-summary-label">Misc Funds</span>
+                      <span className="report-summary-value">{formatCurrency(reportData.totalMiscFunds)}</span>
+                      <span className="report-summary-sub">{reportData.miscFunds.length} contribution(s)</span>
+                    </div>
+                  )}
                   <div className="report-summary-card report-expense">
                     <span className="report-summary-label">Total Expenses</span>
                     <span className="report-summary-value">{formatCurrency(reportData.totalExpenses)}</span>
@@ -309,6 +440,53 @@ export default function Reports() {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            )}
+
+            {/* ─── MISC FUNDS ──────────────────────────────────── */}
+            {activeSection === 'miscfunds' && (
+              <div className="card">
+                <h3 className="card-title mb-4">Misc Funds — {reportData.month}</h3>
+                <p className="text-muted text-sm mb-4">Ad-hoc contributions from flat owners beyond regular maintenance.</p>
+                {reportData.miscFunds && reportData.miscFunds.length > 0 ? (
+                  <div className="table-container">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Flat</th>
+                          <th>Amount</th>
+                          <th>Description</th>
+                          <th>Date</th>
+                          <th>Mode</th>
+                          <th>Collected By</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {reportData.miscFunds.map(f => (
+                          <tr key={f.id}>
+                            <td className="font-semibold">{f.flat}</td>
+                            <td className="font-semibold text-success">{formatCurrency(f.amount)}</td>
+                            <td>{f.description}</td>
+                            <td className="text-muted">{formatDate(f.date)}</td>
+                            <td>{f.paymentMode || '-'}</td>
+                            <td>{f.collectedBy || '-'}</td>
+                          </tr>
+                        ))}
+                        <tr style={{ background: 'var(--glass-bg)' }}>
+                          <td className="font-bold">TOTAL</td>
+                          <td className="font-bold text-success">
+                            {formatCurrency(reportData.totalMiscFunds)}
+                          </td>
+                          <td colSpan={4}></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-muted text-center" style={{ padding: '2rem' }}>
+                    No misc funds recorded for {reportData.month}
+                  </p>
+                )}
               </div>
             )}
 
