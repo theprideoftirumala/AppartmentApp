@@ -1,0 +1,400 @@
+/**
+ * Dashboard Page
+ * Premium financial overview with cards, charts, and widgets
+ */
+
+import { useState, useEffect, useCallback } from 'react';
+import {
+  TrendingUp, TrendingDown, IndianRupee, Users, AlertCircle,
+  RefreshCw, Calendar, Bell, Phone, ArrowRight,
+  PieChart, Wallet, Plus, Building2
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { useApp } from '../contexts/AppContext';
+import { getDashboardData, getAccessControl } from '../services/googleSheets';
+import { formatCurrency, getCurrentMonthLabel, getCollectionPercentage, daysUntil, getRelativeTime, groupExpensesByCategory } from '../utils/helpers';
+import LoadingSpinner from '../components/common/LoadingSpinner';
+import Navbar from '../components/common/Navbar';
+
+export default function Dashboard() {
+  const { user } = useAuth();
+  const { dashboardData, setDashboardData, setConfig, setUserRole, showToast, setLastSync } = useApp();
+  const [loading, setLoading] = useState(!dashboardData);
+  const [refreshing, setRefreshing] = useState(false);
+  const navigate = useNavigate();
+  const currentMonth = getCurrentMonthLabel();
+
+  const fetchData = useCallback(async (showRefresh = false) => {
+    try {
+      if (showRefresh) setRefreshing(true);
+      else setLoading(true);
+
+      const data = await getDashboardData();
+      setDashboardData(data);
+      setConfig(data.config);
+      setLastSync(new Date().toISOString());
+
+      // Determine user role
+      const accessList = data.maintenance ? [] : []; // placeholder
+      // Check access control from the fetched data (we'd need to add that to batch)
+      // For now, check if user email matches any owner
+      const userEmail = user?.email;
+      if (userEmail) {
+        // Check Access Control sheet data
+        try {
+          const acl = await getAccessControl();
+          const userAccess = acl.find(a => a.email === userEmail && a.status === 'Active');
+          if (userAccess) {
+            setUserRole(userAccess.role);
+          } else {
+            setUserRole('Owner'); // First user is owner
+          }
+        } catch {
+          setUserRole('Owner');
+        }
+      }
+
+    } catch (err) {
+      console.error('Dashboard fetch error:', err);
+      showToast('Failed to load data. Please refresh.', 'error');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [user, setDashboardData, setConfig, setUserRole, showToast, setLastSync]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  if (loading) {
+    return (
+      <div className="main-content">
+        <Navbar />
+        <div className="full-page-center">
+          <LoadingSpinner text="Loading dashboard..." />
+        </div>
+      </div>
+    );
+  }
+
+  const data = dashboardData;
+  const config = data?.config || {};
+  const totals = data?.totals || {};
+  const currentMonthMaintenance = (data?.maintenance || []).filter(m => m.month === currentMonth);
+  const collectionPct = getCollectionPercentage(currentMonthMaintenance);
+  const pendingFlats = currentMonthMaintenance.filter(m => m.status === 'PENDING');
+  const currentMonthExpenses = (data?.expenses || []).filter(e => e.month === currentMonth);
+  const currentMonthExpenseTotal = currentMonthExpenses.reduce((s, e) => s + e.amount, 0);
+  const currentMonthCollection = currentMonthMaintenance.reduce((s, m) => s + m.amountPaid, 0);
+
+  // Upcoming reminders
+  const upcomingReminders = (data?.reminders || [])
+    .filter(r => r.status === 'Active' && r.nextDue)
+    .sort((a, b) => new Date(a.nextDue) - new Date(b.nextDue))
+    .slice(0, 5);
+
+  // Emergency contacts (first 3)
+  const quickContacts = (data?.contacts || []).slice(0, 3);
+
+  // Expense categories for current month
+  const categoryGroups = groupExpensesByCategory(currentMonthExpenses);
+  const categoryEntries = Object.entries(categoryGroups).sort((a, b) => b[1].total - a[1].total);
+  const topCategories = categoryEntries.slice(0, 5);
+
+  return (
+    <div className="main-content">
+      <Navbar onRefresh={() => fetchData(true)} refreshing={refreshing} />
+
+      {/* Page Header */}
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Dashboard</h1>
+          <p className="page-subtitle">
+            {config.APARTMENT_NAME || 'The Pride of Tirumala'} — {currentMonth}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button className="btn btn-primary btn-sm" onClick={() => navigate('/expenses')}>
+            <Plus size={16} /> Add Expense
+          </button>
+        </div>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="dashboard-cards grid grid-cols-4 animate-stagger">
+        {/* Current Balance */}
+        <div className="stat-card stat-card-balance">
+          <div className="stat-card-header">
+            <span className="stat-card-label">Current Balance</span>
+            <div className="stat-card-icon-wrap stat-icon-primary">
+              <Wallet size={20} />
+            </div>
+          </div>
+          <div className="stat-card-value">
+            {formatCurrency(totals.currentBalance || 0)}
+          </div>
+          <div className="stat-card-trend">
+            {totals.currentBalance >= 0 ? (
+              <><TrendingUp size={14} className="text-success" /> Healthy</>
+            ) : (
+              <><TrendingDown size={14} className="text-danger" /> Deficit</>
+            )}
+          </div>
+        </div>
+
+        {/* Monthly Collection */}
+        <div className="stat-card">
+          <div className="stat-card-header">
+            <span className="stat-card-label">Collection ({currentMonth})</span>
+            <div className="stat-card-icon-wrap stat-icon-success">
+              <IndianRupee size={20} />
+            </div>
+          </div>
+          <div className="stat-card-value">{formatCurrency(currentMonthCollection)}</div>
+          <div className="stat-card-trend">
+            <span className="text-success">{collectionPct}%</span> collected
+          </div>
+        </div>
+
+        {/* Monthly Expenses */}
+        <div className="stat-card">
+          <div className="stat-card-header">
+            <span className="stat-card-label">Expenses ({currentMonth})</span>
+            <div className="stat-card-icon-wrap stat-icon-danger">
+              <TrendingDown size={20} />
+            </div>
+          </div>
+          <div className="stat-card-value">{formatCurrency(currentMonthExpenseTotal)}</div>
+          <div className="stat-card-trend">
+            {currentMonthExpenses.length} transactions
+          </div>
+        </div>
+
+        {/* Pending Payments */}
+        <div className="stat-card">
+          <div className="stat-card-header">
+            <span className="stat-card-label">Pending Payments</span>
+            <div className="stat-card-icon-wrap stat-icon-warning">
+              <Users size={20} />
+            </div>
+          </div>
+          <div className="stat-card-value">{pendingFlats.length}</div>
+          <div className="stat-card-trend">
+            {pendingFlats.length > 0 ? (
+              <span className="text-warning">
+                Flats: {pendingFlats.map(f => f.flat).join(', ')}
+              </span>
+            ) : (
+              <span className="text-success">All collected! 🎉</span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Second Row: Collection Gauge + Expense Categories */}
+      <div className="grid grid-cols-2 mt-6">
+        {/* Collection Progress */}
+        <div className="card">
+          <div className="card-header">
+            <h4 className="card-title">Collection Progress — {currentMonth}</h4>
+            <button className="btn btn-ghost btn-sm" onClick={() => navigate('/maintenance')}>
+              View All <ArrowRight size={14} />
+            </button>
+          </div>
+
+          {/* Progress Ring */}
+          <div className="gauge-container">
+            <svg className="gauge-ring" viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="50" fill="none" stroke="var(--glass-border)" strokeWidth="8" />
+              <circle
+                cx="60" cy="60" r="50"
+                fill="none"
+                stroke="url(#gaugeGradient)"
+                strokeWidth="8"
+                strokeLinecap="round"
+                strokeDasharray={`${collectionPct * 3.14} 314`}
+                transform="rotate(-90 60 60)"
+                style={{ transition: 'stroke-dasharray 1s ease' }}
+              />
+              <defs>
+                <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="var(--color-primary)" />
+                  <stop offset="100%" stopColor="var(--color-success)" />
+                </linearGradient>
+              </defs>
+              <text x="60" y="55" textAnchor="middle" className="gauge-value" fill="var(--color-text)">
+                {collectionPct}%
+              </text>
+              <text x="60" y="72" textAnchor="middle" className="gauge-label" fill="var(--color-text-muted)">
+                Collected
+              </text>
+            </svg>
+          </div>
+
+          {/* Flat-wise status */}
+          <div className="flat-status-grid">
+            {currentMonthMaintenance.map(m => (
+              <div
+                key={m.flat}
+                className={`flat-status-item flat-status-${m.status.toLowerCase()}`}
+                title={`Flat ${m.flat}: ${m.status}`}
+              >
+                <Building2 size={14} />
+                <span>{m.flat}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Expense Breakdown */}
+        <div className="card">
+          <div className="card-header">
+            <h4 className="card-title">Expense Breakdown — {currentMonth}</h4>
+            <button className="btn btn-ghost btn-sm" onClick={() => navigate('/expenses')}>
+              View All <ArrowRight size={14} />
+            </button>
+          </div>
+
+          {topCategories.length > 0 ? (
+            <div className="expense-breakdown">
+              {topCategories.map(([category, data], i) => {
+                const pct = currentMonthExpenseTotal > 0
+                  ? Math.round((data.total / currentMonthExpenseTotal) * 100)
+                  : 0;
+                const colors = [
+                  'var(--color-primary)',
+                  'var(--color-secondary)',
+                  'var(--color-success)',
+                  'var(--color-warning)',
+                  'var(--color-info)',
+                ];
+                return (
+                  <div key={category} className="expense-bar-item">
+                    <div className="expense-bar-header">
+                      <span className="expense-bar-label">{category}</span>
+                      <span className="expense-bar-value">{formatCurrency(data.total)}</span>
+                    </div>
+                    <div className="expense-bar-track">
+                      <div
+                        className="expense-bar-fill"
+                        style={{
+                          width: `${pct}%`,
+                          background: colors[i % colors.length],
+                          '--progress': `${pct}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center text-muted" style={{ padding: '2rem' }}>
+              <PieChart size={40} style={{ opacity: 0.3 }} />
+              <p className="mt-2">No expenses recorded for {currentMonth}</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Third Row: Reminders + Quick Actions + Emergency */}
+      <div className="grid grid-cols-3 mt-6">
+        {/* Upcoming Reminders */}
+        <div className="card">
+          <div className="card-header">
+            <h4 className="card-title">
+              <Bell size={18} /> Upcoming
+            </h4>
+            <button className="btn btn-ghost btn-sm" onClick={() => navigate('/reminders')}>
+              All <ArrowRight size={14} />
+            </button>
+          </div>
+
+          {upcomingReminders.length > 0 ? (
+            <div className="reminder-list">
+              {upcomingReminders.map(r => {
+                const days = daysUntil(r.nextDue);
+                const urgency = days < 0 ? 'overdue' : days <= 2 ? 'urgent' : days <= 7 ? 'soon' : 'normal';
+                return (
+                  <div key={r.id} className={`reminder-item reminder-${urgency}`}>
+                    <div className="reminder-dot" />
+                    <div className="reminder-info">
+                      <span className="reminder-title">{r.title}</span>
+                      <span className="reminder-due">{getRelativeTime(r.nextDue)}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-muted text-sm" style={{ padding: '1rem 0' }}>No upcoming reminders</p>
+          )}
+        </div>
+
+        {/* Quick Actions */}
+        <div className="card">
+          <h4 className="card-title mb-4">Quick Actions</h4>
+          <div className="quick-actions">
+            <button className="quick-action-btn" onClick={() => navigate('/expenses')}>
+              <Plus size={20} />
+              <span>Add Expense</span>
+            </button>
+            <button className="quick-action-btn" onClick={() => navigate('/maintenance')}>
+              <IndianRupee size={20} />
+              <span>Record Payment</span>
+            </button>
+            <button className="quick-action-btn" onClick={() => navigate('/reports')}>
+              <Calendar size={20} />
+              <span>Monthly Report</span>
+            </button>
+            <button className="quick-action-btn" onClick={() => navigate('/reminders')}>
+              <Bell size={20} />
+              <span>Add Reminder</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Emergency Contacts */}
+        <div className="card">
+          <div className="card-header">
+            <h4 className="card-title">
+              <Phone size={18} /> Emergency
+            </h4>
+            <button className="btn btn-ghost btn-sm" onClick={() => navigate('/contacts')}>
+              All <ArrowRight size={14} />
+            </button>
+          </div>
+
+          {quickContacts.length > 0 ? (
+            <div className="emergency-quick-list">
+              {quickContacts.map((c, i) => (
+                <a key={i} href={`tel:${c.phone}`} className="emergency-quick-item">
+                  <div className="emergency-quick-info">
+                    <span className="font-medium">{c.name}</span>
+                    <span className="text-xs text-muted">{c.category}</span>
+                  </div>
+                  <Phone size={16} className="text-success" />
+                </a>
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted text-sm" style={{ padding: '1rem 0' }}>No contacts added yet</p>
+          )}
+        </div>
+      </div>
+
+      {/* Deficit Warning */}
+      {config.DEFICIT_LAST_YEAR < 0 && (
+        <div className="deficit-banner mt-6 animate-fade-in">
+          <AlertCircle size={20} />
+          <div>
+            <strong>Last Year Deficit: {formatCurrency(Math.abs(config.DEFICIT_LAST_YEAR))}</strong>
+            <p className="text-sm">Consider collecting ₹{Math.abs(Math.round(config.DEFICIT_LAST_YEAR / 10))} extra per flat to recover.</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

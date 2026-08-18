@@ -1,0 +1,52 @@
+# llms.txt — LLM-Readable Project Description
+
+> This file provides context for Large Language Models working with this codebase.
+
+## Project
+
+The Pride of Tirumala (TPT) Apartment Expense Tracker — a Progressive Web App for managing apartment maintenance finances.
+
+## Stack
+
+- React 18 + Vite (frontend framework)
+- Google Sheets API v4 (database — no backend server)
+- Google Drive API v3 (file storage for receipts and backups)
+- Google Identity Services (OAuth 2.0 authentication)
+- jsPDF (client-side PDF report generation)
+- vite-plugin-pwa (service worker for offline support)
+- Vanilla CSS with custom properties (design system)
+- Lucide React (icon library)
+- React Router v6 with HashRouter (routing)
+
+## Purpose
+
+Track monthly maintenance collection (₹3,000/flat × 10 flats), log expenses with receipt uploads, generate monthly PDF reports, manage emergency contacts and recurring reminders. All data stored in a human-readable Google Sheet that serves as the single source of truth.
+
+## Key Files
+
+- `src/config/constants.js` — All configurable values
+- `src/services/googleAuth.js` — OAuth 2.0 authentication
+- `src/services/googleSheets.js` — All CRUD operations (the "backend")
+- `src/services/googleDrive.js` — File upload, folder management, backups
+- `src/services/pdfExport.js` — Monthly report PDF generation
+- `src/contexts/AuthContext.jsx` — Auth state management
+- `src/contexts/AppContext.jsx` — Global app state, toast notifications
+- `src/pages/Dashboard.jsx` — Main financial dashboard
+- `src/pages/Settings.jsx` — Configuration, access control, backups
+- `vite.config.js` — Build config with PWA and chunk splitting
+
+## Constraints
+
+- Max 20 users, max 2 owners (owners can add/remove users)
+- 10 flats: 101, 102, 201, 202, 301, 302, 401, 402, 501, 502
+- No backend server — fully client-side static hosting
+- Must be deployable to GitHub Pages and Azure Static Web Apps
+- PWA installable on iOS, Android, and desktop
+- Fiscal year: September to August
+- Indian Rupee (₹) currency formatting
+
+## Deployment
+
+- GitHub Pages: Push to main → auto-deployed via GitHub Actions
+- Azure Static Web Apps: Connected to GitHub, auto-deploys
+- Base path: `/AppartmentApp/` for GitHub Pages

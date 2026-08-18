@@ -1,0 +1,138 @@
+/* ═══════════════════════════════════════════════════════════════
+   The Pride of Tirumala — Design System Variables
+   Premium dark theme with glassmorphism
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ─── Colors: Primary Palette ────────────────────────────── */
+  --color-primary: hsl(220, 90%, 56%);
+  --color-primary-light: hsl(220, 90%, 68%);
+  --color-primary-dark: hsl(220, 90%, 42%);
+  --color-primary-glow: hsla(220, 90%, 56%, 0.3);
+
+  --color-secondary: hsl(280, 80%, 60%);
+  --color-secondary-light: hsl(280, 80%, 72%);
+  --color-secondary-dark: hsl(280, 80%, 48%);
+
+  /* ─── Colors: Semantic ───────────────────────────────────── */
+  --color-success: hsl(145, 70%, 45%);
+  --color-success-light: hsl(145, 70%, 55%);
+  --color-success-bg: hsla(145, 70%, 45%, 0.12);
+
+  --color-warning: hsl(38, 92%, 55%);
+  --color-warning-light: hsl(38, 92%, 65%);
+  --color-warning-bg: hsla(38, 92%, 55%, 0.12);
+
+  --color-danger: hsl(0, 80%, 58%);
+  --color-danger-light: hsl(0, 80%, 68%);
+  --color-danger-bg: hsla(0, 80%, 58%, 0.12);
+
+  --color-info: hsl(195, 85%, 55%);
+  --color-info-light: hsl(195, 85%, 65%);
+  --color-info-bg: hsla(195, 85%, 55%, 0.12);
+
+  /* ─── Colors: Surfaces ───────────────────────────────────── */
+  --color-bg: hsl(225, 25%, 6%);
+  --color-bg-elevated: hsl(225, 22%, 9%);
+  --color-surface: hsl(225, 20%, 12%);
+  --color-surface-hover: hsl(225, 20%, 16%);
+  --color-surface-active: hsl(225, 20%, 20%);
+
+  /* ─── Colors: Glass Effect ───────────────────────────────── */
+  --glass-bg: rgba(255, 255, 255, 0.04);
+  --glass-bg-hover: rgba(255, 255, 255, 0.07);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-hover: rgba(255, 255, 255, 0.14);
+
+  /* ─── Colors: Text ───────────────────────────────────────── */
+  --color-text: hsl(220, 20%, 95%);
+  --color-text-secondary: hsl(220, 15%, 65%);
+  --color-text-muted: hsl(220, 10%, 45%);
+  --color-text-inverse: hsl(225, 25%, 8%);
+
+  /* ─── Colors: Borders ────────────────────────────────────── */
+  --color-border: hsl(225, 15%, 18%);
+  --color-border-light: hsl(225, 15%, 22%);
+
+  /* ─── Typography ─────────────────────────────────────────── */
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+
+  --font-size-xs: 0.6875rem;   /* 11px */
+  --font-size-sm: 0.8125rem;   /* 13px */
+  --font-size-base: 0.9375rem; /* 15px */
+  --font-size-md: 1.0625rem;   /* 17px */
+  --font-size-lg: 1.25rem;     /* 20px */
+  --font-size-xl: 1.5rem;      /* 24px */
+  --font-size-2xl: 2rem;       /* 32px */
+  --font-size-3xl: 2.5rem;     /* 40px */
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --line-height-tight: 1.25;
+  --line-height-base: 1.5;
+  --line-height-relaxed: 1.75;
+
+  /* ─── Spacing ────────────────────────────────────────────── */
+  --space-1: 0.25rem;   /* 4px */
+  --space-2: 0.5rem;    /* 8px */
+  --space-3: 0.75rem;   /* 12px */
+  --space-4: 1rem;      /* 16px */
+  --space-5: 1.25rem;   /* 20px */
+  --space-6: 1.5rem;    /* 24px */
+  --space-8: 2rem;      /* 32px */
+  --space-10: 2.5rem;   /* 40px */
+  --space-12: 3rem;     /* 48px */
+  --space-16: 4rem;     /* 64px */
+
+  /* ─── Border Radius ──────────────────────────────────────── */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
+  --radius-full: 9999px;
+
+  /* ─── Shadows ────────────────────────────────────────────── */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
+  --shadow-glow-primary: 0 0 30px var(--color-primary-glow);
+  --shadow-glow-success: 0 0 20px hsla(145, 70%, 45%, 0.2);
+  --shadow-glow-danger: 0 0 20px hsla(0, 80%, 58%, 0.2);
+
+  /* ─── Transitions ────────────────────────────────────────── */
+  --transition-fast: 150ms ease;
+  --transition-base: 250ms ease;
+  --transition-slow: 400ms ease;
+  --transition-spring: 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ─── Z-Index Scale ──────────────────────────────────────── */
+  --z-base: 1;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-sidebar: 300;
+  --z-modal-backdrop: 400;
+  --z-modal: 500;
+  --z-toast: 600;
+  --z-tooltip: 700;
+
+  /* ─── Layout ─────────────────────────────────────────────── */
+  --sidebar-width: 260px;
+  --sidebar-collapsed: 72px;
+  --navbar-height: 64px;
+  --bottom-nav-height: 64px;
+  --max-content-width: 1400px;
+
+  /* ─── Gradients ──────────────────────────────────────────── */
+  --gradient-primary: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  --gradient-success: linear-gradient(135deg, hsl(145, 70%, 45%), hsl(170, 70%, 45%));
+  --gradient-danger: linear-gradient(135deg, hsl(0, 80%, 58%), hsl(330, 80%, 50%));
+  --gradient-warm: linear-gradient(135deg, hsl(38, 92%, 55%), hsl(15, 90%, 55%));
+  --gradient-dark: linear-gradient(180deg, var(--color-bg), var(--color-bg-elevated));
+  --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+}
