@@ -7,19 +7,20 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   TrendingUp, TrendingDown, IndianRupee, Users, AlertCircle,
   RefreshCw, Calendar, Bell, Phone, ArrowRight,
-  PieChart, Wallet, Plus, Building2
+  PieChart, Wallet, Plus, Building2, Info
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useApp } from '../contexts/AppContext';
 import { getDashboardData, getAccessControl, parseApiError } from '../services/googleSheets';
+import { STORAGE_KEYS } from '../config/constants';
 import { formatCurrency, getCurrentMonthLabel, getCollectionPercentage, daysUntil, getRelativeTime, groupExpensesByCategory } from '../utils/helpers';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Navbar from '../components/common/Navbar';
 
 export default function Dashboard() {
-  const { user, signOut } = useAuth();
-  const { dashboardData, setDashboardData, setConfig, setUserRole, showToast, setLastSync } = useApp();
+  const { user, isGuest, signOut, signOutGuest } = useAuth();
+  const { dashboardData, setDashboardData, setConfig, setUserRole, showToast, setLastSync, lastSync } = useApp();
   const [loading, setLoading] = useState(!dashboardData);
   const [refreshing, setRefreshing] = useState(false);
   const [accessError, setAccessError] = useState(null);
@@ -27,6 +28,28 @@ export default function Dashboard() {
   const currentMonth = getCurrentMonthLabel();
 
   const fetchData = useCallback(async (showRefresh = false) => {
+    // Guest users have no Google token — serve cached data from localStorage
+    if (isGuest) {
+      const cached = localStorage.getItem(STORAGE_KEYS.CACHED_DASHBOARD);
+      if (cached) {
+        try {
+          const data = JSON.parse(cached);
+          setDashboardData(data);
+          setConfig(data.config);
+          setUserRole('Reader');
+        } catch {
+          setAccessError('Cached data is corrupted. Ask the Owner to open the app first.');
+        }
+      } else {
+        setAccessError(
+          'No cached data available for guest access.\n\nAn Owner must sign in with Google on this device first — the app caches data automatically when they visit the Dashboard.'
+        );
+      }
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
     try {
       if (showRefresh) setRefreshing(true);
       else setLoading(true);
@@ -131,6 +154,20 @@ export default function Dashboard() {
     <div className="main-content">
       <Navbar onRefresh={() => fetchData(true)} refreshing={refreshing} />
 
+      {/* Guest mode banner */}
+      {isGuest && (
+        <div className="guest-banner">
+          <Info size={16} />
+          <span>
+            <strong>Guest View</strong> — Read-only. Data from last Owner sync
+            {lastSync ? ` on ${new Date(lastSync).toLocaleDateString('en-IN')}` : ''}.
+          </span>
+          <button className="btn btn-ghost btn-sm" onClick={() => { signOutGuest(); navigate('/login'); }}>
+            Sign out guest
+          </button>
+        </div>
+      )}
+
       {/* Page Header */}
       <div className="page-header">
         <div>
@@ -139,11 +176,13 @@ export default function Dashboard() {
             {config.APARTMENT_NAME || 'The Pride of Tirumala'} — {currentMonth}
           </p>
         </div>
-        <div className="flex gap-2">
-          <button className="btn btn-primary btn-sm" onClick={() => navigate('/expenses')}>
-            <Plus size={16} /> Add Expense
-          </button>
-        </div>
+        {!isGuest && (
+          <div className="flex gap-2">
+            <button className="btn btn-primary btn-sm" onClick={() => navigate('/expenses')}>
+              <Plus size={16} /> Add Expense
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Summary Cards */}

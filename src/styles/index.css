@@ -1017,6 +1017,27 @@ tbody tr:last-child td {
   border-color: rgba(220, 53, 69, 0.25);
 }
 
+/* ─── Guest Banner ─────────────────────────────────────────── */
+.guest-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  background: rgba(79, 124, 255, 0.08);
+  border-bottom: 1px solid rgba(79, 124, 255, 0.2);
+  font-size: var(--font-size-sm);
+  color: var(--color-primary-light);
+  flex-wrap: wrap;
+}
+
+.guest-banner strong {
+  font-weight: var(--font-weight-semibold);
+}
+
+.guest-banner .btn {
+  margin-left: auto;
+}
+
 /* ─── Settings form label flex ─────────────────────────────── */
 .config-field-label {
   display: flex;
