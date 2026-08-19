@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AppProvider } from './contexts/AppContext';
 
 import ProtectedRoute from './components/common/ProtectedRoute';
+import AccessDenied from './components/common/AccessDenied';
 import Sidebar from './components/common/Sidebar';
 import BottomNav from './components/common/BottomNav';
 import Toast from './components/common/Toast';
@@ -24,9 +25,9 @@ import Settings from './pages/Settings';
 import Help from './pages/Help';
 
 function AppLayout({ children }) {
-  const { user } = useAuth();
+  const { user, isGuest } = useAuth();
 
-  if (!user) return children;
+  if (!user && !isGuest) return children;
 
   return (
     <div className="app-layout">
@@ -38,6 +39,13 @@ function AppLayout({ children }) {
 }
 
 function AppRoutes() {
+  const { accessDenied } = useAuth();
+
+  // Blocked user sees nothing but the denial screen — no routes, no sidebar, no data
+  if (accessDenied) {
+    return <AccessDenied />;
+  }
+
   return (
     <AppLayout>
       <Routes>

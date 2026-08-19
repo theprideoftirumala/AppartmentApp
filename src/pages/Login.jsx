@@ -5,12 +5,12 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Building2, Lock, BarChart3, AlertCircle, KeyRound, Eye, EyeOff } from 'lucide-react';
+import { Shield, Building2, Lock, BarChart3, KeyRound, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { APP_NAME } from '../config/constants';
 
 export default function Login() {
-  const { signIn, loginAsGuest, loading: authLoading, error: authError, accessDenied } = useAuth();
+  const { signIn, loginAsGuest, loading: authLoading, error: authError } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showGuestForm, setShowGuestForm] = useState(false);
@@ -50,8 +50,8 @@ export default function Login() {
     }
   };
 
-  const displayError = error || (authError?.startsWith('ACCESS_DENIED') ? authError.replace('ACCESS_DENIED: ', '') : authError);
-  const isAccessDenied = accessDenied || authError?.startsWith('ACCESS_DENIED');
+  const displayError = error || authError;
+  const isGuestFormActive = showGuestForm;
 
   return (
     <div className="login-page">
@@ -73,17 +73,6 @@ export default function Login() {
           <div className="login-feature"><BarChart3 size={20} /><span>Real-time financial dashboard</span></div>
           <div className="login-feature"><Lock size={20} /><span>Secure Google Drive storage</span></div>
         </div>
-
-        {isAccessDenied && (
-          <div className="login-access-denied">
-            <AlertCircle size={18} />
-            <div>
-              <strong>Access Denied</strong>
-              <p>Your Google account is not authorized to use this app.</p>
-              <p>Also check: your email may need to be added as a <em>Test User</em> in Google Cloud Console (see Help &gt; FAQ for instructions).</p>
-            </div>
-          </div>
-        )}
 
         {/* Google Sign In */}
         <button
@@ -138,7 +127,7 @@ export default function Login() {
           </form>
         )}
 
-        {displayError && !isAccessDenied && (
+        {displayError && (
           <p className="login-error">{displayError}</p>
         )}
 

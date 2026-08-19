@@ -58,9 +58,9 @@ export function AuthProvider({ children }) {
             const entry = await fetchAccessEntry(userData.email);
             const setupComplete = localStorage.getItem(STORAGE_KEYS.SETUP_COMPLETE) === 'true';
             if (setupComplete && entry === null) {
-              googleSignOut();
+              // Keep user set so AccessDenied screen can show their email
+              setUser(userData);
               setAccessDenied(true);
-              setUser(null);
             } else {
               setUser(userData);
             }
@@ -96,11 +96,12 @@ export function AuthProvider({ children }) {
           return userData;
         }
         if (!entry) {
-          googleSignOut();
-          setUser(null);
+          // Keep the Google session alive so the user sees WHO is blocked.
+          // Do NOT sign them out — the AccessDenied screen will show their email
+          // and provide a sign-out button.
+          setUser(userData);
           setAccessDenied(true);
-          const err = new Error(`ACCESS_DENIED: Your Google account (${userData.email}) is not authorized. Contact the Treasurer or President to request access.`);
-          setError(err.message);
+          const err = new Error(`ACCESS_DENIED`);
           throw err;
         }
       }

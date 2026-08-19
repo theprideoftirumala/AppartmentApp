@@ -209,6 +209,80 @@
   background-clip: text;
 }
 
+/* ─── Access Denied Page ───────────────────────────────────── */
+.access-denied-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  background:
+    radial-gradient(ellipse at 50% 30%, hsla(0, 80%, 40%, 0.06) 0%, transparent 60%),
+    var(--color-bg);
+}
+
+.access-denied-card {
+  max-width: 420px;
+  width: 100%;
+  background: var(--glass-bg);
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  border-radius: var(--radius-xl);
+  padding: var(--space-10) var(--space-8);
+  text-align: center;
+  backdrop-filter: blur(20px);
+}
+
+.access-denied-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(220, 38, 38, 0.08);
+  border: 2px solid rgba(220, 38, 38, 0.3);
+  margin: 0 auto var(--space-6);
+  color: var(--color-danger);
+}
+
+.access-denied-title {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-danger);
+  margin-bottom: var(--space-3);
+}
+
+.access-denied-email {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  font-family: monospace;
+  background: var(--glass-bg);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-full);
+  display: inline-block;
+  margin-bottom: var(--space-5);
+  border: 1px solid var(--glass-border);
+}
+
+.access-denied-message {
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+  margin-bottom: var(--space-3);
+  line-height: var(--line-height-relaxed);
+}
+
+.access-denied-hint {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-8);
+  line-height: var(--line-height-relaxed);
+}
+
+.access-denied-signout {
+  width: 100%;
+  justify-content: center;
+}
+
 /* ─── Login Page ───────────────────────────────────────────── */
 .login-page {
   min-height: 100vh;
