@@ -1,6 +1,6 @@
 /**
  * Authentication Context
- * Manages Google OAuth state across the app
+ * Manages Google OAuth state and Guest PIN sessions
  */
 
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
@@ -10,11 +10,12 @@ import { getAccessControl } from '../services/googleSheets';
 
 const AuthContext = createContext(null);
 
-/**
- * Check if email is in the active ACL.
- * Returns the entry or null. Skips silently when not yet set up.
- * Only call AFTER gapi is fully initialised (i.e. after initGoogleAuth resolves).
- */
+export async function hashPin(pin) {
+  const data = new TextEncoder().encode(String(pin).trim());
+  const buf = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 async function fetchAccessEntry(email) {
   const spreadsheetId = localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID);
   const setupComplete = localStorage.getItem(STORAGE_KEYS.SETUP_COMPLETE) === 'true';
@@ -28,23 +29,31 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [accessDenied, setAccessDenied] = useState(false);
+  const [isGuest, setIsGuest] = useState(false);
 
   useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.GUEST_SESSION);
+      if (raw) {
+        const s = JSON.parse(raw);
+        if (s.isGuest && s.expiresAt > Date.now()) {
+          setIsGuest(true);
+          setLoading(false);
+          return;
+        }
+        localStorage.removeItem(STORAGE_KEYS.GUEST_SESSION);
+      }
+    } catch { /* ignore */ }
+
     let mounted = true;
 
     async function init() {
       try {
-        // initGoogleAuth resolves with existing session data (or null).
-        // We pass a simple callback that only updates user state — no ACL calls here
-        // because gapi may not be ready when the callback fires.
         const userData = await initGoogleAuth((updatedUser) => {
           if (mounted) setUser(updatedUser);
         });
-
         if (!mounted) return;
-
         if (userData) {
-          // GAPI is now initialised — safe to check ACL
           try {
             const entry = await fetchAccessEntry(userData.email);
             const setupComplete = localStorage.getItem(STORAGE_KEYS.SETUP_COMPLETE) === 'true';
@@ -56,17 +65,13 @@ export function AuthProvider({ children }) {
               setUser(userData);
             }
           } catch {
-            setUser(userData); // Fail open — network issue shouldn't block auth
+            setUser(userData);
           }
         }
-
         setLoading(false);
       } catch (err) {
         console.error('Auth init error:', err);
-        if (mounted) {
-          setError(err.message);
-          setLoading(false);
-        }
+        if (mounted) { setError(err.message); setLoading(false); }
       }
     }
 
@@ -79,18 +84,14 @@ export function AuthProvider({ children }) {
     setAccessDenied(false);
     try {
       const userData = await googleSignIn();
-
-      // Enforce access control after successful Google auth
       const setupComplete = localStorage.getItem(STORAGE_KEYS.SETUP_COMPLETE) === 'true';
       const spreadsheetId = localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID);
-
       if (setupComplete && spreadsheetId) {
         let entry = null;
         try {
           entry = await fetchAccessEntry(userData.email);
         } catch (aclErr) {
           console.warn('ACL check failed during sign-in:', aclErr);
-          // Fail open — allow login if we can't reach the sheet
           setUser(userData);
           return userData;
         }
@@ -103,7 +104,6 @@ export function AuthProvider({ children }) {
           throw err;
         }
       }
-
       setUser(userData);
       return userData;
     } catch (err) {
@@ -119,15 +119,30 @@ export function AuthProvider({ children }) {
     setError(null);
   }, []);
 
+  const loginAsGuest = useCallback(async (pin) => {
+    const storedHash = localStorage.getItem(STORAGE_KEYS.GUEST_PIN_HASH);
+    if (!storedHash) {
+      throw new Error('Guest access is not configured on this device. An Owner must visit Settings > Configuration first to set the Guest PIN.');
+    }
+    const entered = await hashPin(pin);
+    if (entered !== storedHash) {
+      throw new Error('Incorrect PIN. Please try again.');
+    }
+    const session = { isGuest: true, expiresAt: Date.now() + 24 * 3600 * 1000 };
+    localStorage.setItem(STORAGE_KEYS.GUEST_SESSION, JSON.stringify(session));
+    setIsGuest(true);
+  }, []);
+
+  const signOutGuest = useCallback(() => {
+    localStorage.removeItem(STORAGE_KEYS.GUEST_SESSION);
+    setIsGuest(false);
+  }, []);
+
   const value = {
-    user,
-    loading,
-    error,
-    accessDenied,
-    signIn,
-    signOut,
-    isAuthenticated: !!user,
-    isOwner: false, // Determined by access control check in Dashboard
+    user, loading, error, accessDenied, isGuest,
+    signIn, signOut, loginAsGuest, signOutGuest,
+    isAuthenticated: !!user || isGuest,
+    isOwner: false,
   };
 
   return (
@@ -139,9 +154,7 @@ export function AuthProvider({ children }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 }
 

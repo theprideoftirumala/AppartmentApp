@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   Settings as SettingsIcon, Users, Shield, Database, Trash2,
   Plus, ExternalLink, Download, UserPlus, UserMinus, Save,
-  RefreshCw, AlertTriangle, Key, Eye, Lock
+  RefreshCw, AlertTriangle, Key, Eye, Lock, KeyRound, CheckCircle2
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -22,9 +22,10 @@ import {
   getSpreadsheetUrl, getRootFolderUrl,
   shareSpreadsheet, shareFolder
 } from '../services/googleDrive';
-import { DEFAULT_CONFIG, FLATS, USER_ROLES } from '../config/constants';
+import { DEFAULT_CONFIG, FLATS, USER_ROLES, STORAGE_KEYS } from '../config/constants';
 import { formatDate, formatCurrency, isValidEmail } from '../utils/helpers';
 import { InfoBubble } from '../components/common/Tooltip';
+import { hashPin } from '../contexts/AuthContext';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Modal from '../components/common/Modal';
 import Navbar from '../components/common/Navbar';
@@ -309,6 +310,11 @@ export default function Settings() {
               </p>
             </div>
           </div>
+        )}
+
+        {/* Guest PIN Tab (inside config area) rendered as separate card */}
+        {activeTab === 'config' && isOwner !== false && (
+          <GuestPinSection showToast={showToast} />
         )}
 
         {/* Flats Tab */}
@@ -873,5 +879,66 @@ function WatchmanModal({ isOpen, onClose, onSave, watchman, saving }) {
         </div>
       </form>
     </Modal>
+  );
+}
+
+function GuestPinSection({ showToast }) {
+  const [pin, setPin] = useState('');
+  const [pinConfirm, setPinConfirm] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [pinSet, setPinSet] = useState(!!localStorage.getItem(STORAGE_KEYS.GUEST_PIN_HASH));
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!pin.trim()) return;
+    if (pin !== pinConfirm) { showToast('PINs do not match', 'error'); return; }
+    if (pin.length < 4) { showToast('PIN must be at least 4 characters', 'error'); return; }
+    try {
+      setSaving(true);
+      const hashed = await hashPin(pin);
+      localStorage.setItem(STORAGE_KEYS.GUEST_PIN_HASH, hashed);
+      setPinSet(true);
+      setPin('');
+      setPinConfirm('');
+      showToast('Guest PIN saved. Share this PIN with residents.', 'success');
+    } catch {
+      showToast('Failed to save PIN', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleClear = () => {
+    if (!window.confirm('Disable guest access on this device?')) return;
+    localStorage.removeItem(STORAGE_KEYS.GUEST_PIN_HASH);
+    localStorage.removeItem(STORAGE_KEYS.GUEST_SESSION);
+    setPinSet(false);
+    showToast('Guest access disabled', 'success');
+  };
+
+  return (
+    <div className="card mt-4">
+      <div className="card-header">
+        <div>
+          <h3 className="card-title">Guest Access PIN</h3>
+          <p className="text-muted text-sm mt-1">Allow residents to view the app without a Google account. PIN valid 24h, read-only.</p>
+        </div>
+        {pinSet && <span className="badge badge-success">Active</span>}
+      </div>
+      <form onSubmit={handleSave} className="form-grid mt-4" style={{ maxWidth: 380 }}>
+        <div className="form-group">
+          <label className="form-label">New PIN (min 4 chars)</label>
+          <input type="password" className="form-input" value={pin} onChange={e => setPin(e.target.value)} placeholder="Enter PIN" autoComplete="new-password" />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Confirm PIN</label>
+          <input type="password" className="form-input" value={pinConfirm} onChange={e => setPinConfirm(e.target.value)} placeholder="Re-enter PIN" autoComplete="new-password" />
+        </div>
+        <div className="flex gap-2">
+          <button type="submit" className="btn btn-primary btn-sm" disabled={saving || !pin.trim()}>{saving ? 'Saving...' : pinSet ? 'Update PIN' : 'Enable'}</button>
+          {pinSet && <button type="button" className="btn btn-ghost btn-sm text-danger" onClick={handleClear}>Disable</button>}
+        </div>
+      </form>
+    </div>
   );
 }

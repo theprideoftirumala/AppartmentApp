@@ -1,6 +1,6 @@
 /**
  * Protected Route Component
- * Redirects to login if not authenticated, to setup if not configured
+ * Redirects to login if not authenticated (Google or Guest PIN), to setup if not configured
  */
 
 import { Navigate } from 'react-router-dom';
@@ -9,7 +9,7 @@ import { useApp } from '../../contexts/AppContext';
 import LoadingSpinner from './LoadingSpinner';
 
 export default function ProtectedRoute({ children, requireOwner = false }) {
-  const { user, loading: authLoading } = useAuth();
+  const { user, isGuest, loading: authLoading } = useAuth();
   const { isSetupComplete, userRole } = useApp();
 
   if (authLoading) {
@@ -20,11 +20,12 @@ export default function ProtectedRoute({ children, requireOwner = false }) {
     );
   }
 
-  if (!user) {
+  if (!user && !isGuest) {
     return <Navigate to="/login" replace />;
   }
 
-  if (!isSetupComplete) {
+  // Guests bypass the setup check (they use an already-set-up app)
+  if (!isGuest && !isSetupComplete) {
     return <Navigate to="/setup" replace />;
   }
 

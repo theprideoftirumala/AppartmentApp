@@ -169,11 +169,112 @@ The next due date is automatically scheduled based on the frequency (e.g., Month
         content: [
             {
                 heading: 'Using emergency contacts',
-                text: `On the Emergency Contacts page:\n• 📞 Green Phone button — calls the number directly\n• 💬 WhatsApp button — opens a WhatsApp chat with that contact\n• Share button — shares the contact card via WhatsApp or native share`,
+                text: `On the Emergency Contacts page:\n• Green Phone button — calls the number directly\n• WhatsApp button — opens a WhatsApp chat with that contact\n• Share button — shares the contact card via WhatsApp or native share`,
             },
             {
                 heading: 'Sharing all contacts',
                 text: `Click "Share All" at the top of the Emergency Contacts page to send all contacts as a formatted WhatsApp message to the group.`,
+            },
+        ],
+    },
+    {
+        id: 'sheets-guide',
+        icon: FileBarChart,
+        title: 'Google Sheets Guide',
+        content: [
+            {
+                heading: 'How to open the Google Sheet',
+                text: `Go to Settings > Open Sheet, or click "Open Sheet" in the sidebar. The sheet opens in Google Sheets in your browser. You can also go to drive.google.com and search for "TPT-MaintenanceTracker".`,
+            },
+            {
+                heading: 'Reading the Monthly Summary tab',
+                text: `The Monthly Summary sheet has 9 columns:\n• Month — e.g. "Sep-26"\n• Collection (Rs.) — total maintenance collected\n• Misc Funds (Rs.) — any extra contributions\n• Expenses (Rs.) — total expenses paid\n• Net Balance (Rs.) — Collection + Misc - Expenses. Positive = surplus, negative = deficit.\n• Cumulative (Rs.) — running total across all months\n• Collection % — percentage of flats that paid\n• Pending Flats — flats that haven't paid yet\n• Status — SURPLUS or DEFICIT\n\nThis sheet is updated when you click "Sync Sheet" in the Reports page.`,
+            },
+            {
+                heading: 'Reading the Configuration tab',
+                text: `Key rows to know:\n• APARTMENT_NAME — displayed on reports\n• MONTHLY_MAINTENANCE — amount per flat per month\n• DEFICIT_LAST_YEAR — opening balance/deficit as of 31 Aug 2026 (handover)\n• CORPUS_FUND — one-time corpus collected\n• FISCAL_YEAR_START — "2026-09" means Sep 2026 is the first month\n• TREASURER_FLAT / PRESIDENT_FLAT — flat numbers of key office bearers\n\nTo update DEFICIT_LAST_YEAR or CORPUS_FUND: click the cell in column B and type the new value. Press Enter to save.`,
+            },
+            {
+                heading: 'Reading the Maintenance tab',
+                text: `Each row = one flat's payment for one month.\nColumns: Month | Flat | Amount Due | Amount Paid | Payment Date | Payment Mode | UPI Ref | Status | Late Fee | Remarks\n\nStatus values: PAID, PENDING, PARTIAL, WAIVED\n\nTo manually update a payment directly in the sheet: find the row by Month + Flat and update Amount Paid, Payment Date, Payment Mode, and Status.`,
+            },
+            {
+                heading: 'Reading the Expenses tab',
+                text: `Each row = one expense transaction.\nColumns: ID | Date | Month | Description | Category | Amount | Payment Mode | Bill/Receipt | Approved By | Receipt Drive Link | Remarks\n\nTo add an expense directly in the sheet: scroll to the last row and add a new row with all columns filled. The ID should follow the format EXP-{timestamp}.`,
+            },
+            {
+                heading: 'Reading the Access Control tab',
+                text: `Lists all authorized users.\nColumns: Email | Role | Flat | Added By | Added Date | Status\n\nStatus = "Active" means the person can log in. To temporarily block someone, change Status to "Inactive" directly in the sheet (or remove them from the app Settings > Access Control).`,
+            },
+            {
+                heading: 'Manually updating values in the sheet',
+                text: `General rules for manual edits:\n1. Never edit column A (IDs, primary keys) — the app uses these to find rows\n2. Use the same date format: YYYY-MM-DD (e.g., 2026-09-15)\n3. Month labels must match exactly: "Sep-26", "Oct-26", etc.\n4. Amount fields should be plain numbers (no Rs. prefix, no commas)\n5. After manual edits, refresh the app to see changes\n6. Create a backup (Settings > Backups) before making bulk edits`,
+            },
+            {
+                heading: 'Formulas and calculations',
+                text: `The Google Sheet itself does NOT contain formulas — all calculations are done by the app code when you sync or load data. The Monthly Summary is calculated fresh each time you click "Sync Sheet" in Reports.\n\nIf you want to add your own formulas (e.g., running totals), add them in unused columns to the right of the data area — do not insert columns within the data range.`,
+            },
+        ],
+    },
+    {
+        id: 'access-guide',
+        icon: Shield,
+        title: 'Access & Login Guide',
+        content: [
+            {
+                heading: '"Access blocked: App has not completed verification" — Fix',
+                text: `This Google error means the app is in Testing mode and your Google account is not added as a Test User.\n\nFix steps (Owner must do this):\n1. Go to console.cloud.google.com\n2. Select the project (search for "Apartment Maintenance App" or find it in your project list)\n3. Go to APIs & Services > OAuth consent screen\n4. Scroll down to "Test users"\n5. Click "+ Add Users"\n6. Enter the Gmail address (e.g., theprideoftirumala@gmail.com)\n7. Click Save\n8. The user can now sign in immediately — no other changes needed\n\nAlternatively, to allow any Google account (not just test users): go to OAuth consent screen > Publishing status > click "Publish App". This removes the test user restriction permanently.`,
+            },
+            {
+                heading: 'How to add a new user (Google login)',
+                text: `1. Owner logs in to the app\n2. Go to Settings > Access Control\n3. Click "Add User"\n4. Enter their Gmail address\n5. Select role: Reader (view only) or Owner (full access)\n6. Click Add\n7. The user must ALSO be added as a Test User in Google Cloud Console (see above) unless the app is published\n8. The user can now sign in at the login page`,
+            },
+            {
+                heading: 'Guest PIN access (no Google account)',
+                text: `For residents who don't have Gmail or don't want to sign in with Google:\n1. Owner logs in to the app and goes to Settings > Configuration\n2. Scroll down to "Guest Access PIN"\n3. Set a PIN (min 4 characters) and click Enable\n4. Share the PIN with residents via WhatsApp\n5. Residents open the app → click "Continue with Guest PIN" → enter the PIN\n6. They get read-only access for 24 hours\n7. The PIN hash is stored locally — the Owner must set it on EACH device where guests need access\n8. To disable: go back to Settings > Configuration > Guest Access PIN > click Disable`,
+            },
+            {
+                heading: 'Reader vs Owner access',
+                text: `Reader (e.g., flat owner viewing reports):\n• Can view Dashboard, Maintenance, Expenses, Reports, Reminders, Contacts\n• Cannot add/edit expenses, record payments, or change settings\n• Cannot add/remove users\n\nOwner (Treasurer/President):\n• Full access to all features\n• Can add/remove users\n• Can edit configuration\n• Can create backups\n• Can see the Help section\n• Maximum 2 Owners allowed`,
+            },
+        ],
+    },
+    {
+        id: 'faq',
+        icon: HelpCircle,
+        title: 'FAQ',
+        content: [
+            {
+                heading: 'Why is the Rupee symbol (₹) missing in the PDF?',
+                text: `The PDF uses the Helvetica font which does not include the ₹ character (Unicode U+20B9). The PDF uses "Rs." instead, which is equally readable. The ₹ symbol appears correctly in the app UI — only the downloaded PDF shows "Rs.".`,
+            },
+            {
+                heading: 'What happens if I clear browser history/cache?',
+                text: `The app stores the Google Sheet ID and login session in localStorage. If you clear storage:\n• You will be logged out\n• The "Setup" wizard will appear again\n• The app will search your Google Drive for the existing "TPT-MaintenanceTracker" sheet and reconnect automatically — no data is lost\n\nIf you set a Guest PIN, it will be cleared and the Owner must re-set it.`,
+            },
+            {
+                heading: 'Can multiple users edit data at the same time?',
+                text: `Yes, but with caution. Multiple Owners can be logged in simultaneously. However, if two people edit the same row (same flat, same month), one might overwrite the other. Google Sheets handles concurrent edits, but the app does not have conflict resolution. Best practice: only one Owner records payments at a time.`,
+            },
+            {
+                heading: 'The balance looks wrong — how is it calculated?',
+                text: `Current Balance = Total Collection (all months) - Total Expenses (all months) + Opening Balance (DEFICIT_LAST_YEAR)\n\nIf the balance seems off:\n1. Check the DEFICIT_LAST_YEAR value in the Configuration sheet (should be the actual handover balance from Aug 2026)\n2. Check if all expenses have been logged with the correct Month\n3. Click "Sync Sheet" in Reports to refresh the Monthly Summary\n4. Open the Google Sheet directly to verify the raw data`,
+            },
+            {
+                heading: 'How do I change the monthly maintenance amount?',
+                text: `Go to Settings > Configuration > Monthly Maintenance. Click the field, change the value, and click Save.\n\nThis only affects NEW months you initialize. Already-initialized months will keep their original Amount Due. To update an already-initialized month, edit the Amount Due directly in the Google Sheet's Maintenance tab.`,
+            },
+            {
+                heading: 'Can I export data to Excel?',
+                text: `Yes — open the Google Sheet (Settings > Open Sheet) and go to File > Download > Microsoft Excel (.xlsx). This downloads the entire sheet as an Excel file.\n\nYou can also download individual sheets as CSV from the same menu.`,
+            },
+            {
+                heading: 'The app shows "Not set up" after I already used it on another device',
+                text: `Each browser/device stores the setup state independently. On the new device:\n1. Log in with Google\n2. You will see the Setup page — click "Connect or Create"\n3. The app will find your existing Google Sheet and reconnect\n4. No data is lost`,
+            },
+            {
+                heading: 'How to update the Opening Balance / Handover Deficit?',
+                text: `The opening balance (DEFICIT_LAST_YEAR) is set during initial setup from src/config/constants.js. To change it after setup:\n1. Open the Google Sheet\n2. Go to the Configuration tab\n3. Find the row with Key = "DEFICIT_LAST_YEAR"\n4. Update the Value column (negative = deficit, positive = surplus)\n5. The app will read the new value on next refresh\n\nFor developer access: update DEFAULT_CONFIG.DEFICIT_LAST_YEAR in src/config/constants.js and redeploy.`,
             },
         ],
     },

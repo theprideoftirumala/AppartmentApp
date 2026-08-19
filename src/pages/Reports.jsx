@@ -249,7 +249,7 @@ export default function Reports() {
   const sections = [
     { id: 'summary', label: 'Summary', icon: IndianRupee },
     { id: 'payments', label: 'Payments', icon: Users },
-    { id: 'miscfunds', label: 'Misc Funds', icon: IndianRupee },
+    // { id: 'miscfunds', label: 'Misc Funds', icon: IndianRupee }, // disabled
     { id: 'expenses', label: 'Expenses', icon: Receipt },
     { id: 'activities', label: 'Activities', icon: Activity },
     { id: 'watchman', label: 'Watchman', icon: Shield },

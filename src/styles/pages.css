@@ -358,6 +358,38 @@
   line-height: 1.5;
 }
 
+/* ─── Login Divider ────────────────────────────────────────── */
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-3) 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.login-divider::before,
+.login-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--glass-border);
+}
+
+/* ─── Guest PIN form ───────────────────────────────────────── */
+.guest-pin-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.guest-pin-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
 .login-note {
   margin-top: var(--space-6);
   font-size: var(--font-size-xs);

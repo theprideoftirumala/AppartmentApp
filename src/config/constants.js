@@ -284,4 +284,6 @@ export const STORAGE_KEYS = {
   CACHED_CONFIG: 'tpt_cached_config',
   CACHED_DASHBOARD: 'tpt_cached_dashboard',
   LAST_SYNC: 'tpt_last_sync',
+  GUEST_PIN_HASH: 'tpt_guest_pin_hash',
+  GUEST_SESSION: 'tpt_guest_session',
 };

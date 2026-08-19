@@ -13,10 +13,11 @@
 import jsPDF from 'jspdf';
 
 /**
- * Format currency (INR)
+ * Format currency for PDF. jsPDF's built-in Helvetica font does not contain
+ * the Unicode Rupee glyph (U+20B9), so we use the ASCII "Rs." prefix here.
  */
 function formatCurrency(amount) {
-  return '₹' + Number(amount || 0).toLocaleString('en-IN');
+  return 'Rs. ' + Number(amount || 0).toLocaleString('en-IN');
 }
 
 /**
@@ -224,7 +225,7 @@ export function generateMonthlyReport(reportData) {
     doc.rect(margin, y, contentWidth, 7, 'F');
 
     const flatInfo = flats?.find(f => f.flat === record.flat);
-    const ownerName = flatInfo?.ownerName || 'Flat ' + record.flat;
+    const ownerName = flatInfo?.ownerName || ('Flat ' + record.flat);
 
     doc.setFontSize(7.5);
     let colX = margin + 2;
@@ -233,9 +234,9 @@ export function generateMonthlyReport(reportData) {
       ownerName.substring(0, 18),
       formatCurrency(record.amountDue),
       formatCurrency(record.amountPaid),
-      record.paymentDate || '-',
-      record.paymentMode || '-',
-      record.status,
+      record.paymentDate || 'Not recorded',
+      record.paymentMode || 'N/A',
+      record.status || 'PENDING',
     ];
 
     rowData.forEach((val, i) => {

@@ -165,9 +165,10 @@ export default function Maintenance() {
               <button className="btn btn-primary btn-sm" onClick={() => openPaymentModal()}>
                 <Plus size={16} /> Record Payment
               </button>
+              {/* Misc Fund button disabled — feature hidden per configuration
               <button className="btn btn-secondary btn-sm" onClick={() => setShowMiscModal(true)}>
                 <IndianRupee size={16} /> Misc Fund
-              </button>
+              </button> */}
             </>
           )}
         </div>
@@ -202,7 +203,7 @@ export default function Maintenance() {
               <span className="maintenance-stat-label">Progress</span>
               <span className="maintenance-stat-value">{paidCount}/{records.length} flats</span>
             </div>
-            {totalMisc > 0 && (
+            {totalMisc > 0 && false /* Misc Funds section disabled */ && (
               <div className="maintenance-stat">
                 <span className="maintenance-stat-label">Misc Funds</span>
                 <span className="maintenance-stat-value text-info">{formatCurrency(totalMisc)}</span>
@@ -258,66 +259,6 @@ export default function Maintenance() {
             </table>
           </div>
 
-          {/* Misc Funds Section */}
-          <div className="card mt-6 animate-fade-in-up">
-            <div className="card-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <h3 className="card-title">Misc Funds — {selectedMonth}</h3>
-                <p className="text-muted text-sm mt-1">Additional contributions from flat owners beyond monthly maintenance</p>
-              </div>
-              {isOwner !== false && (
-                <button className="btn btn-secondary btn-sm" onClick={() => setShowMiscModal(true)}>
-                  <Plus size={14} /> Add
-                </button>
-              )}
-            </div>
-            {miscFunds.length === 0 ? (
-              <p className="text-muted text-sm mt-3">No misc funds recorded for {selectedMonth}.</p>
-            ) : (
-              <div className="table-container mt-3">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Flat</th>
-                      <th>Amount</th>
-                      <th>Description</th>
-                      <th>Date</th>
-                      <th>Mode</th>
-                      <th>Collected By</th>
-                      {isOwner !== false && <th>Actions</th>}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {miscFunds.map(fund => (
-                      <tr key={fund.id}>
-                        <td className="font-semibold">{fund.flat}</td>
-                        <td className="text-success font-medium">{formatCurrency(fund.amount)}</td>
-                        <td>{fund.description}</td>
-                        <td className="text-muted">{formatDate(fund.date)}</td>
-                        <td>{fund.paymentMode || '-'}</td>
-                        <td>{fund.collectedBy || '-'}</td>
-                        {isOwner !== false && (
-                          <td>
-                            <button
-                              className="btn btn-ghost btn-sm text-danger"
-                              onClick={() => handleDeleteMiscFund(fund.id, fund.flat)}
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </td>
-                        )}
-                      </tr>
-                    ))}
-                    <tr style={{ borderTop: '2px solid var(--color-border)' }}>
-                      <td colSpan={isOwner !== false ? 6 : 5} className="font-semibold">Total</td>
-                      <td className="text-success font-semibold">{formatCurrency(totalMisc)}</td>
-                      {isOwner !== false && <td />}
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
         </>
       )}
 
@@ -582,3 +523,4 @@ function MiscFundModal({ isOpen, onClose, onSave, month, flats, saving }) {
     </Modal>
   );
 }
+
