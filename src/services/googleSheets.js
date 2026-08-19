@@ -6,6 +6,7 @@
 
 import { SHEET_NAMES, SHEET_HEADERS, DEFAULT_CONFIG, FLATS, STORAGE_KEYS, SHEET_FILE_NAME } from '../config/constants';
 import { ensureValidToken } from './googleAuth';
+import { sanitizeForSheet, truncateForSheet } from '../utils/helpers';
 
 /**
  * Get the spreadsheet ID from localStorage
@@ -439,7 +440,14 @@ export async function getExpenses(month = null) {
 }
 
 /**
- * Add a new expense
+ * Add a new expense.
+ *
+ * Security: all user-supplied text fields are sanitized with sanitizeForSheet()
+ * before being written to the sheet, preventing formula injection attacks
+ * (e.g. =HYPERLINK("https://evil.com","click me")).
+ *
+ * The `amount` field is coerced to a Number so a string like "=1+2" cannot
+ * reach the sheet as a formula.
  */
 export async function addExpense(data) {
   return withAuth(async () => {
@@ -455,15 +463,15 @@ export async function addExpense(data) {
         values: [[
           id,
           data.date || new Date().toISOString().split('T')[0],
-          data.month || '',
-          data.description || '',
-          data.category || '',
-          String(data.amount || 0),
-          data.paymentMode || '',
-          data.billReceipt || 'N',
-          data.approvedBy || '',
-          data.receiptLink || '',
-          data.remarks || '',
+          sanitizeForSheet(data.month),
+          truncateForSheet(sanitizeForSheet(data.description), 200),
+          sanitizeForSheet(data.category),
+          String(Number(data.amount) || 0),        // coerce to number string
+          sanitizeForSheet(data.paymentMode),
+          data.billReceipt === 'Y' ? 'Y' : 'N',   // strict boolean-like value
+          truncateForSheet(sanitizeForSheet(data.approvedBy), 100),
+          data.receiptLink || '',                   // Drive URL — not user-typed
+          truncateForSheet(sanitizeForSheet(data.remarks), 300),
         ]],
       },
     });
@@ -547,7 +555,7 @@ export async function getEmergencyContacts() {
 }
 
 /**
- * Add an emergency contact
+ * Add an emergency contact — sanitized against formula injection.
  */
 export async function addEmergencyContact(data) {
   return withAuth(async () => {
@@ -559,13 +567,13 @@ export async function addEmergencyContact(data) {
       insertDataOption: 'INSERT_ROWS',
       resource: {
         values: [[
-          data.category || '',
-          data.name || '',
-          data.role || '',
-          data.phone || '',
-          data.altPhone || '',
-          data.address || '',
-          data.notes || '',
+          sanitizeForSheet(data.category),
+          truncateForSheet(sanitizeForSheet(data.name), 100),
+          truncateForSheet(sanitizeForSheet(data.role), 100),
+          sanitizeForSheet(data.phone),
+          sanitizeForSheet(data.altPhone),
+          truncateForSheet(sanitizeForSheet(data.address), 200),
+          truncateForSheet(sanitizeForSheet(data.notes), 300),
         ]],
       },
     });

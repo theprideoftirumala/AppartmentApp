@@ -1,9 +1,56 @@
 /**
- * Utility Functions — Formatters, validators, helpers
+ * @fileoverview Utility functions for the TPT Apartment Expense Tracker.
+ *
+ * All functions are pure and side-effect-free unless otherwise noted.
+ * Security note: sanitizeForSheet() MUST be applied to every user-supplied
+ * string before it is written to a Google Sheet cell to prevent CSV/formula
+ * injection attacks (OWASP A03 Injection).
  */
 
+// ─── Security ────────────────────────────────────────────────
+
 /**
- * Format number as Indian Rupees
+ * Sanitize a value before writing it to a Google Sheet cell.
+ *
+ * Google Sheets evaluates any cell value starting with =, +, -, @, TAB, or CR
+ * as a formula. An attacker who can inject a value like
+ *   =HYPERLINK("https://evil.com","Click me")
+ * into a cell could execute arbitrary Sheet formulas or exfiltrate data.
+ *
+ * This function:
+ *   1. Converts the input to a string.
+ *   2. Strips leading formula-injection characters (=, +, -, @, \t, \r).
+ *   3. Trims whitespace.
+ *   4. Returns '' for null/undefined inputs.
+ *
+ * @param {*} value - The raw user-supplied or data value.
+ * @returns {string} A safe string ready for insertion into a Sheet cell.
+ */
+export function sanitizeForSheet(value) {
+  if (value === null || value === undefined) return '';
+  const str = String(value);
+  // Strip any character that Google Sheets treats as a formula prefix
+  return str.replace(/^[=+\-@\t\r]+/, '').trim();
+}
+
+/**
+ * Validate that a string is within the allowed max length before writing to the sheet.
+ * Silently truncates rather than throwing so form submissions are not blocked.
+ *
+ * @param {string} value
+ * @param {number} [max=500]
+ * @returns {string}
+ */
+export function truncateForSheet(value, max = 500) {
+  if (!value) return '';
+  return String(value).substring(0, max);
+}
+
+// ─── Currency ────────────────────────────────────────────────
+
+/**
+ * Format a number as Indian Rupees (e.g. ₹30,000).
+ * Returns '₹0' for null/undefined/NaN inputs.
  */
 export function formatCurrency(amount) {
   if (amount === null || amount === undefined) return '₹0';
@@ -11,7 +58,8 @@ export function formatCurrency(amount) {
 }
 
 /**
- * Format date for display
+ * Format a date string for display (e.g. "05 Sep 2026").
+ * Returns '-' for empty/invalid inputs.
  */
 export function formatDate(dateStr) {
   if (!dateStr) return '-';
@@ -245,4 +293,42 @@ export function getFirstDayOfNextMonth() {
   const now = new Date();
   const firstDay = new Date(now.getFullYear(), now.getMonth() + 1, 1);
   return firstDay.toISOString().split('T')[0];
+}
+
+// ─── Robustness ───────────────────────────────────────────────
+
+/**
+ * Retry an async function up to `maxAttempts` times with exponential back-off.
+ *
+ * Strategy:
+ *   - Attempt 1: immediate
+ *   - Attempt 2: wait `delayMs` ms
+ *   - Attempt 3: wait `delayMs * 2` ms
+ *   ... and so on.
+ *
+ * Auth errors (HTTP 401/403) are NOT retried — they should surface immediately
+ * so the user is prompted to re-authenticate or is shown the Access Denied screen.
+ *
+ * @param {() => Promise<*>} fn           - The async function to call.
+ * @param {number}           [maxAttempts=3]
+ * @param {number}           [delayMs=800] - Base delay in milliseconds.
+ * @returns {Promise<*>} Result of `fn` on the first successful call.
+ * @throws The last error if all attempts fail.
+ */
+export async function withRetry(fn, maxAttempts = 3, delayMs = 800) {
+  let lastError;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      const code = err?.result?.error?.code;
+      // Do not retry authentication / authorisation failures
+      if (code === 401 || code === 403) throw err;
+      if (attempt < maxAttempts) {
+        await new Promise(r => setTimeout(r, delayMs * attempt));
+      }
+    }
+  }
+  throw lastError;
 }

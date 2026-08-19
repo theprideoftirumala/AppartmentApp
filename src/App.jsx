@@ -1,6 +1,13 @@
 /**
- * App Component
- * Root layout with routing, sidebar, bottom nav, and toast notifications
+ * App Component — Root layout with routing, sidebar, bottom nav, and toast.
+ *
+ * Rendering hierarchy:
+ *   HashRouter
+ *     AuthProvider  (Google OAuth state + Guest PIN sessions)
+ *       AppProvider (config, dashboard cache, toast queue)
+ *         ErrorBoundary (catches unexpected JS exceptions in any child)
+ *           AppRoutes — AccessDenied wall OR full route tree
+ *             AppLayout — Sidebar + BottomNav for authenticated users
  */
 
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
@@ -9,6 +16,7 @@ import { AppProvider } from './contexts/AppContext';
 
 import ProtectedRoute from './components/common/ProtectedRoute';
 import AccessDenied from './components/common/AccessDenied';
+import ErrorBoundary from './components/common/ErrorBoundary';
 import Sidebar from './components/common/Sidebar';
 import BottomNav from './components/common/BottomNav';
 import Toast from './components/common/Toast';
@@ -126,7 +134,11 @@ export default function App() {
     <HashRouter>
       <AuthProvider>
         <AppProvider>
-          <AppRoutes />
+          {/* ErrorBoundary prevents a crashed page from blanking the whole app */}
+          <ErrorBoundary>
+            <AppRoutes />
+          </ErrorBoundary>
+          {/* Toast lives outside the boundary so error toasts still appear */}
           <Toast />
         </AppProvider>
       </AuthProvider>
