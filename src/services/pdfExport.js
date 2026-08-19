@@ -483,18 +483,19 @@ export function generateMonthlyReport(reportData) {
     });
 
     const actLabels = {
-      'PAYMENT': '💰 Payments Recorded',
-      'ADD_EXPENSE': '📝 Expenses Added',
-      'INIT_MONTH': '📅 Month Initialized',
-      'ADD_REMINDER': '🔔 Reminders Added',
-      'ADD_CONTACT': '📞 Contacts Added',
-      'ADD_USER': '👤 Users Added',
-      'REMOVE_USER': '❌ Users Removed',
-      'UPDATE_CONFIG': '⚙️ Config Updated',
-      'UPDATE_FLAT': '🏠 Flat Details Updated',
-      'BACKUP': '💾 Backups Created',
-      'SETUP': '🚀 Setup',
-      'DELETE_EXPENSE': '🗑️ Expenses Deleted',
+      'PAYMENT': '[PAY] Payments Recorded',
+      'ADD_EXPENSE': '[EXP] Expenses Added',
+      'INIT_MONTH': '[INIT] Month Initialized',
+      'ADD_REMINDER': '[REM] Reminders Added',
+      'ADD_CONTACT': '[CONT] Contacts Added',
+      'ADD_USER': '[USER] Users Added',
+      'REMOVE_USER': '[DEL] Users Removed',
+      'UPDATE_CONFIG': '[CFG] Config Updated',
+      'UPDATE_FLAT': '[FLAT] Flat Details Updated',
+      'BACKUP': '[BCK] Backups Created',
+      'SETUP': '[SETUP] Initial Setup',
+      'DELETE_EXPENSE': '[DEL] Expenses Deleted',
+      'ADD_MISC_FUND': '[MISC] Misc Fund Recorded',
     };
 
     Object.entries(activityGroups).forEach(([action, items]) => {
@@ -514,7 +515,7 @@ export function generateMonthlyReport(reportData) {
         doc.setTextColor(100, 100, 100);
         const detail = (item.details || '').substring(0, 60);
         const user = (item.user || '').split('@')[0];
-        doc.text(`  • ${detail}  (by ${user})`, margin + 4, y + 4);
+        doc.text(`  - ${detail}  (by ${user})`, margin + 4, y + 4);
         y += 5;
       });
 
@@ -557,7 +558,7 @@ export function generateMonthlyReport(reportData) {
       doc.setFontSize(7.5);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(60, 60, 60);
-      doc.text(`✅ ${r.title} — ${r.lastCompleted || 'Completed'}`, margin + 2, y + 4);
+      doc.text(`[OK] ${r.title}  (${r.lastCompleted || 'Completed'})`, margin + 2, y + 4);
       y += 6;
     });
     y += 6;
