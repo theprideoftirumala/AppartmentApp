@@ -7,7 +7,7 @@
  */
 
 // ─── Google OAuth & API ──────────────────────────────────────────
-export const GOOGLE_CLIENT_ID = '33627201770-ks4fo1kpdf777h7kanlmva3rtghk7u33.apps.googleusercontent.com';
+export const GOOGLE_CLIENT_ID = '91050465180-vqn4p4qk0rq5ihstdquu95vjpegjcbld.apps.googleusercontent.com';
 
 export const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/spreadsheets',
