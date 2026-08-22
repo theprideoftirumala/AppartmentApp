@@ -14,6 +14,7 @@ import { useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AppProvider, useApp } from './contexts/AppContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { getAccessControl, resolveSpreadsheetForUser, ensureFoundingOwnerEntry } from './services/googleSheets';
 import { effectiveAppRole, isFoundingOwner } from './config/accessPolicy';
 import { normalizeEmail } from './utils/helpers';
@@ -183,6 +184,7 @@ function AppRoutes() {
 export default function App() {
   return (
     <HashRouter>
+      <ThemeProvider>
       <AuthProvider>
         <AppProvider>
           <AccessBootstrap />
@@ -194,6 +196,7 @@ export default function App() {
           <Toast />
         </AppProvider>
       </AuthProvider>
+      </ThemeProvider>
     </HashRouter>
   );
 }

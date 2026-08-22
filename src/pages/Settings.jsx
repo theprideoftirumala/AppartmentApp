@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   Settings as SettingsIcon, Users, Shield, Database, Trash2,
   Plus, ExternalLink, Download, UserPlus, UserMinus, Save,
-  RefreshCw, AlertTriangle, Key, Eye, Lock, KeyRound, CheckCircle2, Copy, FlaskConical
+  RefreshCw, AlertTriangle, Key, Eye, Lock, KeyRound, CheckCircle2, Copy, FlaskConical, Palette
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -32,6 +32,7 @@ import { hashPin } from '../contexts/AuthContext';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Modal from '../components/common/Modal';
 import Navbar from '../components/common/Navbar';
+import ThemePicker from '../components/common/ThemePicker';
 
 export default function Settings() {
   const { showToast, isOwner, resetSetup, userRole } = useApp();
@@ -290,6 +291,7 @@ export default function Settings() {
   };
 
   const tabs = [
+    { id: 'appearance', label: 'Appearance', icon: Palette },
     { id: 'config', label: 'Configuration', icon: SettingsIcon },
     { id: 'flats', label: 'Flat Details', icon: Shield },
     { id: 'watchman', label: 'Watchman', icon: Eye },
@@ -347,6 +349,18 @@ export default function Settings() {
 
       {/* Tab Content */}
       <div className="settings-content animate-fade-in">
+        {activeTab === 'appearance' && (
+          <div className="card">
+            <h3 className="card-title mb-2">Appearance</h3>
+            <p className="text-muted text-sm mb-6">
+              Choose a look for this device. Daylight is the default — easier to read in the day.
+              Temple is warm cream and saffron. Midnight and Ocean are evening themes.
+              This only changes colors on this browser; it does not change the Google Sheet.
+            </p>
+            <ThemePicker />
+          </div>
+        )}
+
         {/* Configuration Tab */}
         {activeTab === 'config' && (
           <div className="card">

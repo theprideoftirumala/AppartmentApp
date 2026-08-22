@@ -12,6 +12,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useApp } from '../../contexts/AppContext';
 import { getSpreadsheetUrl } from '../../services/googleDrive';
 import { APP_NAME, APP_VERSION } from '../../config/constants';
+import ThemePicker from './ThemePicker';
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -107,6 +108,7 @@ export default function Sidebar() {
 
         {/* User section */}
         <div className="sidebar-footer">
+          <ThemePicker compact />
           {user && (
             <div className="sidebar-user">
               <img
