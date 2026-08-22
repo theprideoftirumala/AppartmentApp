@@ -29,6 +29,22 @@ export default function Setup() {
   const [error, setError] = useState(null);
   const [results, setResults] = useState({ folderId: null, spreadsheetId: null, foundExisting: false });
 
+  const renderErrorMessage = (text) => {
+    if (!text) return null;
+    const str = String(text);
+    const parts = str.split(/(https?:\/\/[^\s]+)/g);
+    return parts.map((part, idx) => {
+      if (/^https?:\/\//.test(part)) {
+        return (
+          <a key={`${part}-${idx}`} href={part} target="_blank" rel="noreferrer">
+            {part}
+          </a>
+        );
+      }
+      return <span key={`txt-${idx}`}>{part}</span>;
+    });
+  };
+
   // Check if already set up
   const existingSpreadsheetId = localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID);
 
@@ -214,7 +230,7 @@ export default function Setup() {
 
           {error && (
             <div className="setup-error">
-              <p className="text-danger">{error}</p>
+              <p className="text-danger">{renderErrorMessage(error)}</p>
               <button
                 className="btn btn-secondary"
                 onClick={() => { setCurrentStep(0); setError(null); }}

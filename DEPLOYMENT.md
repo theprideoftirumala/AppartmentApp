@@ -111,6 +111,17 @@ Azure automatically deploys via GitHub Actions when you push to main.
 
 ## Google Cloud Console Setup
 
+### Enable Required Google APIs (Mandatory)
+
+Before first setup, ensure both APIs are enabled in the same Google Cloud project as your OAuth client:
+
+1. Enable Google Drive API:
+   - `https://console.cloud.google.com/apis/library/drive.googleapis.com`
+2. Enable Google Sheets API:
+   - `https://console.cloud.google.com/apis/library/sheets.googleapis.com`
+3. Verify billing/project selector is correct in the top bar.
+4. Wait 5-10 minutes after enabling (Google propagation delay), then retry setup.
+
 ### API Key (Optional but Recommended)
 
 1. Go to **APIs & Services** → **Credentials**
@@ -183,6 +194,7 @@ The Google Client ID is in `src/config/constants.js`. This is intentionally publ
 |-------|---------|
 | OAuth popup blocked | Allow popups for your domain in browser settings |
 | "Not a verified app" warning | Add users as test users in OAuth consent screen |
+| "Google Drive API has not been used in project" | Enable Drive API and Sheets API in Google Cloud, wait 5-10 minutes, retry |
 | 404 on page refresh | Ensure `404.html` is in `/public` (GitHub Pages) |
 | API quota exceeded | Google Sheets API has 300 requests/min — this is plenty for 10-20 users |
 | PWA not installable | Ensure HTTPS (GitHub Pages provides this automatically) |

@@ -246,6 +246,10 @@ The next due date is automatically scheduled based on the frequency (e.g., Month
                 text: `This Google error means the app is in Testing mode and your Google account is not added as a Test User.\n\nFix steps (Owner must do this):\n1. Go to console.cloud.google.com\n2. Select the project (search for "Apartment Maintenance App" or find it in your project list)\n3. Go to APIs & Services > OAuth consent screen\n4. Scroll down to "Test users"\n5. Click "+ Add Users"\n6. Enter the Gmail address (e.g., theprideoftirumala@gmail.com)\n7. Click Save\n8. The user can now sign in immediately — no other changes needed\n\nAlternatively, to allow any Google account (not just test users): go to OAuth consent screen > Publishing status > click "Publish App". This removes the test user restriction permanently.`,
             },
             {
+                heading: '"Google Drive API has not been used in project" — Fix',
+                text: `This error appears during Setup > Connect or Create when Google Drive API is disabled for your Google Cloud project.\n\nFix steps:\n1. Open Google Cloud Console and select the SAME project used by your OAuth Client ID\n2. Enable Google Drive API: https://console.cloud.google.com/apis/library/drive.googleapis.com\n3. Enable Google Sheets API: https://console.cloud.google.com/apis/library/sheets.googleapis.com\n4. Wait 5-10 minutes for propagation\n5. Return to app Setup page and click Try Again\n\nIf it still fails, confirm the signed-in account has access to the target spreadsheet/folder in Google Drive.`,
+            },
+            {
                 heading: 'How to add a new user (Google login)',
                 text: `1. Owner logs in to the app\n2. Go to Settings > Access Control\n3. Click "Add User"\n4. Enter their Gmail address\n5. Select role: Reader (view only) or Owner (full access)\n6. Click Add\n7. The user must ALSO be added as a Test User in Google Cloud Console (see above) unless the app is published\n8. The user can now sign in at the login page`,
             },

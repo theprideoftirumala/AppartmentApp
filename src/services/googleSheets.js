@@ -33,6 +33,22 @@ export function parseApiError(error) {
   const apiErr = error?.result?.error || error?.error;
   if (apiErr) {
     const { code, message } = apiErr;
+    const msg = String(message || '');
+
+    // Common OAuth verification/test-user failure
+    if (msg.includes('access_denied') || msg.includes('has not completed the Google verification process')) {
+      return 'Google sign-in is blocked for this account. Add this email as a Test User in Google Cloud Console > OAuth consent screen, or publish and verify the app.';
+    }
+
+    // Common API enablement failures
+    if (msg.includes('Google Drive API has not been used') || msg.includes('drive.googleapis.com')) {
+      return 'Google Drive API is not enabled for this project. Enable it in Google Cloud Console: https://console.cloud.google.com/apis/library/drive.googleapis.com, wait 5-10 minutes, then try again.';
+    }
+
+    if (msg.includes('Google Sheets API has not been used') || msg.includes('sheets.googleapis.com')) {
+      return 'Google Sheets API is not enabled for this project. Enable it in Google Cloud Console: https://console.cloud.google.com/apis/library/sheets.googleapis.com, wait 5-10 minutes, then try again.';
+    }
+
     switch (code) {
       case 400: return `Bad request: ${message}`;
       case 401: return 'Session expired. Please sign in again.';
