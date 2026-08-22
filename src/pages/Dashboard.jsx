@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   TrendingUp, TrendingDown, IndianRupee, Users, AlertCircle,
   RefreshCw, Calendar, Bell, Phone, ArrowRight,
-  PieChart, Wallet, Plus, Building2, Info, FlaskConical
+  PieChart, Wallet, Plus, Building2, Info, FlaskConical, Table2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -26,7 +26,27 @@ export default function Dashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [accessError, setAccessError] = useState(null);
   const [seedingSample, setSeedingSample] = useState(false);
+  const [sheetUpgrade, setSheetUpgrade] = useState(
+    sessionStorage.getItem('tpt_sheet_layout_v14') ? 'done' : null
+  );
+  const [upgradingSheet, setUpgradingSheet] = useState(false);
   const navigate = useNavigate();
+
+  const applySheetLayout = useCallback(async () => {
+    setUpgradingSheet(true);
+    setSheetUpgrade('pending');
+    try {
+      await ensureSheetStructure();
+      sessionStorage.setItem('tpt_sheet_layout_v14', '1');
+      setSheetUpgrade('done');
+      showToast('Google Sheet updated: Pending Dues tab and surplus/deficit formulas are ready.', 'success');
+    } catch (err) {
+      setSheetUpgrade('error');
+      showToast(err.message || 'Could not update the Google Sheet layout', 'error');
+    } finally {
+      setUpgradingSheet(false);
+    }
+  }, [showToast]);
   const currentMonth = getCurrentMonthLabel();
 
   const fetchData = useCallback(async (showRefresh = false) => {
@@ -66,12 +86,7 @@ export default function Dashboard() {
           if (role) {
             setUserRole(role);
             if (role === 'Owner' && !sessionStorage.getItem('tpt_sheet_layout_v14')) {
-              try {
-                await ensureSheetStructure();
-                sessionStorage.setItem('tpt_sheet_layout_v14', '1');
-              } catch (upgradeErr) {
-                console.warn('Sheet layout upgrade skipped:', upgradeErr);
-              }
+              await applySheetLayout();
             }
           } else {
             signOut();
@@ -95,7 +110,7 @@ export default function Dashboard() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user, isGuest, setDashboardData, setConfig, setUserRole, showToast, setLastSync, signOut, navigate]);
+  }, [user, isGuest, setDashboardData, setConfig, setUserRole, showToast, setLastSync, signOut, navigate, applySheetLayout]);
 
   useEffect(() => {
     fetchData();
@@ -217,6 +232,19 @@ export default function Dashboard() {
         </div>
       )}
 
+      {isOwner && sheetUpgrade !== 'done' && (
+        <div className="guest-banner">
+          <Table2 size={16} />
+          <span>
+            <strong>Update the Google Sheet</strong> — adds Pending Dues (type a month in the yellow cell)
+            and live surplus/deficit formulas. Does not delete your numbers.
+          </span>
+          <button className="btn btn-primary btn-sm" disabled={upgradingSheet} onClick={applySheetLayout}>
+            {upgradingSheet || sheetUpgrade === 'pending' ? 'Updating…' : 'Update sheet'}
+          </button>
+        </div>
+      )}
+
       {/* Page Header */}
       <div className="page-header">
         <div>
@@ -228,7 +256,7 @@ export default function Dashboard() {
         {isOwner && (
           <div className="flex gap-2">
             <button className="btn btn-primary btn-sm" onClick={() => navigate('/expenses')}>
-              <Plus size={16} /> Add Expense
+              <Plus size={16} /> Add expenses
             </button>
           </div>
         )}

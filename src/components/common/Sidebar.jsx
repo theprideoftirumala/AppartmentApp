@@ -11,7 +11,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { useApp } from '../../contexts/AppContext';
 import { getSpreadsheetUrl } from '../../services/googleDrive';
-import { APP_NAME } from '../../config/constants';
+import { APP_NAME, APP_VERSION } from '../../config/constants';
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -53,7 +53,7 @@ export default function Sidebar() {
           </div>
           <div className="sidebar-brand-text">
             <span className="sidebar-brand-name">{APP_NAME}</span>
-            <span className="sidebar-brand-sub">Expense Tracker</span>
+            <span className="sidebar-brand-sub">Expense Tracker · v{APP_VERSION}</span>
           </div>
           <button
             className="btn-ghost btn-icon sidebar-close mobile-only"
