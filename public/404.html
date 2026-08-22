@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <title>The Pride of Tirumala — Expense Tracker</title>
   <script>
     // GitHub Pages SPA redirect
     // Redirects all 404s to index.html with the path as a query param
-    var pathSegmentsToKeep = 1; // /AppartmentApp/
+    var pathSegmentsToKeep = window.location.pathname.startsWith('/AppartmentApp/') ? 1 : 0;
     var l = window.location;
     l.replace(
       l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
@@ -17,7 +18,9 @@
     );
   </script>
 </head>
+
 <body>
   Redirecting...
 </body>
+
 </html>

@@ -47,6 +47,24 @@ git push origin main
 
 **Your app will be live at:** `https://vijayraavi.github.io/AppartmentApp/`
 
+### Root path deployment on GitHub Pages (`/` instead of `/AppartmentApp/`)
+
+GitHub Pages project repos (like `AppartmentApp`) are always served under `/<repo-name>/`.
+If you need root URL (`https://theprideoftirumala.github.io/`), use a **User Pages** repo named exactly:
+
+`theprideoftirumala.github.io`
+
+Then build with root base path:
+
+```bash
+$env:VITE_BASE_PATH='/'
+npm run build
+```
+
+OAuth update for root URL:
+- Authorized JavaScript origin: `https://theprideoftirumala.github.io`
+- Authorized redirect URI: `https://theprideoftirumala.github.io/`
+
 ---
 
 ## Option 2: Azure Static Web Apps
@@ -70,17 +88,14 @@ git push origin main
 
 ### Step 2: Update Vite Config
 
-For Azure SWA, change the base path in `vite.config.js`:
+For Azure SWA root deployment, set the build-time base path to `/`:
 
-```js
-// Change from:
-base: '/AppartmentApp/',
-
-// To (for Azure SWA root deployment):
-base: '/',
+```bash
+$env:VITE_BASE_PATH='/'
+npm run build
 ```
 
-Also update the PWA manifest scope and start_url to `/`.
+`vite.config.js` now applies the same base path to PWA scope and start URL automatically.
 
 ### Step 3: Configure Google OAuth
 
