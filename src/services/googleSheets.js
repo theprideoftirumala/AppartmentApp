@@ -5,7 +5,8 @@
  */
 
 import { SHEET_NAMES, SHEET_HEADERS, DEFAULT_CONFIG, FLATS, STORAGE_KEYS } from '../config/constants';
-import { ensureValidToken } from './googleAuth';
+import { ensureValidToken, getCurrentUser } from './googleAuth';
+import { findExistingSpreadsheet } from './googleDrive';
 import {
   sanitizeForSheet,
   truncateForSheet,
@@ -14,6 +15,7 @@ import {
   normalizeEmail,
   sanitizeDriveUrl,
   isValidSpreadsheetId,
+  bindSpreadsheet,
 } from '../utils/helpers';
 import {
   createSpreadsheet as createSpreadsheetWorkbook,
@@ -43,6 +45,9 @@ async function withAuth(fn) {
  * Parse a Google API error into a user-friendly message.
  */
 export function parseApiError(error) {
+  if (error?.code === 'SHEET_NOT_ACCESSIBLE' || error?.message === 'SHEET_NOT_ACCESSIBLE') {
+    return 'This browser is pointing at a Google Sheet your account cannot open (often left over from a previous Google login). Reconnect to find or create your apartment sheet.';
+  }
   if (!navigator.onLine) {
     return 'You appear to be offline. Please check your internet connection.';
   }
@@ -68,8 +73,8 @@ export function parseApiError(error) {
     switch (code) {
       case 400: return `Bad request: ${message}`;
       case 401: return 'Session expired. Please sign in again.';
-      case 403: return `Permission denied: ${message}. Ensure the spreadsheet is shared with your account.`;
-      case 404: return 'Resource not found. The Google Sheet or folder may have been deleted or moved.';
+      case 403: return 'This Google account cannot open the stored spreadsheet. It may belong to a different login. Use Reconnect to attach your own TPT-MaintenanceTracker sheet.';
+      case 404: return 'The Google Sheet was not found. It may have been deleted or moved. Use Reconnect to find or create it.';
       case 429: return 'Google API quota exceeded. Please wait a moment and try again.';
       case 500:
       case 503: return 'Google Sheets service is temporarily unavailable. Please try again.';
@@ -77,6 +82,49 @@ export function parseApiError(error) {
     }
   }
   return error?.message || 'An unexpected error occurred. Please try again.';
+}
+
+export function isPermissionError(error) {
+  const code = error?.result?.error?.code || error?.error?.code;
+  return code === 403 || code === 404 || error?.code === 'SHEET_NOT_ACCESSIBLE';
+}
+
+async function canReadSpreadsheet(spreadsheetId) {
+  if (!isValidSpreadsheetId(spreadsheetId)) return false;
+  try {
+    await window.gapi.client.sheets.spreadsheets.get({
+      spreadsheetId,
+      fields: 'spreadsheetId',
+    });
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+/**
+ * Attach a spreadsheet this Google account can actually open.
+ * Clears a stale ID left by a previous login on the same browser.
+ */
+export async function resolveSpreadsheetForUser(email) {
+  return withAuth(async () => {
+    const boundEmail = normalizeEmail(localStorage.getItem(STORAGE_KEYS.BOUND_EMAIL));
+    const currentId = localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID);
+    const emailMismatch = Boolean(boundEmail && email && boundEmail !== normalizeEmail(email));
+
+    if (isValidSpreadsheetId(currentId) && !emailMismatch && await canReadSpreadsheet(currentId)) {
+      bindSpreadsheet(currentId, email);
+      return currentId;
+    }
+
+    const found = await findExistingSpreadsheet();
+    if (found?.id && await canReadSpreadsheet(found.id)) {
+      bindSpreadsheet(found.id, email);
+      return found.id;
+    }
+
+    return null;
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1008,25 +1056,43 @@ export async function getMonthlySummaries() {
  */
 export async function getDashboardData() {
   return withAuth(async () => {
-    const spreadsheetId = getSpreadsheetId();
-    if (!spreadsheetId) throw new Error('Spreadsheet is not connected.');
-    await ensureMiscFundsSheet(spreadsheetId);
+    const user = getCurrentUser();
+    const spreadsheetId = await resolveSpreadsheetForUser(user?.email);
+    if (!spreadsheetId) {
+      const err = new Error('SHEET_NOT_ACCESSIBLE');
+      err.code = 'SHEET_NOT_ACCESSIBLE';
+      throw err;
+    }
 
-    const response = await window.gapi.client.sheets.spreadsheets.values.batchGet({
-      spreadsheetId,
-      ranges: [
-        `'${SHEET_NAMES.CONFIGURATION}'!A2:C100`,
-        `'${SHEET_NAMES.MAINTENANCE}'!A2:J5000`,
-        `'${SHEET_NAMES.EXPENSES}'!A2:K5000`,
-        `'${SHEET_NAMES.REMINDERS}'!A2:J200`,
-        `'${SHEET_NAMES.EMERGENCY_CONTACTS}'!A2:G200`,
-        `'${SHEET_NAMES.FLATS}'!A2:H50`,
-        `'${SHEET_NAMES.MONTHLY_SUMMARY}'!A2:I100`,
-        `'${SHEET_NAMES.MISC_FUNDS}'!A2:I2000`,
-      ],
-    });
+    const coreRanges = [
+      `'${SHEET_NAMES.CONFIGURATION}'!A2:C100`,
+      `'${SHEET_NAMES.MAINTENANCE}'!A2:J5000`,
+      `'${SHEET_NAMES.EXPENSES}'!A2:K5000`,
+      `'${SHEET_NAMES.REMINDERS}'!A2:J200`,
+      `'${SHEET_NAMES.EMERGENCY_CONTACTS}'!A2:G200`,
+      `'${SHEET_NAMES.FLATS}'!A2:H50`,
+      `'${SHEET_NAMES.MONTHLY_SUMMARY}'!A2:I100`,
+    ];
+    const rangesWithMisc = [
+      ...coreRanges,
+      `'${SHEET_NAMES.MISC_FUNDS}'!A2:I2000`,
+    ];
 
-    const ranges = response.result.valueRanges || [];
+    let ranges;
+    try {
+      const response = await window.gapi.client.sheets.spreadsheets.values.batchGet({
+        spreadsheetId,
+        ranges: rangesWithMisc,
+      });
+      ranges = response.result.valueRanges || [];
+    } catch (err) {
+      if (isPermissionError(err)) throw err;
+      const response = await window.gapi.client.sheets.spreadsheets.values.batchGet({
+        spreadsheetId,
+        ranges: coreRanges,
+      });
+      ranges = response.result.valueRanges || [];
+    }
     const parseMisc = (rows) => (rows || []).map(row => ({
       id: row[0] || '',
       date: row[1] || '',
@@ -1165,33 +1231,37 @@ export async function getDashboardData() {
  * Creates the sheet + headers if missing. Safe to call multiple times.
  */
 async function ensureMiscFundsSheet(spreadsheetId) {
-  const meta = await window.gapi.client.sheets.spreadsheets.get({
-    spreadsheetId,
-    fields: 'sheets.properties.title',
-  });
-  const titles = (meta.result.sheets || []).map(s => s.properties.title);
-  if (titles.includes(SHEET_NAMES.MISC_FUNDS)) return;
+  try {
+    const meta = await window.gapi.client.sheets.spreadsheets.get({
+      spreadsheetId,
+      fields: 'sheets.properties.title',
+    });
+    const titles = (meta.result.sheets || []).map(s => s.properties.title);
+    if (titles.includes(SHEET_NAMES.MISC_FUNDS)) return;
 
-  await window.gapi.client.sheets.spreadsheets.batchUpdate({
-    spreadsheetId,
-    resource: {
-      requests: [{
-        addSheet: {
-          properties: {
-            title: SHEET_NAMES.MISC_FUNDS,
-            gridProperties: { frozenRowCount: 1 },
+    await window.gapi.client.sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      resource: {
+        requests: [{
+          addSheet: {
+            properties: {
+              title: SHEET_NAMES.MISC_FUNDS,
+              gridProperties: { frozenRowCount: 1 },
+            },
           },
-        },
-      }],
-    },
-  });
+        }],
+      },
+    });
 
-  await window.gapi.client.sheets.spreadsheets.values.update({
-    spreadsheetId,
-    range: `'${SHEET_NAMES.MISC_FUNDS}'!A1`,
-    valueInputOption: 'RAW',
-    resource: { values: [SHEET_HEADERS[SHEET_NAMES.MISC_FUNDS]] },
-  });
+    await window.gapi.client.sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `'${SHEET_NAMES.MISC_FUNDS}'!A1`,
+      valueInputOption: 'RAW',
+      resource: { values: [SHEET_HEADERS[SHEET_NAMES.MISC_FUNDS]] },
+    });
+  } catch {
+    // Readers cannot add tabs; dashboard reads skip this sheet instead.
+  }
 }
 
 /**

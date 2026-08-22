@@ -20,7 +20,7 @@ import Navbar from '../components/common/Navbar';
 
 export default function Dashboard() {
   const { user, isGuest, signOut, signOutGuest } = useAuth();
-  const { dashboardData, setDashboardData, setConfig, setUserRole, showToast, setLastSync, lastSync, isOwner } = useApp();
+  const { dashboardData, setDashboardData, setConfig, setUserRole, showToast, setLastSync, lastSync, isOwner, resetSetup } = useApp();
   const [loading, setLoading] = useState(!dashboardData);
   const [refreshing, setRefreshing] = useState(false);
   const [accessError, setAccessError] = useState(null);
@@ -113,6 +113,16 @@ export default function Dashboard() {
             <p className="text-muted mt-2" style={{ whiteSpace: 'pre-wrap' }}>{accessError}</p>
             <button className="btn btn-primary mt-4" onClick={() => { setAccessError(null); fetchData(); }}>
               <RefreshCw size={16} /> Retry
+            </button>
+            <button
+              className="btn btn-secondary mt-2"
+              onClick={() => {
+                resetSetup();
+                setAccessError(null);
+                navigate('/setup');
+              }}
+            >
+              Reconnect sheet
             </button>
           </div>
         </div>

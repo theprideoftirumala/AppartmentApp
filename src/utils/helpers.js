@@ -7,6 +7,8 @@
  * injection attacks (OWASP A03 Injection).
  */
 
+import { STORAGE_KEYS } from '../config/constants';
+
 // ─── Security ────────────────────────────────────────────────
 
 /**
@@ -77,6 +79,15 @@ export function sanitizeDriveUrl(url) {
  */
 export function isValidSpreadsheetId(id) {
   return typeof id === 'string' && /^[a-zA-Z0-9_-]{10,80}$/.test(id);
+}
+
+export function bindSpreadsheet(id, email) {
+  if (isValidSpreadsheetId(id)) {
+    localStorage.setItem(STORAGE_KEYS.SPREADSHEET_ID, id);
+  }
+  if (email) {
+    localStorage.setItem(STORAGE_KEYS.BOUND_EMAIL, normalizeEmail(email));
+  }
 }
 
 /**

@@ -61,6 +61,7 @@ export function AppProvider({ children }) {
     localStorage.removeItem(STORAGE_KEYS.ROOT_FOLDER_ID);
     localStorage.removeItem(STORAGE_KEYS.CACHED_CONFIG);
     localStorage.removeItem(STORAGE_KEYS.CACHED_DASHBOARD);
+    localStorage.removeItem(STORAGE_KEYS.BOUND_EMAIL);
   }, []);
 
   const value = {

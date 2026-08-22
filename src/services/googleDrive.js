@@ -3,7 +3,7 @@
  * Handles folder creation, file uploads, backups, and sharing
  */
 
-import { DRIVE_ROOT_FOLDER, DRIVE_EXPENSES_FOLDER, DRIVE_BACKUPS_FOLDER, STORAGE_KEYS } from '../config/constants';
+import { DRIVE_ROOT_FOLDER, DRIVE_EXPENSES_FOLDER, DRIVE_BACKUPS_FOLDER, STORAGE_KEYS, SHEET_FILE_NAME } from '../config/constants';
 import { ensureValidToken } from './googleAuth';
 import { escapeDriveQuery, isAllowedReceiptFile, isValidSpreadsheetId } from '../utils/helpers';
 
@@ -32,18 +32,33 @@ function getRootFolderId() {
  * @param {string} name - Exact spreadsheet name to search
  * @returns {{ id, name, webViewLink } | null}
  */
-export async function findExistingSpreadsheet(name) {
+export async function findExistingSpreadsheet(name = SHEET_FILE_NAME) {
   return withAuth(async () => {
-    const safeName = escapeDriveQuery(name);
-    const query = `name='${safeName}' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`;
-    const response = await window.gapi.client.drive.files.list({
-      q: query,
-      fields: 'files(id, name, webViewLink)',
-      spaces: 'drive',
-      pageSize: 5,
+    const names = [...new Set([name, SHEET_FILE_NAME])];
+    const files = [];
+    for (const candidate of names) {
+      const safeName = escapeDriveQuery(candidate);
+      const query = `name='${safeName}' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`;
+      const response = await window.gapi.client.drive.files.list({
+        q: query,
+        fields: 'files(id, name, webViewLink)',
+        spaces: 'drive',
+        pageSize: 10,
+        orderBy: 'modifiedTime desc',
+      });
+      files.push(...(response.result.files || []));
+    }
+
+    const unique = [];
+    const seen = new Set();
+    files.forEach((file) => {
+      if (!file?.id || seen.has(file.id)) return;
+      seen.add(file.id);
+      unique.push(file);
     });
-    const files = response.result.files || [];
-    return files.length > 0 ? files[0] : null;
+
+    const exact = unique.find((f) => f.name === SHEET_FILE_NAME);
+    return exact || unique[0] || null;
   });
 }
 

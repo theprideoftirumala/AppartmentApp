@@ -6,7 +6,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { initGoogleAuth, signIn as googleSignIn, signOut as googleSignOut } from '../services/googleAuth';
 import { STORAGE_KEYS } from '../config/constants';
-import { getAccessControl } from '../services/googleSheets';
+import { getAccessControl, resolveSpreadsheetForUser, isPermissionError } from '../services/googleSheets';
 import { normalizeEmail, parseJsonSafe, isValidSpreadsheetId } from '../utils/helpers';
 
 const AuthContext = createContext(null);
@@ -54,20 +54,31 @@ export function AuthProvider({ children }) {
         if (!mounted) return;
         if (userData) {
           try {
-            const entry = await fetchAccessEntry(userData.email);
             const setupComplete = localStorage.getItem(STORAGE_KEYS.SETUP_COMPLETE) === 'true';
+            if (setupComplete) {
+              const sheetId = await resolveSpreadsheetForUser(userData.email);
+              if (!sheetId) {
+                setUser(userData);
+                setLoading(false);
+                return;
+              }
+            }
+            const entry = await fetchAccessEntry(userData.email);
             if (setupComplete && entry === null) {
-              // Keep user set so AccessDenied screen can show their email
-              setUser(userData);
-              setAccessDenied(true);
+              const acl = await getAccessControl();
+              if (acl.length > 0) {
+                setUser(userData);
+                setAccessDenied(true);
+              } else {
+                setUser(userData);
+              }
             } else {
               setUser(userData);
             }
-          } catch {
-            if (localStorage.getItem(STORAGE_KEYS.SETUP_COMPLETE) === 'true') {
+          } catch (aclErr) {
+            setUser(userData);
+            if (!isPermissionError(aclErr) && localStorage.getItem(STORAGE_KEYS.SETUP_COMPLETE) === 'true') {
               setError('Could not verify access against the Google Sheet. Check your connection and try again.');
-            } else {
-              setUser(userData);
             }
           }
         }
@@ -88,24 +99,31 @@ export function AuthProvider({ children }) {
     try {
       const userData = await googleSignIn();
       const setupComplete = localStorage.getItem(STORAGE_KEYS.SETUP_COMPLETE) === 'true';
-      const spreadsheetId = localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID);
-      if (setupComplete && spreadsheetId) {
+      if (setupComplete) {
+        const sheetId = await resolveSpreadsheetForUser(userData.email);
+        if (!sheetId) {
+          setUser(userData);
+          return userData;
+        }
         let entry = null;
         try {
           entry = await fetchAccessEntry(userData.email);
         } catch (aclErr) {
           console.warn('ACL check failed during sign-in:', aclErr);
+          if (isPermissionError(aclErr)) {
+            setUser(userData);
+            return userData;
+          }
           setError('Could not verify access against the Google Sheet. Check your connection and try again.');
           throw new Error('Could not verify access. Please try again.');
         }
         if (!entry) {
-          // Keep the Google session alive so the user sees WHO is blocked.
-          // Do NOT sign them out — the AccessDenied screen will show their email
-          // and provide a sign-out button.
-          setUser(userData);
-          setAccessDenied(true);
-          const err = new Error(`ACCESS_DENIED`);
-          throw err;
+          const acl = await getAccessControl().catch(() => []);
+          if (acl.length > 0) {
+            setUser(userData);
+            setAccessDenied(true);
+            throw new Error('ACCESS_DENIED');
+          }
         }
       }
       setUser(userData);

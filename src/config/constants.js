@@ -311,4 +311,5 @@ export const STORAGE_KEYS = {
   LAST_SYNC: 'tpt_last_sync',
   GUEST_PIN_HASH: 'tpt_guest_pin_hash',
   GUEST_SESSION: 'tpt_guest_session',
+  BOUND_EMAIL: 'tpt_bound_email',
 };

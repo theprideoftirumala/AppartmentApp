@@ -14,7 +14,7 @@ import {
   parseApiError, ensureSheetStructure,
 } from '../services/googleSheets';
 import { STORAGE_KEYS, APP_NAME, SHEET_FILE_NAME, DEFAULT_REMINDERS } from '../config/constants';
-import { calculateNextDue, getLastDayOfCurrentMonth, getFirstDayOfNextMonth, normalizeEmail } from '../utils/helpers';
+import { calculateNextDue, getLastDayOfCurrentMonth, getFirstDayOfNextMonth, normalizeEmail, bindSpreadsheet } from '../utils/helpers';
 
 const STEPS = [
   { id: 'welcome', title: 'Welcome', icon: Shield },
@@ -77,7 +77,7 @@ export default function Setup() {
       if (existingSheet) {
         // Reuse the existing spreadsheet — it is the source of truth
         spreadsheetId = existingSheet.id;
-        localStorage.setItem(STORAGE_KEYS.SPREADSHEET_ID, spreadsheetId);
+        bindSpreadsheet(spreadsheetId, user.email);
         foundExisting = true;
 
         // Verify the current user is in the access control list
@@ -100,9 +100,10 @@ export default function Setup() {
         if (!isAuthorized) {
           await addAccessControl({ email: user.email, role: 'Owner', flat: '', addedBy: 'System' });
         }
-        await ensureSheetStructure(spreadsheetId);
+        await ensureSheetStructure(spreadsheetId).catch(() => {});
       } else {
         spreadsheetId = await createSpreadsheet(folders.rootId, { mode: setupMode });
+        bindSpreadsheet(spreadsheetId, user.email);
 
         // Add current user as Owner
         await addAccessControl({ email: user.email, role: 'Owner', flat: '', addedBy: 'System' });

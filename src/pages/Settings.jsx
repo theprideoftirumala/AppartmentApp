@@ -24,7 +24,7 @@ import {
   shareSpreadsheet, shareFolder, setupFolderStructure,
 } from '../services/googleDrive';
 import { DEFAULT_CONFIG, DEFAULT_REMINDERS, FLATS, USER_ROLES, STORAGE_KEYS } from '../config/constants';
-import { formatDate, formatCurrency, isValidEmail, calculateNextDue, getLastDayOfCurrentMonth, getFirstDayOfNextMonth } from '../utils/helpers';
+import { formatDate, formatCurrency, isValidEmail, calculateNextDue, getLastDayOfCurrentMonth, getFirstDayOfNextMonth, bindSpreadsheet } from '../utils/helpers';
 import { InfoBubble } from '../components/common/Tooltip';
 import { hashPin } from '../contexts/AuthContext';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -168,6 +168,7 @@ export default function Settings() {
       setCreatingFresh(true);
       const folders = await setupFolderStructure();
       const result = await archiveAndCreateFresh(folders.rootId, user.email);
+      bindSpreadsheet(result.spreadsheetId, user.email);
       await addAccessControl({ email: user.email, role: 'Owner', flat: '', addedBy: 'System' });
       for (const reminder of DEFAULT_REMINDERS) {
         let nextDue;

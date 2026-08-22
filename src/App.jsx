@@ -14,7 +14,7 @@ import { useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AppProvider, useApp } from './contexts/AppContext';
-import { getAccessControl } from './services/googleSheets';
+import { getAccessControl, resolveSpreadsheetForUser } from './services/googleSheets';
 import { normalizeEmail } from './utils/helpers';
 
 import ProtectedRoute from './components/common/ProtectedRoute';
@@ -37,20 +37,33 @@ import Help from './pages/Help';
 
 function AccessBootstrap() {
   const { user, isGuest } = useAuth();
-  const { setUserRole, isSetupComplete } = useApp();
+  const { setUserRole, isSetupComplete, resetSetup } = useApp();
 
   useEffect(() => {
-    if (!user?.email || isGuest || !isSetupComplete) return;
+    if (!user?.email || isGuest) return;
     let cancelled = false;
-    getAccessControl()
-      .then((acl) => {
+
+    async function syncSheet() {
+      if (!isSetupComplete) return;
+      const sheetId = await resolveSpreadsheetForUser(user.email);
+      if (cancelled) return;
+      if (!sheetId) {
+        resetSetup();
+        return;
+      }
+      try {
+        const acl = await getAccessControl();
         if (cancelled) return;
         const entry = acl.find((u) => normalizeEmail(u.email) === normalizeEmail(user.email) && u.status === 'Active');
         if (entry) setUserRole(entry.role);
-      })
-      .catch(() => {});
+      } catch {
+        /* dashboard will surface a reconnect path */
+      }
+    }
+
+    syncSheet();
     return () => { cancelled = true; };
-  }, [user, isGuest, isSetupComplete, setUserRole]);
+  }, [user, isGuest, isSetupComplete, setUserRole, resetSetup]);
 
   return null;
 }

@@ -14,7 +14,7 @@ import {
 } from '../config/constants';
 import { ensureValidToken } from './googleAuth';
 import { GUIDE_ROWS, SAMPLE_CATALOG_ROWS, buildSampleLiveRows } from '../data/sampleSheetData';
-import { isValidSpreadsheetId } from '../utils/helpers';
+import { isValidSpreadsheetId, bindSpreadsheet } from '../utils/helpers';
 
 async function withAuth(fn) {
   await ensureValidToken();
@@ -234,7 +234,7 @@ export async function createSpreadsheet(folderId, options = {}) {
     }));
     await applyWorkbookPolish(spreadsheetId, sheetMeta);
 
-    localStorage.setItem(STORAGE_KEYS.SPREADSHEET_ID, spreadsheetId);
+    bindSpreadsheet(spreadsheetId);
     return spreadsheetId;
   });
 }
