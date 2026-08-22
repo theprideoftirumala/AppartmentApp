@@ -185,6 +185,12 @@ export default function Dashboard() {
   const categoryGroups = groupExpensesByCategory(currentMonthExpenses);
   const categoryEntries = Object.entries(categoryGroups).sort((a, b) => b[1].total - a[1].total);
   const topCategories = categoryEntries.slice(0, 5);
+  const stillDueThisMonth = currentMonthMaintenance.reduce((s, m) => s + (Number(m.stillDue) || 0), 0);
+  const monthNet = currentMonthCollection - currentMonthExpenseTotal;
+  const remindersDueSoon = upcomingReminders.filter((r) => {
+    const days = daysUntil(r.nextDue);
+    return days <= 7;
+  }).length;
 
   return (
     <div className="main-content">
@@ -330,6 +336,33 @@ export default function Dashboard() {
               <span className="text-success">All collected! 🎉</span>
             )}
           </div>
+        </div>
+      </div>
+
+      <div className="widget-row">
+        <div className="widget-card">
+          <span className="widget-label">Still due this month</span>
+          <strong className="widget-value">{formatCurrency(stillDueThisMonth)}</strong>
+          <span className="widget-hint">{pendingFlats.length} flat(s) pending</span>
+        </div>
+        <div className="widget-card">
+          <span className="widget-label">{currentMonth} surplus / deficit</span>
+          <strong className={`widget-value ${monthNet >= 0 ? 'text-success' : 'text-danger'}`}>
+            {formatCurrency(monthNet)}
+          </strong>
+          <span className="widget-hint">{monthNet >= 0 ? 'Collection minus expenses' : 'Spent more than collected'}</span>
+        </div>
+        <div className="widget-card">
+          <span className="widget-label">Reminders due soon</span>
+          <strong className="widget-value">{remindersDueSoon}</strong>
+          <span className="widget-hint">Due in the next 7 days</span>
+        </div>
+        <div className="widget-card">
+          <span className="widget-label">Last sync</span>
+          <strong className="widget-value widget-value-sm">
+            {lastSync ? new Date(lastSync).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}
+          </strong>
+          <span className="widget-hint">Use refresh if numbers look stale</span>
         </div>
       </div>
 

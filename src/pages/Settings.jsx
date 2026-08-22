@@ -25,6 +25,7 @@ import {
   shareSpreadsheet, shareFolder, removeSharing, setupFolderStructure,
 } from '../services/googleDrive';
 import { DEFAULT_CONFIG, DEFAULT_REMINDERS, FLATS, STORAGE_KEYS } from '../config/constants';
+import { clearAppCachesAndReload } from '../utils/appCache';
 import { DRIVE_ROLE_BY_APP_ROLE, FOUNDING_OWNER_EMAIL, canGrantOwner, canRemoveUser, isFoundingOwner } from '../config/accessPolicy';
 import { formatDate, formatCurrency, isValidEmail, calculateNextDue, getLastDayOfCurrentMonth, getFirstDayOfNextMonth, bindSpreadsheet } from '../utils/helpers';
 import { InfoBubble } from '../components/common/Tooltip';
@@ -358,6 +359,23 @@ export default function Settings() {
               This only changes colors on this browser; it does not change the Google Sheet.
             </p>
             <ThemePicker />
+            <div className="cache-tools mt-6">
+              <h4 className="card-title mb-2">This device</h4>
+              <p className="text-muted text-sm mb-4">
+                If Google sign-in or numbers look stale on the phone, clear the local cache.
+                This reloads the app. It does not delete the Google Sheet.
+              </p>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={async () => {
+                  showToast('Clearing cache…', 'info');
+                  await clearAppCachesAndReload();
+                }}
+              >
+                <Trash2 size={16} /> Clear cache
+              </button>
+            </div>
           </div>
         )}
 

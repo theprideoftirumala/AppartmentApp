@@ -25,6 +25,7 @@ import ErrorBoundary from './components/common/ErrorBoundary';
 import Sidebar from './components/common/Sidebar';
 import BottomNav from './components/common/BottomNav';
 import Toast from './components/common/Toast';
+import SocietyDisclaimer from './components/common/SocietyDisclaimer';
 
 import Login from './pages/Login';
 import Setup from './pages/Setup';
@@ -92,7 +93,10 @@ function AppLayout({ children }) {
   return (
     <div className="app-layout">
       <Sidebar />
-      {children}
+      <div className="app-column">
+        {children}
+        <SocietyDisclaimer />
+      </div>
       <BottomNav />
     </div>
   );

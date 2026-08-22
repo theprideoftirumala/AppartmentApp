@@ -3,14 +3,15 @@
  * Log, view, and manage all apartment expenses
  */
 
-import { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Trash2, ExternalLink, Receipt } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Plus, Search, Trash2, ExternalLink, Receipt, Mic, Square } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
 import { getExpenses, addExpenses, deleteExpense, addAuditLog } from '../services/googleSheets';
 import { uploadReceipt } from '../services/googleDrive';
 import { formatCurrency, formatDate, getCurrentMonthLabel, getCurrentYearMonth, getFiscalMonthOptions } from '../utils/helpers';
-import { EXPENSE_CATEGORIES, PAYMENT_MODES } from '../config/constants';
+import { EXPENSE_CATEGORIES, PAYMENT_MODES, FEATURES } from '../config/constants';
+import { createSpeechRecognizer, parseExpensesFromSpeech, speechSupported } from '../utils/voiceExpense';
 import Modal from '../components/common/Modal';
 import FileUpload from '../components/common/FileUpload';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -259,7 +260,11 @@ function AddExpenseModal({ isOpen, onClose, onSave, saving }) {
   const [month, setMonth] = useState(getCurrentMonthLabel());
   const [lines, setLines] = useState([emptyExpenseLine()]);
   const [files, setFiles] = useState([]);
+  const [listening, setListening] = useState(false);
+  const [voiceHint, setVoiceHint] = useState('');
+  const recognizerRef = useRef(null);
   const monthOptions = getFiscalMonthOptions();
+  const canVoice = FEATURES.VOICE_EXPENSES && speechSupported();
 
   useEffect(() => {
     if (!isOpen) return;
@@ -267,7 +272,40 @@ function AddExpenseModal({ isOpen, onClose, onSave, saving }) {
     setMonth(getCurrentMonthLabel());
     setLines([emptyExpenseLine()]);
     setFiles([]);
+    setListening(false);
+    setVoiceHint('');
   }, [isOpen]);
+
+  const handleVoice = () => {
+    if (listening && recognizerRef.current) {
+      recognizerRef.current.stop();
+      return;
+    }
+    const rec = createSpeechRecognizer();
+    if (!rec) {
+      setVoiceHint('Voice is not available in this browser. Use Chrome or Safari.');
+      return;
+    }
+    recognizerRef.current = rec;
+    rec.onresult = (event) => {
+      const said = event.results?.[0]?.[0]?.transcript || '';
+      const parsed = parseExpensesFromSpeech(said, EXPENSE_CATEGORIES);
+      if (parsed.length) {
+        setLines(parsed);
+        setVoiceHint(`Heard: “${said}”. Check the lines below, then save.`);
+      } else {
+        setVoiceHint(`Heard: “${said}”. Could not fill the form — type the details.`);
+      }
+    };
+    rec.onerror = () => {
+      setListening(false);
+      setVoiceHint('Could not hear that. Please try again or type the expense.');
+    };
+    rec.onend = () => setListening(false);
+    setListening(true);
+    setVoiceHint('Listening… say amount, what it is for, and category. Example: watchman salary 12000 and electricity 2400.');
+    rec.start();
+  };
 
   const updateLine = (index, key, value) => {
     setLines((prev) => prev.map((line, i) => (i === index ? { ...line, [key]: value } : line)));
@@ -297,6 +335,15 @@ function AddExpenseModal({ isOpen, onClose, onSave, saving }) {
         <p className="text-muted text-sm">
           Same date and month for this batch. Add as many lines as you need. One optional receipt is attached to every line.
         </p>
+        {canVoice && (
+          <div className="voice-expense-bar">
+            <button type="button" className={`btn ${listening ? 'btn-danger' : 'btn-secondary'}`} onClick={handleVoice}>
+              {listening ? <Square size={16} /> : <Mic size={16} />}
+              {listening ? 'Listening…' : 'Fill with voice'}
+            </button>
+            {voiceHint && <p className="text-sm text-muted">{voiceHint}</p>}
+          </div>
+        )}
         <div className="form-row">
           <div className="form-group">
             <label className="form-label">Date</label>

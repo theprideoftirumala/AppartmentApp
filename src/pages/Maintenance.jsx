@@ -1,20 +1,19 @@
 /**
  * Maintenance Page
  * Track monthly payment collection for all 10 flats
- * Also records misc funds contributed by flat owners
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { Building2, Check, Clock, AlertCircle, Plus, Trash2, IndianRupee } from 'lucide-react';
+import { Building2, Plus } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
 import {
   getMaintenanceRecords, upsertMaintenancePayment, initializeMonthMaintenance,
-  getFlats, getConfiguration, getMiscFunds, addMiscFund, deleteMiscFund,
+  getFlats, getConfiguration,
   addAuditLog, parseApiError,
 } from '../services/googleSheets';
-import { formatCurrency, formatDate, getCurrentMonthLabel, getFiscalMonthOptions } from '../utils/helpers';
-import { PAYMENT_MODES, MAINTENANCE_STATUS, MAINTENANCE_MIN_DATE, FLATS } from '../config/constants';
+import { formatCurrency, getCurrentMonthLabel, getFiscalMonthOptions } from '../utils/helpers';
+import { PAYMENT_MODES, MAINTENANCE_STATUS, MAINTENANCE_MIN_DATE } from '../config/constants';
 import Modal from '../components/common/Modal';
 import StatusBadge from '../components/common/StatusBadge';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -26,11 +25,9 @@ export default function Maintenance() {
   const [records, setRecords] = useState([]);
   const [flats, setFlats] = useState([]);
   const [config, setConfig] = useState({});
-  const [miscFunds, setMiscFunds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthLabel());
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [showMiscModal, setShowMiscModal] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
   const [saving, setSaving] = useState(false);
   const monthOptions = getFiscalMonthOptions();
@@ -38,16 +35,14 @@ export default function Maintenance() {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const [maintenanceData, flatData, configData, miscData] = await Promise.all([
+      const [maintenanceData, flatData, configData] = await Promise.all([
         getMaintenanceRecords(selectedMonth),
         getFlats(),
         getConfiguration(),
-        getMiscFunds(selectedMonth).catch(() => []),
       ]);
       setRecords(maintenanceData);
       setFlats(flatData);
       setConfig(configData);
-      setMiscFunds(miscData);
     } catch (err) {
       showToast(parseApiError(err), 'error');
       console.error(err);
@@ -77,7 +72,7 @@ export default function Maintenance() {
   const handleSavePayment = async (formData) => {
     try {
       setSaving(true);
-      await upsertMaintenancePayment(selectedMonth, formData.flat, formData);
+      await upsertMaintenancePayment(selectedMonth, formData.flat, { ...formData, lateFee: 0 });
       await addAuditLog(user.email, 'PAYMENT', `Recorded payment for flat ${formData.flat} — ${selectedMonth}: ₹${formData.amountPaid}`);
       showToast(`Payment recorded for flat ${formData.flat}`, 'success');
       setShowPaymentModal(false);
@@ -90,46 +85,6 @@ export default function Maintenance() {
     }
   };
 
-  const handleAddMiscFund = async (formData) => {
-    try {
-      setSaving(true);
-
-      // Duplicate check: same flat + amount + date
-      const duplicate = miscFunds.find(f =>
-        f.flat === formData.flat &&
-        Number(f.amount) === Number(formData.amount) &&
-        f.date === formData.date
-      );
-      if (duplicate) {
-        showToast(`Duplicate: Flat ${formData.flat} already has a ₹${formData.amount} misc fund entry on ${formData.date}.`, 'error');
-        setSaving(false);
-        return;
-      }
-
-      await addMiscFund({ ...formData, collectedBy: user?.name || user?.email || '' });
-      await addAuditLog(user.email, 'ADD_MISC_FUND', `Flat ${formData.flat}: ₹${formData.amount} — ${formData.description}`);
-      showToast(`Misc fund recorded for flat ${formData.flat}`, 'success');
-      setShowMiscModal(false);
-      fetchData();
-    } catch (err) {
-      showToast(parseApiError(err) || 'Failed to record misc fund', 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDeleteMiscFund = async (id, flat) => {
-    if (!confirm(`Delete misc fund entry for flat ${flat}?`)) return;
-    try {
-      await deleteMiscFund(id);
-      await addAuditLog(user.email, 'DELETE_MISC_FUND', `Deleted misc fund ${id}`);
-      showToast('Misc fund deleted', 'success');
-      fetchData();
-    } catch (err) {
-      showToast(parseApiError(err) || 'Failed to delete', 'error');
-    }
-  };
-
   const openPaymentModal = (record = null) => {
     setEditingRecord(record);
     setShowPaymentModal(true);
@@ -138,7 +93,6 @@ export default function Maintenance() {
   const paidCount = records.filter(r => r.status === 'PAID').length;
   const totalDue = records.reduce((s, r) => s + r.amountDue, 0);
   const totalPaid = records.reduce((s, r) => s + r.amountPaid, 0);
-  const totalMisc = miscFunds.reduce((s, f) => s + f.amount, 0);
 
   return (
     <div className="main-content">
@@ -161,15 +115,9 @@ export default function Maintenance() {
             ))}
           </select>
           {isOwner !== false && (
-            <>
-              <button className="btn btn-primary btn-sm" onClick={() => openPaymentModal()}>
-                <Plus size={16} /> Record Payment
-              </button>
-              {/* Misc Fund button disabled — feature hidden per configuration
-              <button className="btn btn-secondary btn-sm" onClick={() => setShowMiscModal(true)}>
-                <IndianRupee size={16} /> Misc Fund
-              </button> */}
-            </>
+            <button className="btn btn-primary btn-sm" onClick={() => openPaymentModal()}>
+              <Plus size={16} /> Record Payment
+            </button>
           )}
         </div>
       </div>
@@ -203,12 +151,6 @@ export default function Maintenance() {
               <span className="maintenance-stat-label">Progress</span>
               <span className="maintenance-stat-value">{paidCount}/{records.length} flats</span>
             </div>
-            {totalMisc > 0 && false /* Misc Funds section disabled */ && (
-              <div className="maintenance-stat">
-                <span className="maintenance-stat-label">Misc Funds</span>
-                <span className="maintenance-stat-value text-info">{formatCurrency(totalMisc)}</span>
-              </div>
-            )}
           </div>
 
           {/* Maintenance Table */}
@@ -278,15 +220,6 @@ export default function Maintenance() {
         saving={saving}
       />
 
-      {/* Misc Fund Modal */}
-      <MiscFundModal
-        isOpen={showMiscModal}
-        onClose={() => setShowMiscModal(false)}
-        onSave={handleAddMiscFund}
-        month={selectedMonth}
-        flats={flats}
-        saving={saving}
-      />
     </div>
   );
 }
@@ -402,17 +335,11 @@ function PaymentModal({ isOpen, onClose, onSave, record, config, flats, month, s
           <input type="text" className="form-input" value={formData.upiRef} onChange={e => update('upiRef', e.target.value)} placeholder="Optional" />
         </div>
 
-        <div className="form-row">
-          <div className="form-group">
-            <label className="form-label">Status</label>
-            <select className="form-select" value={formData.status} onChange={e => update('status', e.target.value)}>
-              {Object.values(MAINTENANCE_STATUS).map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-          <div className="form-group">
-            <label className="form-label">Late Fee (₹)</label>
-            <input type="number" className="form-input" value={formData.lateFee} onChange={e => update('lateFee', Number(e.target.value))} min="0" />
-          </div>
+        <div className="form-group">
+          <label className="form-label">Status</label>
+          <select className="form-select" value={formData.status} onChange={e => update('status', e.target.value)}>
+            {Object.values(MAINTENANCE_STATUS).map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
         </div>
 
         <div className="form-group">
@@ -431,100 +358,4 @@ function PaymentModal({ isOpen, onClose, onSave, record, config, flats, month, s
   );
 }
 
-function MiscFundModal({ isOpen, onClose, onSave, month, flats, saving }) {
-  const today = new Date().toISOString().split('T')[0];
-  const [formData, setFormData] = useState({
-    flat: '',
-    amount: '',
-    description: '',
-    date: today,
-    month,
-    paymentMode: 'UPI',
-    remarks: '',
-  });
-  const [dateError, setDateError] = useState('');
-
-  useEffect(() => {
-    setFormData(prev => ({ ...prev, date: today, month, flat: '', amount: '', description: '' }));
-    setDateError('');
-  }, [isOpen, month]);
-
-  const update = (key, value) => {
-    setFormData(prev => ({ ...prev, [key]: value }));
-    if (key === 'date') setDateError('');
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!formData.flat || !formData.amount || !formData.description) return;
-    if (formData.date < MAINTENANCE_MIN_DATE) {
-      setDateError(`Date cannot be before ${MAINTENANCE_MIN_DATE}. Operations start from September 2026.`);
-      return;
-    }
-    setDateError('');
-    onSave({ ...formData, amount: Number(formData.amount) });
-  };
-
-  return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Record Misc Fund from Flat Owner">
-      <form onSubmit={handleSubmit} className="form-grid">
-        <div className="form-row">
-          <div className="form-group">
-            <label className="form-label">Flat *</label>
-            <select className="form-select" value={formData.flat} onChange={e => update('flat', e.target.value)} required>
-              <option value="">Select Flat</option>
-              {flats.map(f => (
-                <option key={f.flat} value={f.flat}>
-                  {f.flat}{f.ownerName ? ` — ${f.ownerName}` : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="form-group">
-            <label className="form-label">Amount (₹) *</label>
-            <input type="number" className="form-input" value={formData.amount} onChange={e => update('amount', e.target.value)} placeholder="0" min="1" required />
-          </div>
-        </div>
-
-        <div className="form-group">
-          <label className="form-label">Description *</label>
-          <input type="text" className="form-input" value={formData.description} onChange={e => update('description', e.target.value)} placeholder="e.g., Annual festival contribution, repair fund..." required />
-        </div>
-
-        <div className="form-row">
-          <div className="form-group">
-            <label className="form-label">Date *</label>
-            <input
-              type="date"
-              className={`form-input ${dateError ? 'input-error' : ''}`}
-              value={formData.date}
-              min={MAINTENANCE_MIN_DATE}
-              onChange={e => update('date', e.target.value)}
-              required
-            />
-            {dateError && <p className="form-error-text">{dateError}</p>}
-          </div>
-          <div className="form-group">
-            <label className="form-label">Payment Mode</label>
-            <select className="form-select" value={formData.paymentMode} onChange={e => update('paymentMode', e.target.value)}>
-              {PAYMENT_MODES.map(m => <option key={m} value={m}>{m}</option>)}
-            </select>
-          </div>
-        </div>
-
-        <div className="form-group">
-          <label className="form-label">Remarks</label>
-          <input type="text" className="form-input" value={formData.remarks} onChange={e => update('remarks', e.target.value)} placeholder="Optional notes" />
-        </div>
-
-        <div className="form-actions">
-          <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-          <button type="submit" className="btn btn-primary" disabled={saving}>
-            {saving ? 'Saving...' : 'Record Misc Fund'}
-          </button>
-        </div>
-      </form>
-    </Modal>
-  );
-}
 

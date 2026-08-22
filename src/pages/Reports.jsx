@@ -12,8 +12,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import {
-  Download, RefreshCw, Send, Share2, FileText,
-  IndianRupee, Receipt, Activity, Shield, Eye, Users,
+  Download, RefreshCw, Send, FileText,
+  IndianRupee, Receipt, Activity, Shield, Users,
   Loader, CalendarDays, Mail
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
@@ -28,6 +28,7 @@ import { formatCurrency, formatDate, getCurrentMonthLabel, getFiscalMonthOptions
 import StatusBadge from '../components/common/StatusBadge';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Navbar from '../components/common/Navbar';
+import { FEATURES } from '../config/constants';
 
 export default function Reports() {
   const { showToast } = useApp();
@@ -57,7 +58,7 @@ export default function Reports() {
         getWatchmanDetails(),
         getAuditLogForMonth(selectedMonth).catch(() => []),
         getReminders().catch(() => []),
-        getMiscFunds(selectedMonth).catch(() => []),
+        FEATURES.MISC_FUNDS ? getMiscFunds(selectedMonth).catch(() => []) : Promise.resolve([]),
       ]);
 
       const totalCollection = maintenance.reduce((s, r) => s + r.amountPaid, 0);
@@ -156,7 +157,7 @@ export default function Reports() {
       getWatchmanDetails(),
       getAuditLogForMonth(month).catch(() => []),
       getReminders().catch(() => []),
-      getMiscFunds(month).catch(() => []),
+      FEATURES.MISC_FUNDS ? getMiscFunds(month).catch(() => []) : Promise.resolve([]),
     ]);
     const totalCollection = maintenance.reduce((s, r) => s + r.amountPaid, 0);
     const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
@@ -371,7 +372,7 @@ export default function Reports() {
                       {reportData.maintenance.filter(m => m.status === 'PAID').length}/{reportData.maintenance.length} flats paid
                     </span>
                   </div>
-                  {reportData.totalMiscFunds > 0 && (
+                  {FEATURES.MISC_FUNDS && reportData.totalMiscFunds > 0 && (
                     <div className="report-summary-card report-surplus">
                       <span className="report-summary-label">Misc Funds</span>
                       <span className="report-summary-value">{formatCurrency(reportData.totalMiscFunds)}</span>
@@ -464,8 +465,8 @@ export default function Reports() {
               </div>
             )}
 
-            {/* ─── MISC FUNDS ──────────────────────────────────── */}
-            {activeSection === 'miscfunds' && (
+            {/* ─── MISC FUNDS (removed from the app) ───────────── */}
+            {FEATURES.MISC_FUNDS && activeSection === 'miscfunds' && (
               <div className="card">
                 <h3 className="card-title mb-4">Misc Funds — {reportData.month}</h3>
                 <p className="text-muted text-sm mb-4">Ad-hoc contributions from flat owners beyond regular maintenance.</p>

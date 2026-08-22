@@ -49,8 +49,17 @@ export default defineConfig(() => {
           ],
         },
         workbox: {
+          cacheId: 'tpt-v16',
+          cleanupOutdatedCaches: true,
+          skipWaiting: true,
+          clientsClaim: true,
           globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2,ttf}'],
+          navigateFallbackDenylist: [/^https:\/\/(apis\.google\.com|accounts\.google\.com|.*\.googleapis\.com)/],
           runtimeCaching: [
+            {
+              urlPattern: /^https:\/\/(apis\.google\.com|accounts\.google\.com|.*\.googleapis\.com|content\.googleapis\.com|www\.gstatic\.com)\//i,
+              handler: 'NetworkOnly',
+            },
             {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
               handler: 'CacheFirst',

@@ -6,8 +6,7 @@
 import { useState } from 'react';
 import {
     HelpCircle, BookOpen, Workflow, AlertCircle, ChevronDown, ChevronRight,
-    Building2, Receipt, FileBarChart, Bell, Phone, Settings, IndianRupee,
-    Shield, Download, MessageCircle, Users
+    FileBarChart, Bell, Phone, Shield
 } from 'lucide-react';
 import Navbar from '../components/common/Navbar';
 import { FOUNDING_OWNER_EMAIL, maskEmail } from '../config/accessPolicy';
@@ -68,9 +67,10 @@ Select the correct category (Watchman Salary, Electricity, Lift Maintenance, etc
 Upload a bill/receipt photo if available — it gets stored in Google Drive and is attached to every line in that batch.`,
             },
             {
-                heading: '4. Record Misc Funds',
-                text: `If a flat owner contributes an extra amount (beyond regular maintenance), go to Maintenance → Misc Fund.
-This records the contribution separately and includes it in the monthly balance.`,
+                heading: '4. Add expenses by voice (optional)',
+                text: `On Expenses → Add expenses, tap Fill with voice (Chrome or Safari).
+Say the amount and what it is for, for example: "watchman salary 12000 and electricity 2400".
+Review every line, then tap Save. Voice only fills the form — it does not submit by itself.`,
             },
             {
                 heading: '5. End of Month — Generate Report',
@@ -127,7 +127,8 @@ This takes effect from the next time you initialize a new month.`,
             {
                 heading: 'Lost access / new device',
                 text: `Sign in with Google. Residents are connected to the shared TPT-MaintenanceTracker (not a new file).
-Only ${OWNER_EMAIL_MASKED} sees Setup and may create the workbook. Others who are not on Access Control see Access Denied.`,
+Only ${OWNER_EMAIL_MASKED} sees Setup and may create the workbook. Others who are not on Access Control see Access Denied.
+If the phone shows a Google API error, open Chrome or Safari (not WhatsApp/Instagram), allow pop-ups, then Settings → Appearance → Clear cache.`,
             },
         ],
     },
@@ -138,7 +139,7 @@ Only ${OWNER_EMAIL_MASKED} sees Setup and may create the workbook. Others who ar
         content: [
             {
                 heading: 'Sheet tabs and their purpose',
-                text: `Configuration — App settings (monthly amount, fiscal year, roles)\nFlats — Owner details for all 10 flats\nMaintenance — Monthly payment records\nExpenses — All expense transactions\nMisc Funds — Extra contributions from flat owners\nMonthly Summary — Aggregated monthly financials\nReminders — Scheduled maintenance tasks\nAccess Control — Authorized user list\nAudit Log — Full history of all changes\nWater Tanker Log — Water tanker order history\nWatchman Details — Security guard info`,
+                text: `Configuration — App settings (monthly amount, fiscal year, roles)\nFlats — Owner details for all 10 flats\nMaintenance — Monthly payment records\nExpenses — All expense transactions\nMonthly Summary — Aggregated monthly financials\nReminders — Scheduled maintenance tasks\nAccess Control — Authorized user list\nAudit Log — Full history of all changes\nWater Tanker Log — Water tanker order history\nWatchman Details — Security guard info`,
             },
             {
                 heading: 'Remaining / Deficit in Google Sheet',

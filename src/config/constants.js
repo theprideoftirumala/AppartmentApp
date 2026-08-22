@@ -27,7 +27,7 @@ export const DISCOVERY_DOCS = [
 // ─── Apartment Configuration ────────────────────────────────────
 export const APP_NAME = 'The Pride of Tirumala';
 export const APP_SHORT_NAME = 'TPT Tracker';
-export const APP_VERSION = '1.5.0';
+export const APP_VERSION = '1.6.0';
 
 /**
  * Bump this when GOOGLE_SCOPES change so existing sessions re-consent.
@@ -36,6 +36,22 @@ export const APP_VERSION = '1.5.0';
 export const OAUTH_SCOPE_VERSION = '2';
 
 export const FLATS = ['101', '102', '201', '202', '301', '302', '401', '402', '501', '502'];
+
+/**
+ * Turn features on or off without hunting through pages.
+ * Late fee and Misc Funds stay in the Google Sheet for old rows, but the app no longer collects them.
+ */
+export const FEATURES = {
+  LATE_FEE: false,
+  MISC_FUNDS: false,
+  VOICE_EXPENSES: true,
+};
+
+/**
+ * Shown at the bottom of the website and on every generated PDF.
+ */
+export const SOCIETY_DISCLAIMER =
+  'We are not responsible for anything. We are only maintaining this year’s accounts on behalf of the society. Please do not complain about delays — we also have our own work. We will try to do our best at our convenience. Please cooperate. We will try to help as soon as possible with the help of all owners.';
 
 export const DEFAULT_CONFIG = {
   APARTMENT_NAME: 'The Pride of Tirumala',

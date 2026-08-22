@@ -39,6 +39,24 @@ let gapiInited = false;
 let gisInited = false;
 let onAuthChangeCallback = null;
 
+export function isMobileBrowser() {
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
+}
+
+export function friendlyAuthError(err) {
+  const s = String(err?.message || err || '');
+  if (/popup_closed|popup_blocked|access_denied|Failed to open/i.test(s)) {
+    return 'Google sign-in was blocked. On a phone use Chrome or Safari (not WhatsApp/Instagram in-app browser), allow pop-ups for this site, then tap Sign in again.';
+  }
+  if (/idpiframe|Tracking|Timed out|network|Failed to fetch|Load failed/i.test(s)) {
+    return 'Google could not start on this device. Open this site in Chrome or Safari, turn off strict tracking prevention for this site, clear cache from Settings, and try again.';
+  }
+  if (/Not authenticated|Session expired/i.test(s)) {
+    return 'Session expired. Please sign in again.';
+  }
+  return s || 'Google sign-in failed. Please try again.';
+}
+
 /**
  * Load a script tag dynamically.
  * If the tag already exists, wait for the global object rather than resolving instantly.
@@ -83,7 +101,8 @@ function withTimeout(promise, ms, message) {
  * Initialize the GAPI client library (skip if already done)
  */
 async function initGapiClient() {
-  if (gapiInited) return;
+  if (gapiInited && window.gapi?.client?.sheets) return;
+  gapiInited = false;
   await withTimeout(
     new Promise((resolve, reject) => {
       try {
@@ -109,9 +128,12 @@ async function initGapiClient() {
  * Initialize the GIS token client
  */
 function initGisClient(callback) {
-  tokenClient = window.google.accounts.oauth2.initTokenClient({
+    tokenClient = window.google.accounts.oauth2.initTokenClient({
     client_id: GOOGLE_CLIENT_ID,
     scope: GOOGLE_SCOPES,
+    error_callback: (err) => {
+      console.error('GIS error:', err);
+    },
     callback: (tokenResponse) => {
       if (tokenResponse.error) {
         console.error('Auth error:', tokenResponse.error);
@@ -186,10 +208,19 @@ export async function initGoogleAuth(onAuthChange) {
       clearUserSession();
     }
 
+    const restoreToken = () => {
+      const current = getCurrentUser();
+      if (current?.accessToken && window.gapi?.client) {
+        window.gapi.client.setToken({ access_token: current.accessToken });
+      }
+    };
+    document.addEventListener('visibilitychange', restoreToken);
+    window.addEventListener('pageshow', restoreToken);
+
     return null;
   } catch (error) {
     console.error('Failed to initialize Google Auth:', error);
-    throw error;
+    throw new Error(friendlyAuthError(error));
   }
 }
 
@@ -206,7 +237,7 @@ export function signIn() {
     // Override the callback for this specific sign-in attempt
     tokenClient.callback = (tokenResponse) => {
       if (tokenResponse.error) {
-        reject(new Error(tokenResponse.error));
+        reject(new Error(friendlyAuthError(tokenResponse.error)));
         return;
       }
       localStorage.setItem(STORAGE_KEYS.OAUTH_SCOPE_VERSION, OAUTH_SCOPE_VERSION);
@@ -226,7 +257,11 @@ export function signIn() {
     // Re-consent when scopes change (e.g. drive.metadata.readonly) so shared files are listable.
     const grantedVersion = localStorage.getItem(STORAGE_KEYS.OAUTH_SCOPE_VERSION);
     const needsConsent = window.gapi.client.getToken() === null || grantedVersion !== OAUTH_SCOPE_VERSION;
-    tokenClient.requestAccessToken({ prompt: needsConsent ? 'consent' : '' });
+    try {
+      tokenClient.requestAccessToken({ prompt: needsConsent || isMobileBrowser() ? 'consent' : '' });
+    } catch (err) {
+      reject(new Error(friendlyAuthError(err)));
+    }
   });
 }
 
@@ -301,10 +336,12 @@ export async function ensureValidToken() {
 
   // If token expires in less than 5 minutes, refresh
   if (user.expiresAt - Date.now() < 300000) {
+    if (isMobileBrowser()) {
+      throw new Error('Session expired. Please sign in again. On a phone, tap Sign in with Google — silent refresh often fails in mobile browsers.');
+    }
     try {
       await refreshToken();
     } catch {
-      // If refresh fails silently, we still might have a valid token
       const refreshedUser = getCurrentUser();
       if (!refreshedUser) throw new Error('Session expired. Please sign in again.');
     }

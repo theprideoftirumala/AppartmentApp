@@ -12,6 +12,7 @@
 
 import jsPDF from 'jspdf';
 import { maskEmail } from '../config/accessPolicy';
+import { FEATURES, SOCIETY_DISCLAIMER } from '../config/constants';
 import { maskIdNumber, maskPhone } from '../utils/helpers';
 
 const PDF_FONT = 'NotoSans';
@@ -187,10 +188,10 @@ export async function generateMonthlyReport(reportData) {
   y = 58;
 
   // ─── Financial Summary Cards ───────────────────────────
-  const cardWidth = contentWidth / 4 - 3;
+  const cardWidth = contentWidth / summaryCards.length - 3;
   const summaryCards = [
     { label: 'Total Collection', value: formatCurrency(totalCollection), color: [40, 167, 69], bg: [235, 250, 240] },
-    { label: 'Misc Funds', value: formatCurrency(totalMiscFunds || 0), color: [50, 80, 200], bg: [230, 240, 255] },
+    ...(FEATURES.MISC_FUNDS ? [{ label: 'Misc Funds', value: formatCurrency(totalMiscFunds || 0), color: [50, 80, 200], bg: [230, 240, 255] }] : []),
     { label: 'Total Expenses', value: formatCurrency(totalExpenses), color: [220, 53, 69], bg: [255, 235, 238] },
     { label: 'Net Balance', value: formatCurrency(netBalance), color: netBalance >= 0 ? [40, 167, 69] : [220, 53, 69], bg: netBalance >= 0 ? [235, 250, 240] : [255, 235, 238] },
   ];
@@ -308,7 +309,7 @@ export async function generateMonthlyReport(reportData) {
   // ═══════════════════════════════════════════════════════
   // SECTION 2: MISC FUNDS
   // ═══════════════════════════════════════════════════════
-  if (miscFunds && miscFunds.length > 0) {
+  if (FEATURES.MISC_FUNDS && miscFunds && miscFunds.length > 0) {
     y = checkPageBreak(doc, y, margin, 30);
     y = drawSectionHeader(doc, '2. MISC FUNDS FROM FLAT OWNERS', y, pageWidth, margin);
     y += 2;
@@ -624,6 +625,17 @@ export async function generateMonthlyReport(reportData) {
   doc.text(noteLines1, margin + 4, y + 12);
   doc.text(noteLines2, margin + 4, y + 12 + (noteLines1.length * 4));
   y += 28;
+
+  y = checkPageBreak(doc, y, margin, 28);
+  const disclaimerLines = doc.splitTextToSize(SOCIETY_DISCLAIMER, contentWidth - 8);
+  const discH = 10 + disclaimerLines.length * 4;
+  doc.setFillColor(248, 248, 248);
+  doc.roundedRect(margin, y, contentWidth, discH, 2, 2, 'F');
+  doc.setFontSize(7);
+  pdfFont(doc, 'normal');
+  doc.setTextColor(90, 90, 90);
+  doc.text(disclaimerLines, margin + 4, y + 6);
+  y += discH + 4;
 
   // ─── Final Footer on all pages ─────────────────────────
   const totalPages = doc.internal.getNumberOfPages();

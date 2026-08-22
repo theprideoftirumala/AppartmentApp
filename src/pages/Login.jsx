@@ -7,8 +7,10 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Building2, Lock, BarChart3, KeyRound, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { friendlyAuthError } from '../services/googleAuth';
 import { APP_NAME } from '../config/constants';
 import ThemePicker from '../components/common/ThemePicker';
+import SocietyDisclaimer from '../components/common/SocietyDisclaimer';
 
 export default function Login() {
   const { signIn, loginAsGuest, loading: authLoading, error: authError } = useAuth();
@@ -28,7 +30,7 @@ export default function Login() {
       navigate('/');
     } catch (err) {
       if (!err.message?.startsWith('ACCESS_DENIED')) {
-        setError('Sign in failed. Please try again.');
+        setError(friendlyAuthError(err));
       }
       console.error('Sign in error:', err);
     } finally {
@@ -134,8 +136,10 @@ export default function Login() {
 
         <p className="login-note">
           Members: sign in with Google (must be added by Owner).<br />
-          Residents: use the Guest PIN shared by the Treasurer.
+          Residents: use the Guest PIN shared by the Treasurer.<br />
+          Phone: use Chrome or Safari, not the WhatsApp/Instagram browser. Allow pop-ups.
         </p>
+        <SocietyDisclaimer compact />
       </div>
     </div>
   );

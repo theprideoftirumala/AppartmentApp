@@ -144,7 +144,14 @@ export function parseApiError(error) {
       default: return message || 'An unexpected Google API error occurred.';
     }
   }
-  return error?.message || 'An unexpected error occurred. Please try again.';
+  const raw = String(error?.message || '');
+  if (/popup_closed|popup_blocked|access_denied/i.test(raw)) {
+    return 'Google sign-in was blocked. On a phone use Chrome or Safari, allow pop-ups, then sign in again.';
+  }
+  if (/Failed to fetch|NetworkError|Load failed|Timed out/i.test(raw)) {
+    return 'Could not reach Google. Check mobile data/Wi‑Fi, then Settings → Appearance → Clear cache, and retry. Avoid in-app browsers (WhatsApp/Instagram).';
+  }
+  return raw || 'An unexpected error occurred. Please try again.';
 }
 
 export function isPermissionError(error) {
