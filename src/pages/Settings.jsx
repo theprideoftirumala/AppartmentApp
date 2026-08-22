@@ -17,6 +17,7 @@ import {
   getFlats, updateFlat, addAuditLog,
   getWatchmanDetails, addWatchmanDetail, updateWatchmanDetail, deleteWatchmanDetail,
   archiveAndCreateFresh, addReminder, ensureFoundingOwnerEntry, seedSampleLiveData,
+  ensureSheetStructure,
 } from '../services/googleSheets';
 import {
   createBackup, listBackups,
@@ -50,6 +51,7 @@ export default function Settings() {
   const [backingUp, setBackingUp] = useState(false);
   const [creatingFresh, setCreatingFresh] = useState(false);
   const [seedingSample, setSeedingSample] = useState(false);
+  const [refreshingLayout, setRefreshingLayout] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -197,6 +199,20 @@ export default function Settings() {
       showToast(err.message || 'Failed to load sample data', 'error');
     } finally {
       setSeedingSample(false);
+    }
+  };
+
+  const handleRefreshLayout = async () => {
+    try {
+      setRefreshingLayout(true);
+      await ensureSheetStructure();
+      sessionStorage.setItem('tpt_sheet_layout_v14', '1');
+      await addAuditLog(user.email, 'UPGRADE_SHEET', 'Refreshed Guide, Pending Dues, and live formulas');
+      showToast('Sheet updated: Pending Dues tab, Still Due formulas, and Monthly Summary formulas.', 'success');
+    } catch (err) {
+      showToast(err.message || 'Could not update the sheet layout', 'error');
+    } finally {
+      setRefreshingLayout(false);
     }
   };
 
@@ -589,6 +605,26 @@ export default function Settings() {
                 No backups yet. Create your first backup to safeguard your data.
               </p>
             )}
+          </div>
+        )}
+
+        {activeTab === 'backups' && isOwner && (
+          <div className="card mt-4">
+            <h3 className="card-title mb-2">Refresh sheet layout</h3>
+            <p className="text-muted text-sm mb-4">
+              Updates the existing workbook so a treasurer can use it without the app:
+              a Pending Dues tab (type a month in the yellow cell), Still Due formulas
+              on Maintenance, and live surplus/deficit formulas on Monthly Summary.
+              Does not delete your data.
+            </p>
+            <button
+              className="btn btn-secondary"
+              onClick={handleRefreshLayout}
+              disabled={refreshingLayout}
+            >
+              {refreshingLayout ? <RefreshCw size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+              {refreshingLayout ? 'Updating sheet…' : 'Refresh sheet layout'}
+            </button>
           </div>
         )}
 

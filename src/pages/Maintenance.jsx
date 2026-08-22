@@ -220,6 +220,7 @@ export default function Maintenance() {
                   <th>Owner</th>
                   <th>Due</th>
                   <th>Paid</th>
+                  <th>Still due</th>
                   <th>Date</th>
                   <th>Mode</th>
                   <th>Status</th>
@@ -238,6 +239,9 @@ export default function Maintenance() {
                         <td>{formatCurrency(record.amountDue)}</td>
                         <td className={record.amountPaid > 0 ? 'text-success font-medium' : ''}>
                           {formatCurrency(record.amountPaid)}
+                        </td>
+                        <td className={record.stillDue > 0 ? 'text-warning font-medium' : 'text-muted'}>
+                          {formatCurrency(record.stillDue ?? Math.max(0, record.amountDue - record.amountPaid))}
                         </td>
                         <td className="text-muted">{record.paymentDate || '-'}</td>
                         <td>{record.paymentMode || '-'}</td>

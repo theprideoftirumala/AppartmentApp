@@ -18,7 +18,7 @@ export default defineConfig(() => {
       react(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['icons/favicon.svg', 'icons/apple-touch-icon-180x180.png'],
+        includeAssets: ['icons/favicon.svg', 'icons/apple-touch-icon-180x180.png', 'fonts/NotoSans-Regular.ttf'],
         manifest: {
           name: 'The Pride of Tirumala — Expense Tracker',
           short_name: 'TPT Tracker',
@@ -49,7 +49,7 @@ export default defineConfig(() => {
           ],
         },
         workbox: {
-          globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
+          globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2,ttf}'],
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

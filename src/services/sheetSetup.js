@@ -15,7 +15,13 @@ import {
 import { ensureValidToken, getCurrentUser } from './googleAuth';
 import { isFoundingOwner } from '../config/accessPolicy';
 import { GUIDE_ROWS, SAMPLE_CATALOG_ROWS, buildSampleLiveRows } from '../data/sampleSheetData';
-import { isValidSpreadsheetId, bindSpreadsheet } from '../utils/helpers';
+import { isValidSpreadsheetId, bindSpreadsheet, getCurrentMonthLabel } from '../utils/helpers';
+import {
+  maintenanceStillDueFormula,
+  monthlySummaryFormulaRow,
+  pendingDuesStaticRows,
+  pendingDuesFormulaCells,
+} from './sheetFormulas';
 
 async function withAuth(fn) {
   await ensureValidToken();
@@ -48,6 +54,170 @@ async function writeValues(spreadsheetId, data) {
       data,
     },
   });
+}
+
+/** Write formula cells. Must use USER_ENTERED so Sheets evaluates them. */
+async function writeFormulas(spreadsheetId, data) {
+  if (!data.length) return;
+  await window.gapi.client.sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId,
+    resource: {
+      valueInputOption: 'USER_ENTERED',
+      data,
+    },
+  });
+}
+
+/**
+ * Fill Maintenance column K with Still Due formulas for every used row.
+ */
+export async function applyMaintenanceStillDueFormulas(spreadsheetId) {
+  const header = await window.gapi.client.sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${SHEET_NAMES.MAINTENANCE}'!A1:K1`,
+  });
+  const headers = header.result.values?.[0] || [];
+  if (!headers[10]) {
+    await writeValues(spreadsheetId, [{
+      range: `'${SHEET_NAMES.MAINTENANCE}'!K1`,
+      values: [[SHEET_HEADERS[SHEET_NAMES.MAINTENANCE][10]]],
+    }]);
+  }
+
+  const response = await window.gapi.client.sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${SHEET_NAMES.MAINTENANCE}'!A2:A5000`,
+  });
+  const n = (response.result.values || []).length;
+  if (n === 0) return;
+  const values = Array.from({ length: n }, (_, i) => [maintenanceStillDueFormula(i + 2)]);
+  await writeFormulas(spreadsheetId, [{
+    range: `'${SHEET_NAMES.MAINTENANCE}'!K2:K${n + 1}`,
+    values,
+  }]);
+}
+
+/**
+ * Ensure each month has a summary row and live formulas in B–I.
+ */
+export async function applyMonthlySummaryFormulas(spreadsheetId, extraMonths = []) {
+  const response = await window.gapi.client.sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${SHEET_NAMES.MONTHLY_SUMMARY}'!A1:I100`,
+  });
+  const all = response.result.values || [];
+  if (!all[0]?.[0]) {
+    await writeValues(spreadsheetId, [{
+      range: `'${SHEET_NAMES.MONTHLY_SUMMARY}'!A1`,
+      values: [SHEET_HEADERS[SHEET_NAMES.MONTHLY_SUMMARY]],
+    }]);
+  }
+
+  const dataRows = all.slice(1);
+  const months = dataRows.map((r) => r[0] || '');
+  const toAdd = extraMonths.filter((m) => m && !months.includes(m));
+  const appendValues = toAdd.map((m) => [m]);
+  if (appendValues.length) {
+    await writeValues(spreadsheetId, [{
+      range: `'${SHEET_NAMES.MONTHLY_SUMMARY}'!A${dataRows.length + 2}`,
+      values: appendValues,
+    }]);
+    appendValues.forEach((row) => dataRows.push(row));
+  }
+
+  const formulaUpdates = [];
+  dataRows.forEach((row, i) => {
+    if (!row[0]) return;
+    const sheetRow = i + 2;
+    formulaUpdates.push({
+      range: `'${SHEET_NAMES.MONTHLY_SUMMARY}'!B${sheetRow}:I${sheetRow}`,
+      values: [monthlySummaryFormulaRow(sheetRow)],
+    });
+  });
+  await writeFormulas(spreadsheetId, formulaUpdates);
+}
+
+async function getSheetIdByTitle(spreadsheetId, title) {
+  const meta = await window.gapi.client.sheets.spreadsheets.get({
+    spreadsheetId,
+    fields: 'sheets.properties',
+  });
+  const sheet = (meta.result.sheets || []).find((s) => s.properties.title === title);
+  return sheet?.properties.sheetId;
+}
+
+/**
+ * Write the layman Pending Dues lookup tab. Keeps B3 if it already looks like MMM-YY.
+ */
+export async function writePendingDuesTemplate(spreadsheetId) {
+  const existing = await window.gapi.client.sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${SHEET_NAMES.PENDING_DUES}'!B3`,
+  }).catch(() => ({ result: { values: [] } }));
+  const typed = String(existing.result.values?.[0]?.[0] || '').trim();
+  const monthLabel = /^[A-Za-z]{3}-\d{2}$/.test(typed) ? typed : getCurrentMonthLabel();
+
+  await writeValues(spreadsheetId, [{
+    range: `'${SHEET_NAMES.PENDING_DUES}'!A1`,
+    values: pendingDuesStaticRows(monthLabel),
+  }]);
+
+  const cells = pendingDuesFormulaCells();
+  const formulaData = Object.entries(cells).map(([cell, formula]) => ({
+    range: `'${SHEET_NAMES.PENDING_DUES}'!${cell}`,
+    values: [[formula]],
+  }));
+  await writeFormulas(spreadsheetId, formulaData);
+
+  const sheetId = await getSheetIdByTitle(spreadsheetId, SHEET_NAMES.PENDING_DUES);
+  if (sheetId == null) return;
+  await window.gapi.client.sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    resource: {
+      requests: [
+        {
+          repeatCell: {
+            range: {
+              sheetId,
+              startRowIndex: 2,
+              endRowIndex: 3,
+              startColumnIndex: 1,
+              endColumnIndex: 2,
+            },
+            cell: {
+              userEnteredFormat: {
+                backgroundColor: { red: 1, green: 0.93, blue: 0.55 },
+                textFormat: { bold: true, fontSize: 12 },
+              },
+            },
+            fields: 'userEnteredFormat(backgroundColor,textFormat)',
+          },
+        },
+        {
+          updateSheetProperties: {
+            properties: {
+              sheetId,
+              gridProperties: { frozenRowCount: 8 },
+            },
+            fields: 'gridProperties.frozenRowCount',
+          },
+        },
+      ],
+    },
+  });
+}
+
+/**
+ * Upgrade an existing workbook: formulas, Pending Dues, refreshed Guide.
+ */
+export async function upgradeWorkbookLayout(spreadsheetId) {
+  await writeValues(spreadsheetId, [{
+    range: `'${SHEET_NAMES.GUIDE}'!A1`,
+    values: [SHEET_HEADERS[SHEET_NAMES.GUIDE], ...GUIDE_ROWS],
+  }]);
+  await applyMaintenanceStillDueFormulas(spreadsheetId);
+  await applyMonthlySummaryFormulas(spreadsheetId);
+  await writePendingDuesTemplate(spreadsheetId);
 }
 
 function columnLetter(index) {
@@ -240,6 +410,9 @@ export async function createSpreadsheet(folderId, options = {}) {
       headers: SHEET_HEADERS[name] || ['A'],
     }));
     await applyWorkbookPolish(spreadsheetId, sheetMeta);
+    await applyMaintenanceStillDueFormulas(spreadsheetId);
+    await applyMonthlySummaryFormulas(spreadsheetId);
+    await writePendingDuesTemplate(spreadsheetId);
 
     bindSpreadsheet(spreadsheetId);
     return spreadsheetId;
@@ -272,6 +445,8 @@ export async function ensureSheetStructure(spreadsheetId = getSpreadsheetId()) {
         });
       }
     }
+
+    await upgradeWorkbookLayout(spreadsheetId);
   });
 }
 
@@ -341,6 +516,9 @@ export async function seedSampleLiveData() {
         values: sample[name],
       }));
     await writeValues(spreadsheetId, data);
+    await applyMaintenanceStillDueFormulas(spreadsheetId);
+    await applyMonthlySummaryFormulas(spreadsheetId);
+    await writePendingDuesTemplate(spreadsheetId);
     return { spreadsheetId, tabs: data.length };
   });
 }

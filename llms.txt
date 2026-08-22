@@ -47,8 +47,9 @@ Policy helpers live in `src/config/accessPolicy.js` and must be reused rather th
 - `src/services/googleAuth.js` — OAuth 2.0 authentication (re-consent when scopes bump)
 - `src/services/googleSheets.js` — All CRUD operations (the "backend")
 - `src/services/googleDrive.js` — File upload, sharing, society-sheet discovery
-- `src/services/sheetSetup.js` — Create workbook (founding owner only)
-- `src/services/pdfExport.js` — Monthly report PDF generation
+- `src/services/sheetSetup.js` — Create workbook (founding owner only); upgrades formulas / Pending Dues
+- `src/services/sheetFormulas.js` — Layman-readable Sheets formulas (Still Due, surplus/deficit, pending lookup)
+- `src/services/pdfExport.js` — Monthly report PDF (₹ glyph + masked emails/phones)
 - `src/contexts/AuthContext.jsx` — Auth state; fail-closed Access Denied for non-members
 - `src/contexts/AppContext.jsx` — Global app state, toast notifications
 - `src/pages/Dashboard.jsx` — Main financial dashboard
@@ -64,7 +65,9 @@ Policy helpers live in `src/config/accessPolicy.js` and must be reused rather th
 - Must be deployable to GitHub Pages and Azure Static Web Apps
 - PWA installable on iOS, Android, and desktop
 - Fiscal year: September to August
-- Indian Rupee (₹) currency formatting
+- Indian Rupee (₹) currency formatting in the app and in generated PDFs
+- PDF reports mask emails and phone numbers
+- Existing workbooks can be upgraded (Settings → Backups → Refresh sheet layout) so Monthly Summary and Pending Dues stay correct without the app
 - UI must remain usable on mobile (hamburger + bottom nav, stacked cards, 44px tap targets)
 
 ## Deployment

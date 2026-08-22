@@ -12,7 +12,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useApp } from '../contexts/AppContext';
-import { getDashboardData, getAccessControl, parseApiError, seedSampleLiveData } from '../services/googleSheets';
+import { getDashboardData, getAccessControl, parseApiError, seedSampleLiveData, ensureSheetStructure } from '../services/googleSheets';
 import { STORAGE_KEYS } from '../config/constants';
 import { effectiveAppRole, isFoundingOwner } from '../config/accessPolicy';
 import { formatCurrency, getCurrentMonthLabel, getCollectionPercentage, daysUntil, getRelativeTime, groupExpensesByCategory, parseJsonSafe, normalizeEmail } from '../utils/helpers';
@@ -65,6 +65,14 @@ export default function Dashboard() {
           const role = effectiveAppRole(userEmail, userAccess);
           if (role) {
             setUserRole(role);
+            if (role === 'Owner' && !sessionStorage.getItem('tpt_sheet_layout_v14')) {
+              try {
+                await ensureSheetStructure();
+                sessionStorage.setItem('tpt_sheet_layout_v14', '1');
+              } catch (upgradeErr) {
+                console.warn('Sheet layout upgrade skipped:', upgradeErr);
+              }
+            }
           } else {
             signOut();
             navigate('/login');

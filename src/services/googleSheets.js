@@ -28,12 +28,25 @@ import {
   bindSpreadsheet,
   unbindSpreadsheet,
 } from '../utils/helpers';
+import {
+  createSpreadsheet,
+  ensureSheetStructure,
+  archiveAndCreateFresh,
+  seedSampleLiveData,
+  applyMonthlySummaryFormulas,
+  applyMaintenanceStillDueFormulas,
+  upgradeWorkbookLayout,
+} from './sheetSetup';
+
 export {
   createSpreadsheet,
   ensureSheetStructure,
   archiveAndCreateFresh,
   seedSampleLiveData,
-} from './sheetSetup';
+  applyMonthlySummaryFormulas,
+  applyMaintenanceStillDueFormulas,
+  upgradeWorkbookLayout,
+};
 
 /**
  * Get the spreadsheet ID from localStorage
@@ -338,6 +351,7 @@ export async function getMaintenanceRecords(month = null) {
       status: row[7] || 'PENDING',
       lateFee: Number(row[8]) || 0,
       remarks: row[9] || '',
+      stillDue: Math.max(0, (Number(row[2]) || 0) - (Number(row[3]) || 0)),
     }));
 
     if (month) {
@@ -387,6 +401,7 @@ export async function upsertMaintenancePayment(month, flat, data) {
           valueInputOption: 'RAW',
           resource: { values: [row] },
         });
+        await applyMaintenanceStillDueFormulas(spreadsheetId);
         return;
       }
     }
@@ -399,6 +414,7 @@ export async function upsertMaintenancePayment(month, flat, data) {
       insertDataOption: 'INSERT_ROWS',
       resource: { values: [row] },
     });
+    await applyMaintenanceStillDueFormulas(spreadsheetId);
   });
 }
 
@@ -423,6 +439,8 @@ export async function initializeMonthMaintenance(month, amount) {
       insertDataOption: 'INSERT_ROWS',
       resource: { values: rows },
     });
+    await applyMaintenanceStillDueFormulas(spreadsheetId);
+    await applyMonthlySummaryFormulas(spreadsheetId, [month]);
   });
 }
 
@@ -474,34 +492,52 @@ export async function getExpenses(month = null) {
  * The `amount` field is coerced to a Number so a string like "=1+2" cannot
  * reach the sheet as a formula.
  */
+function expenseRowValues(data, id) {
+  return [
+    id,
+    sheetText(data.date || new Date().toISOString().split('T')[0], 12),
+    sheetText(data.month, 12),
+    sheetText(data.description, 200),
+    sheetText(data.category, 60),
+    sheetNumber(data.amount),
+    sheetText(data.paymentMode, 40),
+    data.billReceipt === 'Y' ? 'Y' : 'N',
+    sheetText(data.approvedBy, 100),
+    sanitizeDriveUrl(data.receiptLink),
+    sheetText(data.remarks, 300),
+  ];
+}
+
 export async function addExpense(data) {
+  const ids = await addExpenses([data]);
+  return ids[0];
+}
+
+/**
+ * Add several expenses in one Sheets append (one receipt link may be shared).
+ */
+export async function addExpenses(items) {
   return withWriteAuth(async () => {
+    if (!Array.isArray(items) || items.length === 0) {
+      throw new Error('Add at least one expense.');
+    }
+    if (items.length > 25) {
+      throw new Error('Add at most 25 expenses at a time.');
+    }
+
     const spreadsheetId = getSpreadsheetId();
-    const id = `EXP-${Date.now()}`;
+    const base = Date.now();
+    const values = items.map((data, i) => expenseRowValues(data, `EXP-${base}-${i + 1}`));
 
     await window.gapi.client.sheets.spreadsheets.values.append({
       spreadsheetId,
       range: `'${SHEET_NAMES.EXPENSES}'!A:K`,
       valueInputOption: 'RAW',
       insertDataOption: 'INSERT_ROWS',
-      resource: {
-        values: [[
-          id,
-          sheetText(data.date || new Date().toISOString().split('T')[0], 12),
-          sheetText(data.month, 12),
-          sheetText(data.description, 200),
-          sheetText(data.category, 60),
-          sheetNumber(data.amount),
-          sheetText(data.paymentMode, 40),
-          data.billReceipt === 'Y' ? 'Y' : 'N',
-          sheetText(data.approvedBy, 100),
-          sanitizeDriveUrl(data.receiptLink),
-          sheetText(data.remarks, 300),
-        ]],
-      },
+      resource: { values },
     });
 
-    return id;
+    return values.map((row) => row[0]);
   });
 }
 
@@ -1079,29 +1115,47 @@ export async function addWaterTankerLog(data) {
   });
 }
 
+function sheetAmount(value) {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  const n = Number(String(value || '').replace(/[₹,\s]/g, ''));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function formatSummaryPct(value) {
+  if (value == null || value === '') return '0%';
+  const s = String(value);
+  if (s.includes('%')) return s;
+  const n = Number(s);
+  if (!Number.isFinite(n)) return s;
+  if (n <= 1) return `${Math.round(n * 100)}%`;
+  return `${Math.round(n)}%`;
+}
+
 function parseMonthlySummaryRow(row) {
-  const isNewLayout = String(row[6] || '').includes('%');
-  if (isNewLayout) {
+  const looksNew = row.length >= 8
+    || /%/.test(String(row[6] || ''))
+    || /SURPLUS|DEFICIT/i.test(String(row[8] || ''));
+  if (looksNew) {
     return {
       month: row[0] || '',
-      totalCollection: Number(row[1]) || 0,
-      totalMiscFunds: Number(row[2]) || 0,
-      totalExpenses: Number(row[3]) || 0,
-      netBalance: Number(row[4]) || 0,
-      cumulativeBalance: Number(row[5]) || 0,
-      collectionPct: row[6] || '0%',
+      totalCollection: sheetAmount(row[1]),
+      totalMiscFunds: sheetAmount(row[2]),
+      totalExpenses: sheetAmount(row[3]),
+      netBalance: sheetAmount(row[4]),
+      cumulativeBalance: sheetAmount(row[5]),
+      collectionPct: formatSummaryPct(row[6]),
       pendingFlats: row[7] || '',
       status: row[8] || '',
     };
   }
   return {
     month: row[0] || '',
-    totalCollection: Number(row[1]) || 0,
+    totalCollection: sheetAmount(row[1]),
     totalMiscFunds: 0,
-    totalExpenses: Number(row[2]) || 0,
-    netBalance: Number(row[3]) || 0,
-    cumulativeBalance: Number(row[4]) || 0,
-    collectionPct: row[5] || '0%',
+    totalExpenses: sheetAmount(row[2]),
+    netBalance: sheetAmount(row[3]),
+    cumulativeBalance: sheetAmount(row[4]),
+    collectionPct: formatSummaryPct(row[5]),
     pendingFlats: row[6] || '',
     status: '',
   };
@@ -1118,87 +1172,8 @@ function parseMonthlySummaryRow(row) {
 export async function updateMonthlySummary(month) {
   return withWriteAuth(async () => {
     const spreadsheetId = getSpreadsheetId();
-
-    const [maintenance, expenses, miscFundsData] = await Promise.all([
-      getMaintenanceRecords(month),
-      getExpenses(month),
-      getMiscFunds(month).catch(() => []),
-    ]);
-
-    const totalCollection = maintenance.reduce((sum, r) => sum + r.amountPaid, 0);
-    const totalMiscFunds = miscFundsData.reduce((sum, f) => sum + f.amount, 0);
-    const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
-    const netBalance = totalCollection + totalMiscFunds - totalExpenses;
-    const paidCount = maintenance.filter(r => r.status === 'PAID').length;
-    const collectionPct = maintenance.length > 0
-      ? Math.round((paidCount / maintenance.length) * 100)
-      : 0;
-    const pendingFlats = maintenance
-      .filter(r => r.status !== 'PAID')
-      .map(r => `${r.flat}(${r.status})`)
-      .join(', ');
-    const statusLabel = netBalance >= 0 ? 'SURPLUS' : 'DEFICIT';
-
-    // Get existing summaries to check if month row exists and compute cumulative
-    const existing = await window.gapi.client.sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: `'${SHEET_NAMES.MONTHLY_SUMMARY}'!A2:I100`,
-    });
-
-    const rows = existing.result.values || [];
-    const rowIndex = rows.findIndex(r => r[0] === month);
-
-    // Compute cumulative balance (sum of all net balances up to and including this month)
-    let cumulativeBalance = netBalance;
-    rows.forEach((r, i) => {
-      if (r[0] !== month && i !== rowIndex) {
-        const nb = Number(r[4]) || 0;
-        cumulativeBalance += nb;
-      }
-    });
-
-    const summaryRow = [
-      month,
-      String(totalCollection),
-      String(totalMiscFunds),
-      String(totalExpenses),
-      String(netBalance),
-      String(cumulativeBalance),
-      `${collectionPct}%`,
-      pendingFlats,
-      statusLabel,
-    ];
-
-    // Ensure headers are present (first write only)
-    const headerCheck = await window.gapi.client.sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: `'${SHEET_NAMES.MONTHLY_SUMMARY}'!A1:I1`,
-    });
-    if (!headerCheck.result.values?.[0]?.[0]) {
-      await window.gapi.client.sheets.spreadsheets.values.update({
-        spreadsheetId,
-        range: `'${SHEET_NAMES.MONTHLY_SUMMARY}'!A1`,
-        valueInputOption: 'RAW',
-        resource: { values: [SHEET_HEADERS[SHEET_NAMES.MONTHLY_SUMMARY]] },
-      });
-    }
-
-    if (rowIndex >= 0) {
-      await window.gapi.client.sheets.spreadsheets.values.update({
-        spreadsheetId,
-        range: `'${SHEET_NAMES.MONTHLY_SUMMARY}'!A${rowIndex + 2}:I${rowIndex + 2}`,
-        valueInputOption: 'RAW',
-        resource: { values: [summaryRow] },
-      });
-    } else {
-      await window.gapi.client.sheets.spreadsheets.values.append({
-        spreadsheetId,
-        range: `'${SHEET_NAMES.MONTHLY_SUMMARY}'!A:I`,
-        valueInputOption: 'RAW',
-        insertDataOption: 'INSERT_ROWS',
-        resource: { values: [summaryRow] },
-      });
-    }
+    await applyMaintenanceStillDueFormulas(spreadsheetId);
+    await applyMonthlySummaryFormulas(spreadsheetId, month ? [month] : []);
   });
 }
 
@@ -1211,6 +1186,7 @@ export async function getMonthlySummaries() {
     const response = await window.gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId,
       range: `'${SHEET_NAMES.MONTHLY_SUMMARY}'!A2:I100`,
+      valueRenderOption: 'UNFORMATTED_VALUE',
     });
 
     const rows = response.result.values || [];

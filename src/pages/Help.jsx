@@ -31,6 +31,7 @@ All data is stored in a Google Sheet in your Google Drive — the sheet is the s
                 heading: 'Where is the data stored?',
                 text: `Your data lives in a Google Sheet named "TPT-MaintenanceTracker" in a Google Drive folder called "TPT-AppartmentApp".
 Open it anytime from Settings > Open Sheet. Start with the Guide tab — it explains every column in plain language.
+Use Pending Dues to see unpaid flats for any month, and Monthly Summary for surplus or deficit (those tabs use formulas, so they stay correct if you edit Maintenance by hand).
 The Sample Data tab holds copy-paste examples and does not change dashboard totals.
 First-time setup can fill live tabs with sample rows for testing, or leave them empty for production.
 After testing, Settings > Backups > Create Fresh Production Sheet archives the sample file and opens an empty live sheet.
@@ -62,9 +63,9 @@ The status changes to PAID / PARTIAL based on the amount.`,
             },
             {
                 heading: '3. Log All Expenses',
-                text: `Go to Expenses → Add Expense for every payment made from the fund.
+                text: `Go to Expenses → Add expenses. You can save several bills in one go (same date/month).
 Select the correct category (Watchman Salary, Electricity, Lift Maintenance, etc.).
-Upload a bill/receipt photo if available — it gets stored in Google Drive.`,
+Upload a bill/receipt photo if available — it gets stored in Google Drive and is attached to every line in that batch.`,
             },
             {
                 heading: '4. Record Misc Funds',
@@ -75,7 +76,8 @@ This records the contribution separately and includes it in the monthly balance.
                 heading: '5. End of Month — Generate Report',
                 text: `Go to Reports, select the month, and click PDF to download.
 Click "Share via WhatsApp" to send the PDF directly to the WhatsApp group.
-Click "Sync Sheet" to update the Monthly Summary tab in Google Sheets.`,
+Click "Sync Sheet" to add this month on Monthly Summary and refresh the live formulas (surplus/deficit, pending flats).
+Open the Google Sheet → Pending Dues, type the month in the yellow cell, and you will see who still owes money.`,
             },
             {
                 heading: '6. End of Month — Backup',

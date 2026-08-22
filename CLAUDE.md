@@ -49,17 +49,18 @@ The workbook is designed so a treasurer can understand every number without open
 1. **Guide** — Plain-language explanation of every tab, column, and edit rule
 2. **Configuration** — Key / Value / Description for all app settings
 3. **Flats** — Owner details for 10 flats (101-502)
-4. **Maintenance** — Monthly payment records per flat
-5. **Expenses** — All expense entries with categories
-6. **Misc Funds** — Extra collections (festival, levy, donation)
-7. **Emergency Contacts** — Categorized contact directory
-8. **Reminders** — Recurring task reminders
-9. **Access Control** — Email whitelist with roles (Owner/Reader)
-10. **Audit Log** — All write operations logged
-11. **Water Tanker Log** — Dedicated tanker tracking
-12. **Monthly Summary** — Calculated monthly financial summaries (9 columns)
-13. **Watchman Details** — Staff record
-14. **Sample Data** — Copy-paste examples; does not affect dashboard totals
+4. **Maintenance** — Monthly payment records per flat. Column K (Still Due) is a formula: due − paid.
+5. **Pending Dues** — Type a month in the yellow cell to see who still owes (formulas; do not type in the table)
+6. **Expenses** — All expense entries with categories (app can add several at once)
+7. **Misc Funds** — Extra collections (festival, levy, donation)
+8. **Emergency Contacts** — Categorized contact directory
+9. **Reminders** — Recurring task reminders
+10. **Access Control** — Email whitelist with roles (Owner/Reader)
+11. **Audit Log** — All write operations logged
+12. **Water Tanker Log** — Dedicated tanker tracking
+13. **Monthly Summary** — Live formulas: collection, misc, expenses, net, cumulative, %, pending flats, SURPLUS/DEFICIT
+14. **Watchman Details** — Staff record
+15. **Sample Data** — Copy-paste examples; does not affect dashboard totals
 
 Setup can create a **sample** workbook (live tabs pre-filled for testing) or a **fresh** production workbook (live tabs empty). After testing, Settings → Create Fresh Production Sheet archives the sample file in Drive.
 

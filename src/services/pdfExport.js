@@ -11,13 +11,46 @@
  */
 
 import jsPDF from 'jspdf';
+import { maskEmail } from '../config/accessPolicy';
+import { maskIdNumber, maskPhone } from '../utils/helpers';
+
+const PDF_FONT = 'NotoSans';
+let cachedFontBase64 = null;
+let rupeeFontReady = false;
+
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
+async function loadRupeeFont(doc) {
+  if (!cachedFontBase64) {
+    const url = `${import.meta.env.BASE_URL}fonts/NotoSans-Regular.ttf`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Rupee font missing');
+    cachedFontBase64 = arrayBufferToBase64(await res.arrayBuffer());
+  }
+  doc.addFileToVFS('NotoSans-Regular.ttf', cachedFontBase64);
+  doc.addFont('NotoSans-Regular.ttf', PDF_FONT, 'normal');
+  doc.addFont('NotoSans-Regular.ttf', PDF_FONT, 'bold');
+  rupeeFontReady = true;
+}
+
+function pdfFont(doc, style = 'normal') {
+  doc.setFont(rupeeFontReady ? PDF_FONT : 'helvetica', style);
+}
 
 /**
- * Format currency for PDF. jsPDF's built-in Helvetica font does not contain
- * the Unicode Rupee glyph (U+20B9), so we use the ASCII "Rs." prefix here.
+ * ₹ when the Unicode font loaded; otherwise ASCII fallback so the PDF still builds.
  */
 function formatCurrency(amount) {
-  return 'Rs. ' + Number(amount || 0).toLocaleString('en-IN');
+  const prefix = rupeeFontReady ? '₹' : 'Rs. ';
+  return prefix + Number(amount || 0).toLocaleString('en-IN');
 }
 
 /**
@@ -28,7 +61,7 @@ function drawSectionHeader(doc, text, y, pageWidth, margin) {
   doc.rect(margin, y, pageWidth - 2 * margin, 9, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
+  pdfFont(doc, 'bold');
   doc.text(text, margin + 4, y + 6.5);
   return y + 9;
 }
@@ -41,7 +74,7 @@ function drawTableHeader(doc, headers, colWidths, y, margin, contentWidth) {
   doc.rect(margin, y, contentWidth, 7, 'F');
   doc.setTextColor(60, 60, 80);
   doc.setFontSize(7.5);
-  doc.setFont('helvetica', 'bold');
+  pdfFont(doc, 'bold');
 
   let colX = margin + 2;
   headers.forEach((header, i) => {
@@ -77,7 +110,7 @@ function addFooter(doc, reportData, pageNum) {
 
   doc.setFontSize(6.5);
   doc.setTextColor(150, 150, 150);
-  doc.setFont('helvetica', 'normal');
+  pdfFont(doc, 'normal');
   doc.text(
     `${reportData.apartmentName} | Monthly Report ${reportData.month} | Treasurer: Flat ${reportData.config?.TREASURER_FLAT || '401'} | President: Flat ${reportData.config?.PRESIDENT_FLAT || '102'}`,
     margin,
@@ -91,7 +124,7 @@ function addFooter(doc, reportData, pageNum) {
  * @param {object} reportData - All data for the report
  * @returns {jsPDF} PDF document
  */
-export function generateMonthlyReport(reportData) {
+export async function generateMonthlyReport(reportData) {
   const {
     month,
     apartmentName,
@@ -111,6 +144,11 @@ export function generateMonthlyReport(reportData) {
   } = reportData;
 
   const doc = new jsPDF('p', 'mm', 'a4');
+  try {
+    await loadRupeeFont(doc);
+  } catch {
+    rupeeFontReady = false;
+  }
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 15;
   const contentWidth = pageWidth - 2 * margin;
@@ -131,19 +169,19 @@ export function generateMonthlyReport(reportData) {
 
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(22);
-  doc.setFont('helvetica', 'bold');
+  pdfFont(doc, 'bold');
   doc.text(apartmentName || 'The Pride of Tirumala', pageWidth / 2, 18, { align: 'center' });
 
   doc.setFontSize(12);
-  doc.setFont('helvetica', 'normal');
+  pdfFont(doc, 'normal');
   doc.text(`Monthly Financial Report`, pageWidth / 2, 28, { align: 'center' });
 
   doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
+  pdfFont(doc, 'bold');
   doc.text(month, pageWidth / 2, 38, { align: 'center' });
 
   doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
+  pdfFont(doc, 'normal');
   doc.text(`Generated: ${new Date().toLocaleDateString('en-IN', { dateStyle: 'long' })}`, pageWidth / 2, 45, { align: 'center' });
 
   y = 58;
@@ -163,12 +201,12 @@ export function generateMonthlyReport(reportData) {
     doc.roundedRect(x, y, cardWidth, 20, 2, 2, 'F');
 
     doc.setFontSize(7);
-    doc.setFont('helvetica', 'normal');
+    pdfFont(doc, 'normal');
     doc.setTextColor(120, 120, 120);
     doc.text(card.label, x + 3, y + 7);
 
     doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
+    pdfFont(doc, 'bold');
     doc.setTextColor(...card.color);
     doc.text(card.value, x + 3, y + 16);
   });
@@ -179,7 +217,7 @@ export function generateMonthlyReport(reportData) {
   doc.setFillColor(248, 249, 252);
   doc.roundedRect(margin, y, contentWidth, 14, 2, 2, 'F');
   doc.setFontSize(7.5);
-  doc.setFont('helvetica', 'normal');
+  pdfFont(doc, 'normal');
   doc.setTextColor(80, 80, 80);
   doc.text(`Monthly Maintenance: ${formatCurrency(config?.MONTHLY_MAINTENANCE || 3000)} per flat  |  Total Flats: 10  |  Expected: ${formatCurrency((config?.MONTHLY_MAINTENANCE || 3000) * 10)}  |  Opening Balance (Aug 2026): ${formatCurrency(config?.DEFICIT_LAST_YEAR || 0)}`, margin + 4, y + 6);
 
@@ -197,12 +235,12 @@ export function generateMonthlyReport(reportData) {
   doc.setFillColor(...bgColor);
   doc.roundedRect(margin, y, contentWidth, 12, 2, 2, 'F');
   doc.setFontSize(8.5);
-  doc.setFont('helvetica', 'bold');
+  pdfFont(doc, 'bold');
   doc.setTextColor(...textColor);
   const balanceLabel = isDeficit ? 'DEFICIT THIS MONTH' : 'SURPLUS / REMAINING FUNDS';
   doc.text(`${balanceLabel}: ${formatCurrency(Math.abs(netBalance))}`, margin + 4, y + 5);
   doc.setFontSize(7);
-  doc.setFont('helvetica', 'normal');
+  pdfFont(doc, 'normal');
   doc.text(`(Collection ${formatCurrency(totalCollection)} + Misc ${formatCurrency(totalMiscFunds || 0)}) - Expenses ${formatCurrency(totalExpenses)} = ${formatCurrency(netBalance)}`, margin + 4, y + 9.5);
   y += 16;
 
@@ -243,10 +281,10 @@ export function generateMonthlyReport(reportData) {
       if (i === 6) {
         const statusColors = { PAID: [40, 167, 69], PENDING: [220, 53, 69], PARTIAL: [255, 153, 0] };
         doc.setTextColor(...(statusColors[val] || [60, 60, 60]));
-        doc.setFont('helvetica', 'bold');
+        pdfFont(doc, 'bold');
       } else {
         doc.setTextColor(60, 60, 60);
-        doc.setFont('helvetica', 'normal');
+        pdfFont(doc, 'normal');
       }
       doc.text(String(val), colX, y + 5);
       colX += payColWidths[i];
@@ -258,7 +296,7 @@ export function generateMonthlyReport(reportData) {
   // Payment totals row
   doc.setFillColor(230, 235, 245);
   doc.rect(margin, y, contentWidth, 8, 'F');
-  doc.setFont('helvetica', 'bold');
+  pdfFont(doc, 'bold');
   doc.setFontSize(8);
   doc.setTextColor(40, 40, 60);
   doc.text('TOTAL', margin + 2, y + 5.5);
@@ -285,7 +323,7 @@ export function generateMonthlyReport(reportData) {
       doc.rect(margin, y, contentWidth, 7, 'F');
 
       doc.setFontSize(7.5);
-      doc.setFont('helvetica', 'normal');
+      pdfFont(doc, 'normal');
       doc.setTextColor(60, 60, 60);
 
       let colX = margin + 2;
@@ -298,9 +336,9 @@ export function generateMonthlyReport(reportData) {
         (fund.collectedBy || '-').substring(0, 14),
       ];
       rowData.forEach((val, i) => {
-        if (i === 1) { doc.setFont('helvetica', 'bold'); doc.setTextColor(50, 80, 200); }
+        if (i === 1) { pdfFont(doc, 'bold'); doc.setTextColor(50, 80, 200); }
         doc.text(String(val), colX, y + 5);
-        if (i === 1) { doc.setFont('helvetica', 'normal'); doc.setTextColor(60, 60, 60); }
+        if (i === 1) { pdfFont(doc, 'normal'); doc.setTextColor(60, 60, 60); }
         colX += mfColWidths[i];
       });
       y += 7;
@@ -308,7 +346,7 @@ export function generateMonthlyReport(reportData) {
 
     doc.setFillColor(230, 240, 255);
     doc.rect(margin, y, contentWidth, 8, 'F');
-    doc.setFont('helvetica', 'bold');
+    pdfFont(doc, 'bold');
     doc.setFontSize(8);
     doc.setTextColor(50, 80, 200);
     doc.text(`TOTAL MISC FUNDS: ${formatCurrency(totalMiscFunds || 0)}  (${miscFunds.length} contribution(s))`, margin + 4, y + 5.5);
@@ -336,7 +374,7 @@ export function generateMonthlyReport(reportData) {
 
       doc.setTextColor(60, 60, 60);
       doc.setFontSize(7.5);
-      doc.setFont('helvetica', 'normal');
+      pdfFont(doc, 'normal');
 
       let colX = margin + 2;
       const rowData = [
@@ -350,12 +388,12 @@ export function generateMonthlyReport(reportData) {
 
       rowData.forEach((val, i) => {
         if (i === 3) {
-          doc.setFont('helvetica', 'bold');
+          pdfFont(doc, 'bold');
           doc.setTextColor(220, 53, 69);
         }
         doc.text(String(val), colX, y + 5);
         if (i === 3) {
-          doc.setFont('helvetica', 'normal');
+          pdfFont(doc, 'normal');
           doc.setTextColor(60, 60, 60);
         }
         colX += expColWidths[i];
@@ -367,7 +405,7 @@ export function generateMonthlyReport(reportData) {
     // Expenses total
     doc.setFillColor(255, 235, 238);
     doc.rect(margin, y, contentWidth, 8, 'F');
-    doc.setFont('helvetica', 'bold');
+    pdfFont(doc, 'bold');
     doc.setFontSize(8);
     doc.setTextColor(220, 53, 69);
     doc.text(`TOTAL EXPENSES: ${formatCurrency(totalExpenses)}`, margin + 4, y + 5.5);
@@ -378,7 +416,7 @@ export function generateMonthlyReport(reportData) {
     y = checkPageBreak(doc, y, margin, 30);
     doc.setTextColor(60, 60, 60);
     doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
+    pdfFont(doc, 'bold');
     doc.text('Category-wise Breakdown', margin, y);
     y += 6;
 
@@ -400,12 +438,12 @@ export function generateMonthlyReport(reportData) {
       doc.rect(margin, y, contentWidth, 7, 'F');
 
       doc.setFontSize(7.5);
-      doc.setFont('helvetica', 'normal');
+      pdfFont(doc, 'normal');
       doc.setTextColor(60, 60, 60);
       doc.text(category, margin + 2, y + 5);
-      doc.setFont('helvetica', 'bold');
+      pdfFont(doc, 'bold');
       doc.text(formatCurrency(total), margin + 92, y + 5);
-      doc.setFont('helvetica', 'normal');
+      pdfFont(doc, 'normal');
       const pct = totalExpenses > 0 ? Math.round((total / totalExpenses) * 100) : 0;
       doc.text(`${pct}%`, margin + 132, y + 5);
 
@@ -423,7 +461,7 @@ export function generateMonthlyReport(reportData) {
   } else {
     doc.setTextColor(120, 120, 120);
     doc.setFontSize(9);
-    doc.setFont('helvetica', 'italic');
+    pdfFont(doc, 'normal');
     doc.text('No expenses recorded for this month.', margin + 4, y + 6);
     y += 14;
   }
@@ -444,22 +482,22 @@ export function generateMonthlyReport(reportData) {
       doc.roundedRect(margin, y, contentWidth, 18, 2, 2, 'F');
 
       doc.setFontSize(9);
-      doc.setFont('helvetica', 'bold');
+      pdfFont(doc, 'bold');
       doc.setTextColor(40, 40, 60);
       doc.text(`${w.name || 'Watchman ' + (i + 1)}`, margin + 4, y + 6);
 
       doc.setFontSize(7.5);
-      doc.setFont('helvetica', 'normal');
+      pdfFont(doc, 'normal');
       doc.setTextColor(80, 80, 80);
-      doc.text(`Phone: ${w.phone || '-'}  |  Shift: ${w.shiftTiming || '-'}  |  Salary: ${formatCurrency(w.salary)}`, margin + 4, y + 11.5);
-      doc.text(`Join Date: ${w.joinDate || '-'}  |  ID: ${w.idProofType || '-'} ${w.idProofNumber || ''}  |  Emergency: ${w.emergencyContact || '-'} (${w.emergencyPhone || '-'})`, margin + 4, y + 16);
+      doc.text(`Phone: ${maskPhone(w.phone)}  |  Shift: ${w.shiftTiming || '-'}  |  Salary: ${formatCurrency(w.salary)}`, margin + 4, y + 11.5);
+      doc.text(`Join Date: ${w.joinDate || '-'}  |  ID: ${w.idProofType || '-'} ${maskIdNumber(w.idProofNumber)}  |  Emergency: ${w.emergencyContact || '-'} (${maskPhone(w.emergencyPhone)})`, margin + 4, y + 16);
 
       y += 22;
     });
   } else {
     doc.setTextColor(120, 120, 120);
     doc.setFontSize(8);
-    doc.setFont('helvetica', 'italic');
+    pdfFont(doc, 'normal');
     doc.text('No active watchman records.', margin + 4, y + 6);
     y += 12;
   }
@@ -502,7 +540,7 @@ export function generateMonthlyReport(reportData) {
       y = checkPageBreak(doc, y, margin, 10);
 
       doc.setFontSize(8);
-      doc.setFont('helvetica', 'bold');
+      pdfFont(doc, 'bold');
       doc.setTextColor(60, 60, 80);
       doc.text(`${actLabels[action] || action} (${items.length})`, margin + 2, y + 5);
       y += 7;
@@ -511,17 +549,17 @@ export function generateMonthlyReport(reportData) {
       items.slice(0, 5).forEach(item => {
         y = checkPageBreak(doc, y, margin, 6);
         doc.setFontSize(7);
-        doc.setFont('helvetica', 'normal');
+        pdfFont(doc, 'normal');
         doc.setTextColor(100, 100, 100);
         const detail = (item.details || '').substring(0, 60);
-        const user = (item.user || '').split('@')[0];
+        const user = maskEmail(item.user);
         doc.text(`  - ${detail}  (by ${user})`, margin + 4, y + 4);
         y += 5;
       });
 
       if (items.length > 5) {
         doc.setFontSize(7);
-        doc.setFont('helvetica', 'italic');
+        pdfFont(doc, 'normal');
         doc.text(`    ... and ${items.length - 5} more`, margin + 4, y + 4);
         y += 5;
       }
@@ -533,14 +571,14 @@ export function generateMonthlyReport(reportData) {
     doc.setFillColor(230, 240, 255);
     doc.roundedRect(margin, y, contentWidth, 8, 2, 2, 'F');
     doc.setFontSize(7.5);
-    doc.setFont('helvetica', 'bold');
+    pdfFont(doc, 'bold');
     doc.setTextColor(50, 80, 150);
     doc.text(`Total: ${activities.length} activities by ${new Set(activities.map(a => a.user)).size} user(s) this month`, margin + 4, y + 5.5);
     y += 12;
   } else {
     doc.setTextColor(120, 120, 120);
     doc.setFontSize(8);
-    doc.setFont('helvetica', 'italic');
+    pdfFont(doc, 'normal');
     doc.text('No activities recorded for this month.', margin + 4, y + 6);
     y += 14;
   }
@@ -556,7 +594,7 @@ export function generateMonthlyReport(reportData) {
     remindersCompleted.forEach((r, i) => {
       y = checkPageBreak(doc, y, margin, 6);
       doc.setFontSize(7.5);
-      doc.setFont('helvetica', 'normal');
+      pdfFont(doc, 'normal');
       doc.setTextColor(60, 60, 60);
       doc.text(`[OK] ${r.title}  (${r.lastCompleted || 'Completed'})`, margin + 2, y + 4);
       y += 6;
@@ -572,12 +610,12 @@ export function generateMonthlyReport(reportData) {
   doc.roundedRect(margin, y, contentWidth, 22, 2, 2, 'S');
 
   doc.setFontSize(8.5);
-  doc.setFont('helvetica', 'bold');
+  pdfFont(doc, 'bold');
   doc.setTextColor(120, 80, 0);
   doc.text('IMPORTANT NOTE:', margin + 4, y + 7);
 
   doc.setFontSize(7.5);
-  doc.setFont('helvetica', 'normal');
+  pdfFont(doc, 'normal');
   doc.setTextColor(100, 70, 0);
   const noteText = 'The expenses shown in this report are not final. Any missed or pending expenses may be added to the sheet at a later date.';
   const noteText2 = 'This report is shared only for your information and reference. The Google Sheet is the final source of truth.';
@@ -600,8 +638,8 @@ export function generateMonthlyReport(reportData) {
 /**
  * Download the generated PDF
  */
-export function downloadReport(reportData) {
-  const doc = generateMonthlyReport(reportData);
+export async function downloadReport(reportData) {
+  const doc = await generateMonthlyReport(reportData);
   const fileName = `TPT_Report_${reportData.month || 'Monthly'}.pdf`;
   doc.save(fileName);
   return fileName;
@@ -610,8 +648,8 @@ export function downloadReport(reportData) {
 /**
  * Generate PDF as Blob for sharing
  */
-export function generateReportBlob(reportData) {
-  const doc = generateMonthlyReport(reportData);
+export async function generateReportBlob(reportData) {
+  const doc = await generateMonthlyReport(reportData);
   return doc.output('blob');
 }
 
@@ -620,7 +658,7 @@ export function generateReportBlob(reportData) {
  */
 export async function shareReport(reportData) {
   const fileName = `TPT_Report_${reportData.month || 'Monthly'}.pdf`;
-  const blob = generateReportBlob(reportData);
+  const blob = await generateReportBlob(reportData);
   const file = new File([blob], fileName, { type: 'application/pdf' });
 
   // Try Web Share API first (works on mobile)
@@ -641,7 +679,7 @@ export async function shareReport(reportData) {
   }
 
   // Fallback: download the file
-  const doc = generateMonthlyReport(reportData);
+  const doc = await generateMonthlyReport(reportData);
   doc.save(fileName);
   return { shared: false, downloaded: true };
 }

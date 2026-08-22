@@ -27,7 +27,7 @@ export const DISCOVERY_DOCS = [
 // ─── Apartment Configuration ────────────────────────────────────
 export const APP_NAME = 'The Pride of Tirumala';
 export const APP_SHORT_NAME = 'TPT Tracker';
-export const APP_VERSION = '1.3.0';
+export const APP_VERSION = '1.4.0';
 
 /**
  * Bump this when GOOGLE_SCOPES change so existing sessions re-consent.
@@ -70,6 +70,7 @@ export const SHEET_NAMES = {
   CONFIGURATION: 'Configuration',
   FLATS: 'Flats',
   MAINTENANCE: 'Maintenance',
+  PENDING_DUES: 'Pending Dues',
   EXPENSES: 'Expenses',
   MISC_FUNDS: 'Misc Funds',
   EMERGENCY_CONTACTS: 'Emergency Contacts',
@@ -111,6 +112,10 @@ export const SHEET_HEADERS = {
   [SHEET_NAMES.MAINTENANCE]: [
     'Month (MMM-YY)', 'Flat', 'Amount Due (₹)', 'Amount Paid (₹)', 'Payment Date (YYYY-MM-DD)',
     'Payment Mode', 'UPI / Ref No', 'Status (PAID/PENDING/PARTIAL/WAIVED)', 'Late Fee (₹)', 'Remarks',
+    'Still Due (₹) — auto formula, do not type here',
+  ],
+  [SHEET_NAMES.PENDING_DUES]: [
+    'What this is', 'What to do', 'Notes',
   ],
   [SHEET_NAMES.EXPENSES]: [
     'ID', 'Date (YYYY-MM-DD)', 'Month (MMM-YY)', 'Description', 'Category', 'Amount (₹)',

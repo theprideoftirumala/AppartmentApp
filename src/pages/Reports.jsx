@@ -119,10 +119,10 @@ export default function Reports() {
     loadSummaries();
   }, [loadReport, loadSummaries]);
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!reportData) return;
     try {
-      downloadReport(reportData);
+      await downloadReport(reportData);
       showToast(`PDF downloaded: TPT_Report_${reportData.month}.pdf`, 'success');
     } catch (err) {
       showToast(parseApiError(err) || 'Failed to generate PDF', 'error');
@@ -185,7 +185,7 @@ export default function Reports() {
     try {
       setQuickExporting(true);
       const data = await fetchMonthData(quickMonth);
-      downloadReport(data);
+      await downloadReport(data);
       showToast(`PDF downloaded: TPT_Report_${quickMonth}.pdf`, 'success');
     } catch (err) {
       showToast(parseApiError(err) || 'Failed to export report', 'error');
@@ -223,7 +223,7 @@ export default function Reports() {
       `Note: This report may be updated if any expenses are added later.\n\nRegards,\nTPT Management`
     );
     // Download PDF first so user can attach manually
-    downloadReport(reportData);
+    await downloadReport(reportData);
     // Open mail client
     window.open(`mailto:?subject=${subject}&body=${body}`, '_self');
     showToast('PDF downloaded — attach it to the email that opened.', 'info');

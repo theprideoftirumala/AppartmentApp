@@ -32,27 +32,27 @@
   --color-info-bg: hsla(195, 85%, 55%, 0.12);
 
   /* ─── Colors: Surfaces ───────────────────────────────────── */
-  --color-bg: hsl(225, 25%, 6%);
-  --color-bg-elevated: hsl(225, 22%, 9%);
-  --color-surface: hsl(225, 20%, 12%);
-  --color-surface-hover: hsl(225, 20%, 16%);
-  --color-surface-active: hsl(225, 20%, 20%);
+  --color-bg: hsl(222, 18%, 11%);
+  --color-bg-elevated: hsl(222, 16%, 14%);
+  --color-surface: hsl(222, 14%, 17%);
+  --color-surface-hover: hsl(222, 14%, 21%);
+  --color-surface-active: hsl(222, 14%, 24%);
 
   /* ─── Colors: Glass Effect ───────────────────────────────── */
-  --glass-bg: rgba(255, 255, 255, 0.04);
-  --glass-bg-hover: rgba(255, 255, 255, 0.07);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-border-hover: rgba(255, 255, 255, 0.14);
+  --glass-bg: rgba(255, 255, 255, 0.06);
+  --glass-bg-hover: rgba(255, 255, 255, 0.09);
+  --glass-border: rgba(255, 255, 255, 0.11);
+  --glass-border-hover: rgba(255, 255, 255, 0.18);
 
   /* ─── Colors: Text ───────────────────────────────────────── */
-  --color-text: hsl(220, 20%, 95%);
-  --color-text-secondary: hsl(220, 15%, 65%);
-  --color-text-muted: hsl(220, 10%, 45%);
-  --color-text-inverse: hsl(225, 25%, 8%);
+  --color-text: hsl(220, 18%, 96%);
+  --color-text-secondary: hsl(220, 14%, 78%);
+  --color-text-muted: hsl(220, 12%, 64%);
+  --color-text-inverse: hsl(222, 18%, 12%);
 
   /* ─── Colors: Borders ────────────────────────────────────── */
-  --color-border: hsl(225, 15%, 18%);
-  --color-border-light: hsl(225, 15%, 22%);
+  --color-border: hsl(222, 12%, 24%);
+  --color-border-light: hsl(222, 12%, 30%);
 
   /* ─── Typography ─────────────────────────────────────────── */
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;

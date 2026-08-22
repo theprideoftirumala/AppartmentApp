@@ -4,10 +4,10 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Filter, Trash2, ExternalLink, Receipt } from 'lucide-react';
+import { Plus, Search, Trash2, ExternalLink, Receipt } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
-import { getExpenses, addExpense, deleteExpense, addAuditLog } from '../services/googleSheets';
+import { getExpenses, addExpenses, deleteExpense, addAuditLog } from '../services/googleSheets';
 import { uploadReceipt } from '../services/googleDrive';
 import { formatCurrency, formatDate, getCurrentMonthLabel, getCurrentYearMonth, getFiscalMonthOptions } from '../utils/helpers';
 import { EXPENSE_CATEGORIES, PAYMENT_MODES } from '../config/constants';
@@ -45,44 +45,51 @@ export default function Expenses() {
     fetchData();
   }, [fetchData]);
 
-  const handleAddExpense = async (formData, files) => {
+  const handleAddExpenses = async (batch, files) => {
     try {
       setSaving(true);
 
-      // Duplicate check: same description + amount + date
-      const duplicate = expenses.find(e =>
-        e.description?.toLowerCase().trim() === formData.description?.toLowerCase().trim() &&
-        Number(e.amount) === Number(formData.amount) &&
-        e.date === formData.date
-      );
-      if (duplicate) {
-        showToast(`Duplicate detected: "${formData.description}" for ₹${formData.amount} on ${formData.date} already exists.`, 'error');
-        setSaving(false);
-        return;
+      for (const line of batch.lines) {
+        const duplicate = expenses.find((e) =>
+          e.description?.toLowerCase().trim() === line.description?.toLowerCase().trim()
+          && Number(e.amount) === Number(line.amount)
+          && e.date === batch.date
+        );
+        if (duplicate) {
+          showToast(`Duplicate: "${line.description}" for ₹${line.amount} on ${batch.date} already exists.`, 'error');
+          setSaving(false);
+          return;
+        }
       }
 
       let receiptLink = '';
-
-      // Upload receipt if provided
       if (files && files.length > 0) {
         const yearMonth = getCurrentYearMonth();
         const uploadResult = await uploadReceipt(files[0], yearMonth);
         receiptLink = uploadResult.webViewLink || '';
       }
 
-      await addExpense({
-        ...formData,
+      const items = batch.lines.map((line) => ({
+        date: batch.date,
+        month: batch.month,
+        description: line.description,
+        category: line.category,
+        amount: Number(line.amount),
+        paymentMode: line.paymentMode,
+        remarks: line.remarks,
         billReceipt: files?.length > 0 ? 'Y' : 'N',
         receiptLink,
         approvedBy: user?.name || user?.email || '',
-      });
+      }));
 
-      await addAuditLog(user.email, 'ADD_EXPENSE', `${formData.description}: ₹${formData.amount}`);
-      showToast('Expense added successfully', 'success');
+      await addExpenses(items);
+      const summary = items.map((i) => `${i.description}: ₹${i.amount}`).join('; ');
+      await addAuditLog(user.email, 'ADD_EXPENSE', `${items.length} expense(s): ${summary}`);
+      showToast(items.length === 1 ? 'Expense added' : `${items.length} expenses added`, 'success');
       setShowAddModal(false);
       fetchData();
     } catch (err) {
-      showToast('Failed to add expense', 'error');
+      showToast(err.message || 'Failed to add expenses', 'error');
       console.error(err);
     } finally {
       setSaving(false);
@@ -123,11 +130,11 @@ export default function Expenses() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Expenses</h1>
-          <p className="page-subtitle">Track all apartment expenses</p>
+          <p className="page-subtitle">Log one bill or several in the same sitting</p>
         </div>
         {isOwner !== false && (
           <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
-            <Plus size={16} /> Add Expense
+            <Plus size={16} /> Add expenses
           </button>
         )}
       </div>
@@ -179,7 +186,7 @@ export default function Expenses() {
           description={searchQuery || filterMonth || filterCategory ? 'Try adjusting your filters' : 'Start by adding your first expense'}
           action={isOwner !== false && (
             <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
-              <Plus size={16} /> Add Expense
+              <Plus size={16} /> Add expenses
             </button>
           )}
         />
@@ -236,91 +243,162 @@ export default function Expenses() {
       <AddExpenseModal
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
-        onSave={handleAddExpense}
+        onSave={handleAddExpenses}
         saving={saving}
       />
     </div>
   );
 }
 
+function emptyExpenseLine() {
+  return { description: '', category: '', amount: '', paymentMode: 'UPI', remarks: '' };
+}
+
 function AddExpenseModal({ isOpen, onClose, onSave, saving }) {
-  const [formData, setFormData] = useState({
-    date: new Date().toISOString().split('T')[0],
-    month: getCurrentMonthLabel(),
-    description: '',
-    category: '',
-    amount: '',
-    paymentMode: 'UPI',
-    remarks: '',
-  });
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [month, setMonth] = useState(getCurrentMonthLabel());
+  const [lines, setLines] = useState([emptyExpenseLine()]);
   const [files, setFiles] = useState([]);
   const monthOptions = getFiscalMonthOptions();
 
-  const update = (key, value) => setFormData(prev => ({ ...prev, [key]: value }));
+  useEffect(() => {
+    if (!isOpen) return;
+    setDate(new Date().toISOString().split('T')[0]);
+    setMonth(getCurrentMonthLabel());
+    setLines([emptyExpenseLine()]);
+    setFiles([]);
+  }, [isOpen]);
+
+  const updateLine = (index, key, value) => {
+    setLines((prev) => prev.map((line, i) => (i === index ? { ...line, [key]: value } : line)));
+  };
+
+  const addLine = () => {
+    if (lines.length >= 25) return;
+    setLines((prev) => [...prev, emptyExpenseLine()]);
+  };
+
+  const removeLine = (index) => {
+    setLines((prev) => (prev.length === 1 ? prev : prev.filter((_, i) => i !== index)));
+  };
+
+  const lineTotal = lines.reduce((sum, line) => sum + (Number(line.amount) || 0), 0);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.description || !formData.amount || !formData.category) return;
-    onSave({ ...formData, amount: Number(formData.amount) }, files);
+    const valid = lines.filter((line) => line.description.trim() && line.category && Number(line.amount) > 0);
+    if (valid.length === 0) return;
+    onSave({ date, month, lines: valid }, files);
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Add Expense" size="lg">
+    <Modal isOpen={isOpen} onClose={onClose} title="Add expenses" size="lg">
       <form onSubmit={handleSubmit} className="form-grid">
+        <p className="text-muted text-sm">
+          Same date and month for this batch. Add as many lines as you need. One optional receipt is attached to every line.
+        </p>
         <div className="form-row">
           <div className="form-group">
             <label className="form-label">Date</label>
-            <input type="date" className="form-input" value={formData.date} onChange={e => update('date', e.target.value)} required />
+            <input type="date" className="form-input" value={date} onChange={(e) => setDate(e.target.value)} required />
           </div>
           <div className="form-group">
             <label className="form-label">Month</label>
-            <select className="form-select" value={formData.month} onChange={e => update('month', e.target.value)}>
-              {monthOptions.map(m => <option key={m} value={m}>{m}</option>)}
+            <select className="form-select" value={month} onChange={(e) => setMonth(e.target.value)}>
+              {monthOptions.map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>
+        </div>
+
+        {lines.map((line, index) => (
+          <div className="expense-line-card" key={index}>
+            <div className="expense-line-head">
+              <span className="expense-line-label">Expense {index + 1}</span>
+              {lines.length > 1 && (
+                <button type="button" className="btn btn-ghost btn-sm text-danger" onClick={() => removeLine(index)}>
+                  Remove
+                </button>
+              )}
+            </div>
+            <div className="form-group">
+              <label className="form-label">Description *</label>
+              <input
+                type="text"
+                className="form-input"
+                value={line.description}
+                onChange={(e) => updateLine(index, 'description', e.target.value)}
+                placeholder="What was this payment for?"
+                required
+              />
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Category *</label>
+                <select
+                  className="form-select"
+                  value={line.category}
+                  onChange={(e) => updateLine(index, 'category', e.target.value)}
+                  required
+                >
+                  <option value="">Select category</option>
+                  {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Amount (₹) *</label>
+                <input
+                  type="number"
+                  className="form-input"
+                  value={line.amount}
+                  onChange={(e) => updateLine(index, 'amount', e.target.value)}
+                  placeholder="0"
+                  min="1"
+                  required
+                />
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Payment mode</label>
+                <select
+                  className="form-select"
+                  value={line.paymentMode}
+                  onChange={(e) => updateLine(index, 'paymentMode', e.target.value)}
+                >
+                  {PAYMENT_MODES.map((m) => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Remarks</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={line.remarks}
+                  onChange={(e) => updateLine(index, 'remarks', e.target.value)}
+                  placeholder="Vendor, bill no., notes…"
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+
+        <button type="button" className="btn btn-secondary" onClick={addLine} disabled={lines.length >= 25}>
+          <Plus size={16} /> Add another expense
+        </button>
+
+        <div className="expense-batch-total">
+          Batch total: <strong>{formatCurrency(lineTotal)}</strong> ({lines.length} line{lines.length === 1 ? '' : 's'})
         </div>
 
         <div className="form-group">
-          <label className="form-label">Description *</label>
-          <input type="text" className="form-input" value={formData.description} onChange={e => update('description', e.target.value)} placeholder="What was the payment for?" required />
-        </div>
-
-        <div className="form-row">
-          <div className="form-group">
-            <label className="form-label">Category *</label>
-            <select className="form-select" value={formData.category} onChange={e => update('category', e.target.value)} required>
-              <option value="">Select category</option>
-              {EXPENSE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-          <div className="form-group">
-            <label className="form-label">Amount (₹) *</label>
-            <input type="number" className="form-input" value={formData.amount} onChange={e => update('amount', e.target.value)} placeholder="0" min="1" required />
-          </div>
-        </div>
-
-        <div className="form-row">
-          <div className="form-group">
-            <label className="form-label">Payment Mode</label>
-            <select className="form-select" value={formData.paymentMode} onChange={e => update('paymentMode', e.target.value)}>
-              {PAYMENT_MODES.map(m => <option key={m} value={m}>{m}</option>)}
-            </select>
-          </div>
-          <div className="form-group">
-            <label className="form-label">Remarks</label>
-            <input type="text" className="form-input" value={formData.remarks} onChange={e => update('remarks', e.target.value)} placeholder="Vendor name, notes..." />
-          </div>
-        </div>
-
-        <div className="form-group">
-          <label className="form-label">Receipt / Bill</label>
+          <label className="form-label">Receipt / bill (optional, applies to all lines)</label>
           <FileUpload onFileSelect={setFiles} />
         </div>
 
         <div className="form-actions">
           <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
           <button type="submit" className="btn btn-primary" disabled={saving}>
-            {saving ? 'Saving...' : 'Add Expense'}
+            {saving ? 'Saving…' : (lines.length === 1 ? 'Save expense' : `Save ${lines.length} expenses`)}
           </button>
         </div>
       </form>

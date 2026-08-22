@@ -150,6 +150,30 @@ export function formatCurrency(amount) {
 }
 
 /**
+ * Mask a phone for PDFs and shared reports: 98******01
+ * Do not use this for emergency-call buttons in the live app.
+ */
+export function maskPhone(phone) {
+  const digits = String(phone || '').replace(/\D/g, '');
+  if (!digits) return '—';
+  if (digits.length <= 4) return '*'.repeat(digits.length);
+  const keepStart = digits.length >= 10 ? 2 : 1;
+  const keepEnd = 2;
+  const hidden = Math.max(4, digits.length - keepStart - keepEnd);
+  return `${digits.slice(0, keepStart)}${'*'.repeat(hidden)}${digits.slice(-keepEnd)}`;
+}
+
+/**
+ * Mask an ID / Aadhaar-style number: show only the last 4 characters.
+ */
+export function maskIdNumber(value) {
+  const s = String(value || '').trim();
+  if (!s) return '—';
+  if (s.length <= 4) return '****';
+  return `${'*'.repeat(Math.max(4, s.length - 4))}${s.slice(-4)}`;
+}
+
+/**
  * Format a date string for display (e.g. "05 Sep 2026").
  * Returns '-' for empty/invalid inputs.
  */
