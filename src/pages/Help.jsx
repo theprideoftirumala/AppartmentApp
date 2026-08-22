@@ -1,6 +1,6 @@
 /**
  * Help Page — How to use the TPT Expense Tracker
- * Visible to Owners only
+ * Available to every signed-in member.
  */
 
 import { useState } from 'react';
@@ -26,7 +26,10 @@ All data is stored in a Google Sheet in your Google Drive — the sheet is the s
             {
                 heading: 'Where is the data stored?',
                 text: `Your data lives in a Google Sheet named "TPT-MaintenanceTracker" in a Google Drive folder called "TPT-AppartmentApp".
-Open it anytime from Settings > Open Sheet. The sheet is human-readable even without this app.
+Open it anytime from Settings > Open Sheet. Start with the Guide tab — it explains every column in plain language.
+The Sample Data tab holds copy-paste examples and does not change dashboard totals.
+First-time setup can fill live tabs with sample rows for testing, or leave them empty for production.
+After testing, Settings > Backups > Create Fresh Production Sheet archives the sample file and opens an empty live sheet.
 Backups (copies of the sheet) are stored in the "backups" subfolder.`,
             },
             {

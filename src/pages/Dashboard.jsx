@@ -14,13 +14,13 @@ import { useAuth } from '../contexts/AuthContext';
 import { useApp } from '../contexts/AppContext';
 import { getDashboardData, getAccessControl, parseApiError } from '../services/googleSheets';
 import { STORAGE_KEYS } from '../config/constants';
-import { formatCurrency, getCurrentMonthLabel, getCollectionPercentage, daysUntil, getRelativeTime, groupExpensesByCategory } from '../utils/helpers';
+import { formatCurrency, getCurrentMonthLabel, getCollectionPercentage, daysUntil, getRelativeTime, groupExpensesByCategory, parseJsonSafe, normalizeEmail } from '../utils/helpers';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Navbar from '../components/common/Navbar';
 
 export default function Dashboard() {
   const { user, isGuest, signOut, signOutGuest } = useAuth();
-  const { dashboardData, setDashboardData, setConfig, setUserRole, showToast, setLastSync, lastSync } = useApp();
+  const { dashboardData, setDashboardData, setConfig, setUserRole, showToast, setLastSync, lastSync, isOwner } = useApp();
   const [loading, setLoading] = useState(!dashboardData);
   const [refreshing, setRefreshing] = useState(false);
   const [accessError, setAccessError] = useState(null);
@@ -30,16 +30,11 @@ export default function Dashboard() {
   const fetchData = useCallback(async (showRefresh = false) => {
     // Guest users have no Google token — serve cached data from localStorage
     if (isGuest) {
-      const cached = localStorage.getItem(STORAGE_KEYS.CACHED_DASHBOARD);
-      if (cached) {
-        try {
-          const data = JSON.parse(cached);
-          setDashboardData(data);
-          setConfig(data.config);
-          setUserRole('Reader');
-        } catch {
-          setAccessError('Cached data is corrupted. Ask the Owner to open the app first.');
-        }
+      const data = parseJsonSafe(localStorage.getItem(STORAGE_KEYS.CACHED_DASHBOARD), null);
+      if (data) {
+        setDashboardData(data);
+        setConfig(data.config);
+        setUserRole('Reader');
       } else {
         setAccessError(
           'No cached data available for guest access.\n\nAn Owner must sign in with Google on this device first — the app caches data automatically when they visit the Dashboard.'
@@ -64,11 +59,10 @@ export default function Dashboard() {
       if (userEmail) {
         try {
           const acl = await getAccessControl();
-          const userAccess = acl.find(a => a.email === userEmail && a.status === 'Active');
+          const userAccess = acl.find(a => normalizeEmail(a.email) === normalizeEmail(userEmail) && a.status === 'Active');
           if (userAccess) {
             setUserRole(userAccess.role);
           } else {
-            // User authenticated with Google but not in ACL — deny access
             signOut();
             navigate('/login');
             showToast(`Access denied: ${userEmail} is not authorized. Contact the Treasurer or President.`, 'error');
@@ -76,9 +70,9 @@ export default function Dashboard() {
           }
         } catch (aclErr) {
           console.warn('ACL check failed in dashboard:', aclErr);
-          // If this is the first load after setup (ACL may not have current user yet), default safely
           const setupComplete = localStorage.getItem('tpt_setup_complete') === 'true';
           if (!setupComplete) setUserRole('Owner');
+          else setAccessError('Could not verify your role from the Access Control sheet. Check your connection and retry.');
         }
       }
 
@@ -91,7 +85,7 @@ export default function Dashboard() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user, setDashboardData, setConfig, setUserRole, showToast, setLastSync, signOut, navigate]);
+  }, [user, isGuest, setDashboardData, setConfig, setUserRole, showToast, setLastSync, signOut, navigate]);
 
   useEffect(() => {
     fetchData();
@@ -176,7 +170,7 @@ export default function Dashboard() {
             {config.APARTMENT_NAME || 'The Pride of Tirumala'} — {currentMonth}
           </p>
         </div>
-        {!isGuest && (
+        {isOwner && (
           <div className="flex gap-2">
             <button className="btn btn-primary btn-sm" onClick={() => navigate('/expenses')}>
               <Plus size={16} /> Add Expense

@@ -32,7 +32,7 @@ React PWA (Static Site) ←→ Google Sheets API (Database)
 
 ```bash
 # Clone the repository
-git clone https://github.com/vijayraavi/AppartmentApp.git
+git clone https://github.com/theprideoftirumala/AppartmentApp.git
 cd AppartmentApp
 
 # Install dependencies
@@ -68,18 +68,28 @@ All settings are configurable from the app's Settings page or directly from the 
 
 ## 📊 Google Sheet Structure
 
-The app creates a Google Sheet with 10 tabs:
+The Google Sheet is the source of truth. Every tab has human-readable headers. A **Guide** tab explains each column. A **Sample Data** tab holds copy-paste examples.
 
-1. **Configuration** — App settings (key-value pairs)
-2. **Flats** — Owner details for all 10 flats
-3. **Maintenance** — Monthly payment records
-4. **Expenses** — All expense entries
-5. **Emergency Contacts** — Contact directory
-6. **Reminders** — Recurring task reminders
-7. **Access Control** — User email whitelist
-8. **Audit Log** — All write operations
-9. **Water Tanker Log** — Tanker delivery tracking
-10. **Monthly Summary** — Calculated summaries
+**Setup modes**
+- **Test with sample data** — live tabs are filled with pretend Sep–Oct 2026 rows so you can click through the app
+- **Start fresh** — live tabs are empty for real collections; Guide + Sample Data stay as the template
+
+After testing, Owners can use **Settings → Create Fresh Production Sheet**. The sample workbook is renamed and kept in Drive.
+
+1. **Guide** — How to read and edit the workbook
+2. **Configuration** — App settings (key / value / description)
+3. **Flats** — Owner details for all 10 flats
+4. **Maintenance** — Monthly payment records
+5. **Expenses** — All expense entries
+6. **Misc Funds** — Extra collections
+7. **Emergency Contacts** — Contact directory
+8. **Reminders** — Recurring task reminders
+9. **Access Control** — User email whitelist
+10. **Audit Log** — All write operations
+11. **Water Tanker Log** — Tanker delivery tracking
+12. **Monthly Summary** — Calculated summaries
+13. **Watchman Details** — Staff record
+14. **Sample Data** — Example rows (does not affect totals)
 
 > Even if the app stops working, the Google Sheet remains fully readable and editable.
 
@@ -90,7 +100,7 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions.
 **Quick deploy to GitHub Pages:**
 1. Push to `main` branch
 2. Go to Settings → Pages → Source: GitHub Actions
-3. Deployed at: `https://vijayraavi.github.io/AppartmentApp/`
+3. Deployed at: `https://theprideoftirumala.github.io/AppartmentApp/`
 
 ## 📁 Project Structure
 

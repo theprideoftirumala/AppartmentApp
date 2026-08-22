@@ -20,7 +20,7 @@ The Pride of Tirumala (TPT) Apartment Expense Tracker — a Progressive Web App 
 
 ## Purpose
 
-Track monthly maintenance collection (₹3,000/flat × 10 flats), log expenses with receipt uploads, generate monthly PDF reports, manage emergency contacts and recurring reminders. All data stored in a human-readable Google Sheet that serves as the single source of truth.
+Track monthly maintenance collection (₹3,000/flat × 10 flats), log expenses with receipt uploads, generate monthly PDF reports, manage emergency contacts and recurring reminders. All data stored in a human-readable Google Sheet that serves as the single source of truth. The workbook starts with a Guide tab and a Sample Data tab. Setup can fill live tabs with sample rows for testing, or leave them empty for production. After testing, Settings can archive the sample file and create a fresh sheet.
 
 ## Key Files
 

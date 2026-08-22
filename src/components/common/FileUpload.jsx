@@ -5,6 +5,7 @@
 
 import { useState, useRef } from 'react';
 import { Upload, Camera, X, File } from 'lucide-react';
+import { isAllowedReceiptFile } from '../../utils/helpers';
 
 export default function FileUpload({ onFileSelect, accept = 'image/*,.pdf', multiple = false, maxSize = 5 }) {
   const [dragActive, setDragActive] = useState(false);
@@ -35,9 +36,9 @@ export default function FileUpload({ onFileSelect, accept = 'image/*,.pdf', mult
   };
 
   const processFiles = (files) => {
-    const validFiles = files.filter(f => f.size <= maxSize * 1024 * 1024);
+    const validFiles = files.filter((f) => isAllowedReceiptFile(f) && f.size <= maxSize * 1024 * 1024);
     if (validFiles.length < files.length) {
-      alert(`Some files exceed the ${maxSize}MB limit and were skipped.`);
+      alert(`Some files were skipped. Use JPG, PNG, WebP, or PDF up to ${maxSize}MB.`);
     }
     const newFiles = multiple ? [...selectedFiles, ...validFiles] : validFiles.slice(0, 1);
     setSelectedFiles(newFiles);

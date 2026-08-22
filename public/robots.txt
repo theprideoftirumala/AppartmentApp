@@ -1,3 +1,3 @@
 User-agent: *
 Allow: /
-Sitemap: https://vijayraavi.github.io/AppartmentApp/sitemap.xml
+Sitemap: https://theprideoftirumala.github.io/AppartmentApp/sitemap.xml

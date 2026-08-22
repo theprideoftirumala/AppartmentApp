@@ -5,6 +5,7 @@
 
 import { DRIVE_ROOT_FOLDER, DRIVE_EXPENSES_FOLDER, DRIVE_BACKUPS_FOLDER, STORAGE_KEYS } from '../config/constants';
 import { ensureValidToken } from './googleAuth';
+import { escapeDriveQuery, isAllowedReceiptFile, isValidSpreadsheetId } from '../utils/helpers';
 
 /**
  * Wrapper to ensure auth before any API call
@@ -33,7 +34,7 @@ function getRootFolderId() {
  */
 export async function findExistingSpreadsheet(name) {
   return withAuth(async () => {
-    const safeName = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const safeName = escapeDriveQuery(name);
     const query = `name='${safeName}' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`;
     const response = await window.gapi.client.drive.files.list({
       q: query,
@@ -80,9 +81,9 @@ export async function createFolder(name, parentId = null) {
  */
 export async function findFolder(name, parentId = null) {
   return withAuth(async () => {
-    let query = `name='${name}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+    let query = `name='${escapeDriveQuery(name)}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
     if (parentId) {
-      query += ` and '${parentId}' in parents`;
+      query += ` and '${escapeDriveQuery(parentId)}' in parents`;
     }
 
     const response = await window.gapi.client.drive.files.list({
@@ -162,6 +163,9 @@ export async function getMonthlyFolder(yearMonth) {
  */
 export async function uploadFile(file, folderId, customName = null) {
   return withAuth(async () => {
+    if (!isAllowedReceiptFile(file)) {
+      throw new Error('Only images or PDFs up to 5 MB can be uploaded.');
+    }
     const metadata = {
       name: customName || file.name,
       parents: [folderId],
@@ -238,7 +242,7 @@ export async function createBackup() {
   return withAuth(async () => {
     const spreadsheetId = localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID);
     const rootId = getRootFolderId();
-    if (!spreadsheetId || !rootId) throw new Error('Setup not complete');
+    if (!isValidSpreadsheetId(spreadsheetId) || !rootId) throw new Error('Setup not complete');
 
     const backupsId = await findFolder(DRIVE_BACKUPS_FOLDER, rootId);
     if (!backupsId) throw new Error('Backups folder not found');
@@ -301,7 +305,7 @@ export async function listBackups() {
 export async function shareSpreadsheet(email, role = 'reader') {
   return withAuth(async () => {
     const spreadsheetId = localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID);
-    if (!spreadsheetId) throw new Error('Spreadsheet not set up');
+    if (!isValidSpreadsheetId(spreadsheetId)) throw new Error('Spreadsheet not set up');
 
     await window.gapi.client.drive.permissions.create({
       fileId: spreadsheetId,
@@ -341,7 +345,7 @@ export async function shareFolder(email, role = 'reader') {
 export async function removeSharing(email) {
   return withAuth(async () => {
     const spreadsheetId = localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID);
-    if (!spreadsheetId) return;
+    if (!isValidSpreadsheetId(spreadsheetId)) return;
 
     // List permissions
     const response = await window.gapi.client.drive.permissions.list({
@@ -366,7 +370,7 @@ export async function removeSharing(email) {
  */
 export function getSpreadsheetUrl() {
   const spreadsheetId = localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID);
-  if (!spreadsheetId) return null;
+  if (!isValidSpreadsheetId(spreadsheetId)) return null;
   return `https://docs.google.com/spreadsheets/d/${spreadsheetId}`;
 }
 

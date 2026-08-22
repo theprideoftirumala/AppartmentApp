@@ -5,6 +5,34 @@
  */
 
 import { GOOGLE_CLIENT_ID, GOOGLE_SCOPES, DISCOVERY_DOCS, STORAGE_KEYS } from '../config/constants';
+import { parseJsonSafe } from '../utils/helpers';
+
+function readUserSession() {
+  const raw = sessionStorage.getItem(STORAGE_KEYS.USER_DATA)
+    || localStorage.getItem(STORAGE_KEYS.USER_DATA);
+  return parseJsonSafe(raw, null);
+}
+
+function writeUserSession(userData) {
+  const safe = {
+    email: userData.email || '',
+    name: userData.name || '',
+    picture: userData.picture || '',
+    id: userData.id || '',
+    expiresAt: userData.expiresAt,
+  };
+  sessionStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify({
+    ...safe,
+    accessToken: userData.accessToken,
+  }));
+  // Profile only in localStorage — never persist the access token across browser restarts
+  localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(safe));
+}
+
+function clearUserSession() {
+  sessionStorage.removeItem(STORAGE_KEYS.USER_DATA);
+  localStorage.removeItem(STORAGE_KEYS.USER_DATA);
+}
 
 let tokenClient = null;
 let gapiInited = false;
@@ -73,7 +101,7 @@ function initGisClient(callback) {
           accessToken: tokenResponse.access_token,
           expiresAt: Date.now() + (tokenResponse.expires_in * 1000),
         };
-        localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData));
+        writeUserSession(userData);
         if (onAuthChangeCallback) onAuthChangeCallback(userData);
         if (callback) callback(userData, null);
       });
@@ -90,6 +118,7 @@ async function fetchUserProfile(accessToken) {
     const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
+    if (!response.ok) throw new Error('Failed to load Google profile');
     const data = await response.json();
     return {
       email: data.email,
@@ -123,18 +152,14 @@ export async function initGoogleAuth(onAuthChange) {
     initGisClient();
 
     // Check for existing session
-    const stored = localStorage.getItem(STORAGE_KEYS.USER_DATA);
-    if (stored) {
-      const userData = JSON.parse(stored);
-      if (userData.expiresAt > Date.now()) {
-        // Token still valid, set it on gapi
-        window.gapi.client.setToken({ access_token: userData.accessToken });
-        if (onAuthChange) onAuthChange(userData);
-        return userData;
-      } else {
-        // Token expired, clear it
-        localStorage.removeItem(STORAGE_KEYS.USER_DATA);
-      }
+    const userData = readUserSession();
+    if (userData?.accessToken && userData.expiresAt > Date.now()) {
+      window.gapi.client.setToken({ access_token: userData.accessToken });
+      if (onAuthChange) onAuthChange(userData);
+      return userData;
+    }
+    if (userData) {
+      clearUserSession();
     }
 
     return null;
@@ -155,7 +180,6 @@ export function signIn() {
     }
 
     // Override the callback for this specific sign-in attempt
-    const originalCallback = tokenClient.callback;
     tokenClient.callback = (tokenResponse) => {
       if (tokenResponse.error) {
         reject(new Error(tokenResponse.error));
@@ -167,7 +191,7 @@ export function signIn() {
           accessToken: tokenResponse.access_token,
           expiresAt: Date.now() + (tokenResponse.expires_in * 1000),
         };
-        localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData));
+        writeUserSession(userData);
         window.gapi.client.setToken({ access_token: tokenResponse.access_token });
         if (onAuthChangeCallback) onAuthChangeCallback(userData);
         resolve(userData);
@@ -194,7 +218,7 @@ export function signOut() {
     window.google.accounts.oauth2.revoke(token.access_token);
     window.gapi.client.setToken(null);
   }
-  localStorage.removeItem(STORAGE_KEYS.USER_DATA);
+  clearUserSession();
   if (onAuthChangeCallback) onAuthChangeCallback(null);
 }
 
@@ -202,11 +226,10 @@ export function signOut() {
  * Get current user data from localStorage
  */
 export function getCurrentUser() {
-  const stored = localStorage.getItem(STORAGE_KEYS.USER_DATA);
-  if (!stored) return null;
-  const userData = JSON.parse(stored);
-  if (userData.expiresAt <= Date.now()) {
-    localStorage.removeItem(STORAGE_KEYS.USER_DATA);
+  const userData = readUserSession();
+  if (!userData) return null;
+  if (!userData.accessToken || userData.expiresAt <= Date.now()) {
+    clearUserSession();
     return null;
   }
   return userData;

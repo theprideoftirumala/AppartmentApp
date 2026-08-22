@@ -40,18 +40,26 @@ src/
 └── utils/helpers.js         # Formatters, validators
 ```
 
-## Google Sheet Structure (10 Sheets)
+## Google Sheet Structure (source of truth)
 
-1. **Configuration** — Key-value pairs for all app settings
-2. **Flats** — Owner details for 10 flats (101-502)
-3. **Maintenance** — Monthly payment records per flat
-4. **Expenses** — All expense entries with categories
-5. **Emergency Contacts** — Categorized contact directory
-6. **Reminders** — Recurring task reminders
-7. **Access Control** — Email whitelist with roles (Owner/Reader)
-8. **Audit Log** — All write operations logged
-9. **Water Tanker Log** — Dedicated tanker tracking
-10. **Monthly Summary** — Calculated monthly financial summaries
+The workbook is designed so a treasurer can understand every number without opening this app.
+
+1. **Guide** — Plain-language explanation of every tab, column, and edit rule
+2. **Configuration** — Key / Value / Description for all app settings
+3. **Flats** — Owner details for 10 flats (101-502)
+4. **Maintenance** — Monthly payment records per flat
+5. **Expenses** — All expense entries with categories
+6. **Misc Funds** — Extra collections (festival, levy, donation)
+7. **Emergency Contacts** — Categorized contact directory
+8. **Reminders** — Recurring task reminders
+9. **Access Control** — Email whitelist with roles (Owner/Reader)
+10. **Audit Log** — All write operations logged
+11. **Water Tanker Log** — Dedicated tanker tracking
+12. **Monthly Summary** — Calculated monthly financial summaries (9 columns)
+13. **Watchman Details** — Staff record
+14. **Sample Data** — Copy-paste examples; does not affect dashboard totals
+
+Setup can create a **sample** workbook (live tabs pre-filled for testing) or a **fresh** production workbook (live tabs empty). After testing, Settings → Create Fresh Production Sheet archives the sample file in Drive.
 
 ## Google Drive Structure
 

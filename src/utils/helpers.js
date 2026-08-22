@@ -34,6 +34,81 @@ export function sanitizeForSheet(value) {
 }
 
 /**
+ * Sanitize then truncate — use this for every user-supplied sheet cell.
+ */
+export function sheetText(value, max = 300) {
+  return truncateForSheet(sanitizeForSheet(value), max);
+}
+
+/**
+ * Coerce to a finite number string so formulas cannot reach the sheet.
+ */
+export function sheetNumber(value) {
+  const n = Number(value);
+  return String(Number.isFinite(n) ? n : 0);
+}
+
+/**
+ * Normalize emails for ACL comparisons (case-insensitive, trimmed).
+ */
+export function normalizeEmail(email) {
+  return String(email || '').trim().toLowerCase();
+}
+
+/**
+ * Escape a value for use inside a Google Drive `q` query string.
+ */
+export function escapeDriveQuery(value) {
+  return String(value || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+/**
+ * Only allow Google Drive / Docs https links as receipt URLs.
+ */
+export function sanitizeDriveUrl(url) {
+  if (!url) return '';
+  const str = String(url).trim();
+  if (!/^https:\/\/(drive|docs)\.google\.com\//i.test(str)) return '';
+  return str;
+}
+
+/**
+ * Spreadsheet IDs are alphanumeric with hyphens/underscores.
+ */
+export function isValidSpreadsheetId(id) {
+  return typeof id === 'string' && /^[a-zA-Z0-9_-]{10,80}$/.test(id);
+}
+
+/**
+ * Safe JSON.parse — returns fallback instead of throwing.
+ */
+export function parseJsonSafe(raw, fallback = null) {
+  if (!raw) return fallback;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return fallback;
+  }
+}
+
+export const ALLOWED_RECEIPT_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+  'application/pdf',
+];
+
+export function isAllowedReceiptFile(file) {
+  if (!file) return false;
+  if (file.size > 5 * 1024 * 1024) return false;
+  if (ALLOWED_RECEIPT_TYPES.includes(file.type)) return true;
+  const ext = String(file.name || '').split('.').pop()?.toLowerCase();
+  return ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif', 'pdf'].includes(ext);
+}
+
+/**
  * Validate that a string is within the allowed max length before writing to the sheet.
  * Silently truncates rather than throwing so form submissions are not blocked.
  *
