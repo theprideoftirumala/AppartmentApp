@@ -95,17 +95,14 @@ export default function Sidebar() {
             </a>
           )}
 
-          {/* Help — owners only */}
-          {userRole === 'Owner' && (
-            <NavLink
-              to="/help"
-              className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
-              onClick={() => setSidebarOpen(false)}
-            >
-              <HelpCircle size={20} />
-              <span>Help</span>
-            </NavLink>
-          )}
+          <NavLink
+            to="/help"
+            className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
+            onClick={() => setSidebarOpen(false)}
+          >
+            <HelpCircle size={20} />
+            <span>Help</span>
+          </NavLink>
         </nav>
 
         {/* User section */}

@@ -24,7 +24,7 @@ export const DISCOVERY_DOCS = [
 // ─── Apartment Configuration ────────────────────────────────────
 export const APP_NAME = 'The Pride of Tirumala';
 export const APP_SHORT_NAME = 'TPT Tracker';
-export const APP_VERSION = '1.0.0';
+export const APP_VERSION = '1.2.0';
 
 export const FLATS = ['101', '102', '201', '202', '301', '302', '401', '402', '501', '502'];
 
@@ -52,9 +52,12 @@ export const DRIVE_ROOT_FOLDER = 'TPT-AppartmentApp';
 export const DRIVE_EXPENSES_FOLDER = 'expenses-evidence';
 export const DRIVE_BACKUPS_FOLDER = 'backups';
 export const SHEET_FILE_NAME = 'TPT-MaintenanceTracker';
+export const SHEET_SAMPLE_SUFFIX = '-SAMPLE';
 
 // ─── Google Sheets Structure ────────────────────────────────────
+// Order here is the tab order in a newly created workbook.
 export const SHEET_NAMES = {
+  GUIDE: 'Guide',
   CONFIGURATION: 'Configuration',
   FLATS: 'Flats',
   MAINTENANCE: 'Maintenance',
@@ -67,51 +70,73 @@ export const SHEET_NAMES = {
   WATER_TANKER: 'Water Tanker Log',
   MONTHLY_SUMMARY: 'Monthly Summary',
   WATCHMAN_DETAILS: 'Watchman Details',
+  SAMPLE_DATA: 'Sample Data',
+};
+
+export const CONFIG_DESCRIPTIONS = {
+  APARTMENT_NAME: 'Name of the apartment complex (shown on dashboard and PDF reports)',
+  MONTHLY_MAINTENANCE: 'Monthly maintenance amount each flat pays (₹). Example: 3000',
+  CORPUS_FUND: 'One-time corpus fund balance (₹). Edit here; the app reads this value.',
+  DEFICIT_LAST_YEAR: 'Opening balance at handover (₹). Negative = deficit, positive = surplus.',
+  FISCAL_YEAR_START: 'First month of the financial year as YYYY-MM. TPT uses 2026-09.',
+  TREASURER_FLAT: 'Flat number of the current Treasurer (must match a row in the Flats tab)',
+  PRESIDENT_FLAT: 'Flat number of the current President (must match a row in the Flats tab)',
+  LATE_FEE: 'Late payment penalty in ₹ applied after LATE_FEE_AFTER_DAY',
+  LATE_FEE_AFTER_DAY: 'Day of the month after which late fee applies (1-31)',
+  EMERGENCY_RESERVE: 'Minimum cash reserve the society should try to keep (₹)',
+  MAX_USERS: 'Maximum email addresses allowed in Access Control',
+  MAX_OWNERS: 'Maximum Owner-role users (people who can edit)',
+  WATCHMAN_NAME: 'Default watchman display name (optional; detailed records live in Watchman Details)',
+  WATCHMAN_PHONE: 'Default watchman phone (optional)',
+  WATCHMAN_SALARY: 'Default monthly watchman salary in ₹ (optional)',
+  WATCHMAN_SHIFT: 'Default shift timing text (optional)',
 };
 
 export const SHEET_HEADERS = {
+  [SHEET_NAMES.GUIDE]: ['Topic', 'What it means', 'How to use / edit'],
   [SHEET_NAMES.CONFIGURATION]: ['Key', 'Value', 'Description'],
   [SHEET_NAMES.FLATS]: [
     'Flat', 'Owner Name', 'Phone', 'Email',
-    'Member2 Name', 'Member2 Phone', 'Member2 Email', 'Role',
+    'Member 2 Name', 'Member 2 Phone', 'Member 2 Email', 'Committee Role',
   ],
   [SHEET_NAMES.MAINTENANCE]: [
-    'Month', 'Flat', 'Amount Due', 'Amount Paid', 'Payment Date',
-    'Payment Mode', 'UPI Ref', 'Status', 'Late Fee', 'Remarks',
+    'Month (MMM-YY)', 'Flat', 'Amount Due (₹)', 'Amount Paid (₹)', 'Payment Date (YYYY-MM-DD)',
+    'Payment Mode', 'UPI / Ref No', 'Status (PAID/PENDING/PARTIAL/WAIVED)', 'Late Fee (₹)', 'Remarks',
   ],
   [SHEET_NAMES.EXPENSES]: [
-    'ID', 'Date', 'Month', 'Description', 'Category', 'Amount',
-    'Payment Mode', 'Bill/Receipt', 'Approved By', 'Receipt Drive Link', 'Remarks',
+    'ID', 'Date (YYYY-MM-DD)', 'Month (MMM-YY)', 'Description', 'Category', 'Amount (₹)',
+    'Payment Mode', 'Bill Attached (Y/N)', 'Approved By', 'Receipt Drive Link', 'Remarks',
   ],
   [SHEET_NAMES.EMERGENCY_CONTACTS]: [
     'Category', 'Name', 'Role', 'Phone', 'Alt Phone', 'Address', 'Notes',
   ],
   [SHEET_NAMES.REMINDERS]: [
-    'ID', 'Title', 'Description', 'Frequency', 'Next Due',
-    'Last Completed', 'Assigned To', 'Status', 'Created By', 'Created Date',
+    'ID', 'Title', 'Description', 'Frequency', 'Next Due (YYYY-MM-DD)',
+    'Last Completed (YYYY-MM-DD)', 'Assigned To', 'Status (Active/Inactive)', 'Created By', 'Created Date',
   ],
   [SHEET_NAMES.ACCESS_CONTROL]: [
-    'Email', 'Role', 'Flat', 'Added By', 'Added Date', 'Status',
+    'Email', 'Role (Owner/Reader)', 'Flat', 'Added By', 'Added Date (YYYY-MM-DD)', 'Status (Active/Inactive)',
   ],
   [SHEET_NAMES.AUDIT_LOG]: [
-    'Timestamp', 'User', 'Action', 'Details',
+    'Timestamp (ISO)', 'User Email', 'Action', 'Details',
   ],
   [SHEET_NAMES.WATER_TANKER]: [
-    'Date', 'Vendor', 'Litres', 'Cost', 'Ordered By', 'Remarks',
+    'Date (YYYY-MM-DD)', 'Vendor', 'Litres', 'Cost (₹)', 'Ordered By', 'Remarks',
   ],
   [SHEET_NAMES.MONTHLY_SUMMARY]: [
-    'Month', 'Total Collection', 'Total Expenses', 'Net Balance',
-    'Cumulative Balance', 'Collection %', 'Pending Flats',
+    'Month (MMM-YY)', 'Collection (₹)', 'Misc Funds (₹)', 'Expenses (₹)', 'Net Balance (₹)',
+    'Cumulative (₹)', 'Collection %', 'Pending Flats', 'Status (SURPLUS/DEFICIT)',
   ],
   [SHEET_NAMES.WATCHMAN_DETAILS]: [
-    'Name', 'Phone', 'Alt Phone', 'Address', 'Salary', 'Shift Timing',
-    'Join Date', 'ID Proof Type', 'ID Proof Number', 'Emergency Contact',
+    'Name', 'Phone', 'Alt Phone', 'Address', 'Salary (₹)', 'Shift Timing',
+    'Join Date (YYYY-MM-DD)', 'ID Proof Type', 'ID Proof Number', 'Emergency Contact',
     'Emergency Phone', 'Photo Drive Link', 'Status', 'Remarks',
   ],
   [SHEET_NAMES.MISC_FUNDS]: [
-    'ID', 'Date', 'Month', 'Flat', 'Amount', 'Description',
+    'ID', 'Date (YYYY-MM-DD)', 'Month (MMM-YY)', 'Flat', 'Amount (₹)', 'Description',
     'Payment Mode', 'Collected By', 'Remarks',
   ],
+  [SHEET_NAMES.SAMPLE_DATA]: ['Sheet / Section', 'Example row (copy into the live tab)', 'Notes'],
 };
 
 // ─── Maintenance Constraints ───────────────────────────────────

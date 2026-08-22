@@ -5,13 +5,16 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FolderPlus, FileSpreadsheet, CheckCircle, Loader, Shield, ArrowRight, Search } from 'lucide-react';
+import { FolderPlus, FileSpreadsheet, CheckCircle, Loader, Shield, ArrowRight, Search, FlaskConical, FilePlus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useApp } from '../contexts/AppContext';
 import { setupFolderStructure, findExistingSpreadsheet } from '../services/googleDrive';
-import { createSpreadsheet, addAccessControl, addAuditLog, addReminder, getAccessControl, parseApiError } from '../services/googleSheets';
+import {
+  createSpreadsheet, addAccessControl, addAuditLog, addReminder, getAccessControl,
+  parseApiError, ensureSheetStructure,
+} from '../services/googleSheets';
 import { STORAGE_KEYS, APP_NAME, SHEET_FILE_NAME, DEFAULT_REMINDERS } from '../config/constants';
-import { calculateNextDue, getLastDayOfCurrentMonth, getFirstDayOfNextMonth } from '../utils/helpers';
+import { calculateNextDue, getLastDayOfCurrentMonth, getFirstDayOfNextMonth, normalizeEmail } from '../utils/helpers';
 
 const STEPS = [
   { id: 'welcome', title: 'Welcome', icon: Shield },
@@ -27,7 +30,8 @@ export default function Setup() {
   const [currentStep, setCurrentStep] = useState(0);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState(null);
-  const [results, setResults] = useState({ folderId: null, spreadsheetId: null, foundExisting: false });
+  const [results, setResults] = useState({ folderId: null, spreadsheetId: null, foundExisting: false, mode: 'fresh' });
+  const [setupMode, setSetupMode] = useState('sample');
 
   const renderErrorMessage = (text) => {
     if (!text) return null;
@@ -83,7 +87,7 @@ export default function Setup() {
         } catch {
           // ACL read failed — allow reconnect for the sheet owner
         }
-        const isAuthorized = aclEntries.some(u => u.email === user.email && u.status === 'Active');
+        const isAuthorized = aclEntries.some(u => normalizeEmail(u.email) === normalizeEmail(user.email) && u.status === 'Active');
 
         if (!isAuthorized && aclEntries.length > 0) {
           // Sheet exists and has users, but this user is not listed
@@ -94,12 +98,11 @@ export default function Setup() {
         }
 
         if (!isAuthorized) {
-          // Sheet is empty ACL (edge case) — add as owner
           await addAccessControl({ email: user.email, role: 'Owner', flat: '', addedBy: 'System' });
         }
+        await ensureSheetStructure(spreadsheetId);
       } else {
-        // No existing spreadsheet — create a fresh one
-        spreadsheetId = await createSpreadsheet(folders.rootId);
+        spreadsheetId = await createSpreadsheet(folders.rootId, { mode: setupMode });
 
         // Add current user as Owner
         await addAccessControl({ email: user.email, role: 'Owner', flat: '', addedBy: 'System' });
@@ -124,7 +127,7 @@ export default function Setup() {
         await addAuditLog(user.email, 'SETUP', 'Initial app setup completed');
       }
 
-      setResults({ folderId: folders.rootId, spreadsheetId, foundExisting });
+      setResults({ folderId: folders.rootId, spreadsheetId, foundExisting, mode: setupMode });
 
       // Step 3: Done
       setCurrentStep(3);
@@ -167,10 +170,30 @@ export default function Setup() {
               <p>Let's connect your apartment expense tracker. This will:</p>
               <ul className="setup-checklist">
                 <li>Search for an existing <strong>TPT-MaintenanceTracker</strong> in your Google Drive</li>
-                <li>Create it only if it doesn't already exist</li>
-                <li>Set up the required folder structure</li>
-                <li>Set you up as the first Owner</li>
+                <li>Create it only if it doesn't already exist — the Google Sheet stays the source of truth</li>
+                <li>Set up the Drive folder structure and add you as the first Owner</li>
               </ul>
+
+              <div className="setup-mode-grid">
+                <button
+                  type="button"
+                  className={`setup-mode-card ${setupMode === 'sample' ? 'setup-mode-card-active' : ''}`}
+                  onClick={() => setSetupMode('sample')}
+                >
+                  <FlaskConical size={22} />
+                  <strong>Test with sample data</strong>
+                  <span>Fills live tabs with pretend Sep–Oct 2026 data so you can click through the app. A Guide tab and a Sample Data tab explain every column.</span>
+                </button>
+                <button
+                  type="button"
+                  className={`setup-mode-card ${setupMode === 'fresh' ? 'setup-mode-card-active' : ''}`}
+                  onClick={() => setSetupMode('fresh')}
+                >
+                  <FilePlus size={22} />
+                  <strong>Start fresh (production)</strong>
+                  <span>Empty live tabs for real collections. Guide + Sample Data stay as a readable template. Use this after testing, or from Settings later.</span>
+                </button>
+              </div>
 
               <div className="setup-actions">
                 <button
@@ -178,7 +201,7 @@ export default function Setup() {
                   onClick={handleSetup}
                   disabled={processing}
                 >
-                  <Search size={18} /> Connect or Create <ArrowRight size={18} />
+                  <Search size={18} /> {setupMode === 'sample' ? 'Create sample sheet' : 'Create empty sheet'} <ArrowRight size={18} />
                 </button>
 
                 {existingSpreadsheetId && (
@@ -211,12 +234,19 @@ export default function Setup() {
                 <CheckCircle size={56} />
               </div>
               <h2>All Set! 🎉</h2>
-              <p>{results.foundExisting ? 'Reconnected to your existing data.' : 'Your expense tracker is ready to use.'}</p>
+              <p>
+                {results.foundExisting
+                  ? 'Reconnected to your existing data.'
+                  : results.mode === 'sample'
+                    ? 'Sample workbook is ready. Open the Guide tab in Google Sheets — every column is explained there.'
+                    : 'Empty production workbook is ready. The Guide and Sample Data tabs are your reference; live tabs start blank.'}
+              </p>
 
               <div className="setup-summary card">
                 <p><strong>Google Drive:</strong> TPT-AppartmentApp folder ready</p>
-                <p><strong>Spreadsheet:</strong> {results.foundExisting ? 'Reconnected to existing TPT-MaintenanceTracker' : 'TPT-MaintenanceTracker created with all sheets'}</p>
+                <p><strong>Spreadsheet:</strong> {results.foundExisting ? 'Reconnected to existing TPT-MaintenanceTracker' : `TPT-MaintenanceTracker created (${results.mode === 'sample' ? 'sample data' : 'fresh'})`}</p>
                 <p><strong>Your Role:</strong> Owner</p>
+                <p><strong>After testing:</strong> Settings → Create Fresh Production Sheet. The sample file is archived in Drive.</p>
               </div>
 
               <button

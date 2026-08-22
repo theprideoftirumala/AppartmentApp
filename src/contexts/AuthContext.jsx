@@ -7,6 +7,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import { initGoogleAuth, signIn as googleSignIn, signOut as googleSignOut } from '../services/googleAuth';
 import { STORAGE_KEYS } from '../config/constants';
 import { getAccessControl } from '../services/googleSheets';
+import { normalizeEmail, parseJsonSafe, isValidSpreadsheetId } from '../utils/helpers';
 
 const AuthContext = createContext(null);
 
@@ -19,9 +20,9 @@ export async function hashPin(pin) {
 async function fetchAccessEntry(email) {
   const spreadsheetId = localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID);
   const setupComplete = localStorage.getItem(STORAGE_KEYS.SETUP_COMPLETE) === 'true';
-  if (!setupComplete || !spreadsheetId) return null;
+  if (!setupComplete || !isValidSpreadsheetId(spreadsheetId)) return null;
   const acl = await getAccessControl();
-  return acl.find(u => u.email === email && u.status === 'Active') || null;
+  return acl.find(u => normalizeEmail(u.email) === normalizeEmail(email) && u.status === 'Active') || null;
 }
 
 export function AuthProvider({ children }) {
@@ -33,16 +34,14 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEYS.GUEST_SESSION);
-      if (raw) {
-        const s = JSON.parse(raw);
-        if (s.isGuest && s.expiresAt > Date.now()) {
-          setIsGuest(true);
-          setLoading(false);
-          return;
-        }
-        localStorage.removeItem(STORAGE_KEYS.GUEST_SESSION);
+      const s = parseJsonSafe(localStorage.getItem(STORAGE_KEYS.GUEST_SESSION), null);
+      const pinHash = localStorage.getItem(STORAGE_KEYS.GUEST_PIN_HASH);
+      if (s?.isGuest && s.expiresAt > Date.now() && pinHash && s.pinHash === pinHash) {
+        setIsGuest(true);
+        setLoading(false);
+        return;
       }
+      localStorage.removeItem(STORAGE_KEYS.GUEST_SESSION);
     } catch { /* ignore */ }
 
     let mounted = true;
@@ -65,7 +64,11 @@ export function AuthProvider({ children }) {
               setUser(userData);
             }
           } catch {
-            setUser(userData);
+            if (localStorage.getItem(STORAGE_KEYS.SETUP_COMPLETE) === 'true') {
+              setError('Could not verify access against the Google Sheet. Check your connection and try again.');
+            } else {
+              setUser(userData);
+            }
           }
         }
         setLoading(false);
@@ -92,8 +95,8 @@ export function AuthProvider({ children }) {
           entry = await fetchAccessEntry(userData.email);
         } catch (aclErr) {
           console.warn('ACL check failed during sign-in:', aclErr);
-          setUser(userData);
-          return userData;
+          setError('Could not verify access against the Google Sheet. Check your connection and try again.');
+          throw new Error('Could not verify access. Please try again.');
         }
         if (!entry) {
           // Keep the Google session alive so the user sees WHO is blocked.
@@ -129,7 +132,11 @@ export function AuthProvider({ children }) {
     if (entered !== storedHash) {
       throw new Error('Incorrect PIN. Please try again.');
     }
-    const session = { isGuest: true, expiresAt: Date.now() + 24 * 3600 * 1000 };
+    const session = {
+      isGuest: true,
+      expiresAt: Date.now() + 24 * 3600 * 1000,
+      pinHash: storedHash,
+    };
     localStorage.setItem(STORAGE_KEYS.GUEST_SESSION, JSON.stringify(session));
     setIsGuest(true);
   }, []);
@@ -143,7 +150,6 @@ export function AuthProvider({ children }) {
     user, loading, error, accessDenied, isGuest,
     signIn, signOut, loginAsGuest, signOutGuest,
     isAuthenticated: !!user || isGuest,
-    isOwner: false,
   };
 
   return (

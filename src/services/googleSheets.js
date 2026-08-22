@@ -4,15 +4,31 @@
  * Google Sheet is the single source of truth / database
  */
 
-import { SHEET_NAMES, SHEET_HEADERS, DEFAULT_CONFIG, FLATS, STORAGE_KEYS, SHEET_FILE_NAME } from '../config/constants';
+import { SHEET_NAMES, SHEET_HEADERS, DEFAULT_CONFIG, FLATS, STORAGE_KEYS } from '../config/constants';
 import { ensureValidToken } from './googleAuth';
-import { sanitizeForSheet, truncateForSheet } from '../utils/helpers';
+import {
+  sanitizeForSheet,
+  truncateForSheet,
+  sheetText,
+  sheetNumber,
+  normalizeEmail,
+  sanitizeDriveUrl,
+  isValidSpreadsheetId,
+} from '../utils/helpers';
+import {
+  createSpreadsheet as createSpreadsheetWorkbook,
+  ensureSheetStructure,
+  archiveAndCreateFresh,
+} from './sheetSetup';
+
+export { createSpreadsheetWorkbook as createSpreadsheet, ensureSheetStructure, archiveAndCreateFresh };
 
 /**
  * Get the spreadsheet ID from localStorage
  */
 function getSpreadsheetId() {
-  return localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID);
+  const id = localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID);
+  return isValidSpreadsheetId(id) ? id : null;
 }
 
 /**
@@ -64,132 +80,6 @@ export function parseApiError(error) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// SPREADSHEET CREATION & SETUP
-// ═══════════════════════════════════════════════════════════════
-
-/**
- * Create the main spreadsheet with all required sheets
- * @param {string} folderId - Google Drive folder ID to create the sheet in
- * @returns {string} Spreadsheet ID
- */
-export async function createSpreadsheet(folderId) {
-  return withAuth(async () => {
-    const sheetNames = Object.values(SHEET_NAMES);
-
-    // Create spreadsheet with all sheets
-    const response = await window.gapi.client.sheets.spreadsheets.create({
-      resource: {
-        properties: {
-          title: SHEET_FILE_NAME,
-        },
-        sheets: sheetNames.map((name, index) => ({
-          properties: {
-            sheetId: index,
-            title: name,
-            index: index,
-            gridProperties: {
-              frozenRowCount: 1,
-            },
-          },
-        })),
-      },
-    });
-
-    const spreadsheetId = response.result.spreadsheetId;
-
-    // Move to the correct folder
-    await window.gapi.client.drive.files.update({
-      fileId: spreadsheetId,
-      addParents: folderId,
-      fields: 'id, parents',
-    });
-
-    // Add headers to all sheets
-    const batchData = [];
-    for (const [sheetName, headers] of Object.entries(SHEET_HEADERS)) {
-      batchData.push({
-        range: `'${sheetName}'!A1`,
-        values: [headers],
-      });
-    }
-
-    await window.gapi.client.sheets.spreadsheets.values.batchUpdate({
-      spreadsheetId,
-      resource: {
-        valueInputOption: 'RAW',
-        data: batchData,
-      },
-    });
-
-    // Add default configuration
-    const configData = Object.entries(DEFAULT_CONFIG).map(([key, value]) => {
-      const descriptions = {
-        APARTMENT_NAME: 'Name of the apartment complex',
-        MONTHLY_MAINTENANCE: 'Monthly maintenance amount per flat (₹)',
-        CORPUS_FUND: 'Corpus fund balance (₹)',
-        DEFICIT_LAST_YEAR: 'Deficit/surplus carried from last year (₹)',
-        FISCAL_YEAR_START: 'Start month of fiscal year (YYYY-MM)',
-        TREASURER_FLAT: 'Flat number of the current Treasurer',
-        PRESIDENT_FLAT: 'Flat number of the current President',
-        LATE_FEE: 'Late payment penalty per month (₹)',
-        LATE_FEE_AFTER_DAY: 'Day of month after which late fee applies',
-        EMERGENCY_RESERVE: 'Minimum balance to maintain (₹)',
-        MAX_USERS: 'Maximum number of users allowed',
-        MAX_OWNERS: 'Maximum number of owner-role users',
-      };
-      return [key, String(value), descriptions[key] || ''];
-    });
-
-    await window.gapi.client.sheets.spreadsheets.values.update({
-      spreadsheetId,
-      range: `'${SHEET_NAMES.CONFIGURATION}'!A2`,
-      valueInputOption: 'RAW',
-      resource: { values: configData },
-    });
-
-    // Add default flat data
-    const flatData = FLATS.map(flat => [flat, '', '', '', '', '', '', 'Member']);
-    await window.gapi.client.sheets.spreadsheets.values.update({
-      spreadsheetId,
-      range: `'${SHEET_NAMES.FLATS}'!A2`,
-      valueInputOption: 'RAW',
-      resource: { values: flatData },
-    });
-
-    // Format headers (bold, background color)
-    const formatRequests = sheetNames.map((_, index) => ({
-      repeatCell: {
-        range: {
-          sheetId: index,
-          startRowIndex: 0,
-          endRowIndex: 1,
-        },
-        cell: {
-          userEnteredFormat: {
-            backgroundColor: { red: 0.15, green: 0.15, blue: 0.2, alpha: 1 },
-            textFormat: {
-              bold: true,
-              foregroundColor: { red: 0.8, green: 0.85, blue: 0.95, alpha: 1 },
-            },
-          },
-        },
-        fields: 'userEnteredFormat(backgroundColor,textFormat)',
-      },
-    }));
-
-    await window.gapi.client.sheets.spreadsheets.batchUpdate({
-      spreadsheetId,
-      resource: { requests: formatRequests },
-    });
-
-    // Save spreadsheet ID
-    localStorage.setItem(STORAGE_KEYS.SPREADSHEET_ID, spreadsheetId);
-
-    return spreadsheetId;
-  });
-}
-
-// ═══════════════════════════════════════════════════════════════
 // CONFIGURATION
 // ═══════════════════════════════════════════════════════════════
 
@@ -199,9 +89,10 @@ export async function createSpreadsheet(folderId) {
 export async function getConfiguration() {
   return withAuth(async () => {
     const spreadsheetId = getSpreadsheetId();
+    if (!spreadsheetId) throw new Error('Spreadsheet is not connected.');
     const response = await window.gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: `'${SHEET_NAMES.CONFIGURATION}'!A2:C20`,
+      range: `'${SHEET_NAMES.CONFIGURATION}'!A2:C100`,
     });
 
     const rows = response.result.values || [];
@@ -226,11 +117,11 @@ export async function getConfiguration() {
 export async function updateConfiguration(key, value) {
   return withAuth(async () => {
     const spreadsheetId = getSpreadsheetId();
+    if (!spreadsheetId) throw new Error('Spreadsheet is not connected.');
 
-    // Find the row with this key
     const response = await window.gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: `'${SHEET_NAMES.CONFIGURATION}'!A2:A20`,
+      range: `'${SHEET_NAMES.CONFIGURATION}'!A2:A100`,
     });
 
     const rows = response.result.values || [];
@@ -241,7 +132,7 @@ export async function updateConfiguration(key, value) {
         spreadsheetId,
         range: `'${SHEET_NAMES.CONFIGURATION}'!B${rowIndex + 2}`,
         valueInputOption: 'RAW',
-        resource: { values: [[String(value)]] },
+        resource: { values: [[sheetText(value, 200)]] },
       });
     }
   });
@@ -257,9 +148,10 @@ export async function updateConfiguration(key, value) {
 export async function getFlats() {
   return withAuth(async () => {
     const spreadsheetId = getSpreadsheetId();
+    if (!spreadsheetId) throw new Error('Spreadsheet is not connected.');
     const response = await window.gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: `'${SHEET_NAMES.FLATS}'!A2:H12`,
+      range: `'${SHEET_NAMES.FLATS}'!A2:H50`,
     });
 
     const rows = response.result.values || [];
@@ -282,10 +174,18 @@ export async function getFlats() {
 export async function updateFlat(flatNumber, data) {
   return withAuth(async () => {
     const spreadsheetId = getSpreadsheetId();
-    const flatIndex = FLATS.indexOf(flatNumber);
-    if (flatIndex < 0) throw new Error(`Invalid flat: ${flatNumber}`);
+    if (!spreadsheetId) throw new Error('Spreadsheet is not connected.');
+    if (!FLATS.includes(flatNumber)) throw new Error(`Invalid flat: ${flatNumber}`);
 
-    const rowNum = flatIndex + 2; // +1 for header, +1 for 1-indexed
+    const response = await window.gapi.client.sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `'${SHEET_NAMES.FLATS}'!A2:A50`,
+    });
+    const rows = response.result.values || [];
+    const rowIndex = rows.findIndex(r => String(r[0]) === String(flatNumber));
+    if (rowIndex < 0) throw new Error(`Flat ${flatNumber} was not found in the Flats sheet.`);
+
+    const rowNum = rowIndex + 2;
     await window.gapi.client.sheets.spreadsheets.values.update({
       spreadsheetId,
       range: `'${SHEET_NAMES.FLATS}'!A${rowNum}:H${rowNum}`,
@@ -293,13 +193,13 @@ export async function updateFlat(flatNumber, data) {
       resource: {
         values: [[
           flatNumber,
-          data.ownerName || '',
-          data.phone || '',
-          data.email || '',
-          data.member2Name || '',
-          data.member2Phone || '',
-          data.member2Email || '',
-          data.role || 'Member',
+          sheetText(data.ownerName, 100),
+          sheetText(data.phone, 20),
+          normalizeEmail(data.email),
+          sheetText(data.member2Name, 100),
+          sheetText(data.member2Phone, 20),
+          normalizeEmail(data.member2Email),
+          sheetText(data.role || 'Member', 40),
         ]],
       },
     });
@@ -355,16 +255,16 @@ export async function upsertMaintenancePayment(month, flat, data) {
     const existingIndex = existing.findIndex(r => r.month === month && r.flat === flat);
 
     const row = [
-      month,
-      flat,
-      String(data.amountDue || 0),
-      String(data.amountPaid || 0),
-      data.paymentDate || '',
-      data.paymentMode || '',
-      data.upiRef || '',
-      data.status || 'PENDING',
-      String(data.lateFee || 0),
-      data.remarks || '',
+      sheetText(month, 12),
+      sheetText(flat, 8),
+      sheetNumber(data.amountDue),
+      sheetNumber(data.amountPaid),
+      sheetText(data.paymentDate, 12),
+      sheetText(data.paymentMode, 40),
+      sheetText(data.upiRef, 80),
+      sheetText(data.status || 'PENDING', 16),
+      sheetNumber(data.lateFee),
+      sheetText(data.remarks, 300),
     ];
 
     if (existingIndex >= 0) {
@@ -403,8 +303,12 @@ export async function upsertMaintenancePayment(month, flat, data) {
 export async function initializeMonthMaintenance(month, amount) {
   return withAuth(async () => {
     const spreadsheetId = getSpreadsheetId();
+    const existing = await getMaintenanceRecords(month);
+    if (existing.length > 0) {
+      throw new Error(`${month} already has ${existing.length} maintenance rows. Refresh instead of initializing again.`);
+    }
     const rows = FLATS.map(flat => [
-      month, flat, String(amount), '0', '', '', '', 'PENDING', '0', '',
+      sheetText(month, 12), flat, sheetNumber(amount), '0', '', '', '', 'PENDING', '0', '',
     ]);
 
     await window.gapi.client.sheets.spreadsheets.values.append({
@@ -478,16 +382,16 @@ export async function addExpense(data) {
       resource: {
         values: [[
           id,
-          data.date || new Date().toISOString().split('T')[0],
-          sanitizeForSheet(data.month),
-          truncateForSheet(sanitizeForSheet(data.description), 200),
-          sanitizeForSheet(data.category),
-          String(Number(data.amount) || 0),        // coerce to number string
-          sanitizeForSheet(data.paymentMode),
-          data.billReceipt === 'Y' ? 'Y' : 'N',   // strict boolean-like value
-          truncateForSheet(sanitizeForSheet(data.approvedBy), 100),
-          data.receiptLink || '',                   // Drive URL — not user-typed
-          truncateForSheet(sanitizeForSheet(data.remarks), 300),
+          sheetText(data.date || new Date().toISOString().split('T')[0], 12),
+          sheetText(data.month, 12),
+          sheetText(data.description, 200),
+          sheetText(data.category, 60),
+          sheetNumber(data.amount),
+          sheetText(data.paymentMode, 40),
+          data.billReceipt === 'Y' ? 'Y' : 'N',
+          sheetText(data.approvedBy, 100),
+          sanitizeDriveUrl(data.receiptLink),
+          sheetText(data.remarks, 300),
         ]],
       },
     });
@@ -676,14 +580,14 @@ export async function addReminder(data) {
       resource: {
         values: [[
           id,
-          data.title || '',
-          data.description || '',
-          data.frequency || 'Monthly',
-          data.nextDue || '',
-          data.lastCompleted || '',
-          data.assignedTo || '',
+          sheetText(data.title, 120),
+          sheetText(data.description, 400),
+          sheetText(data.frequency || 'Monthly', 20),
+          sheetText(data.nextDue, 12),
+          sheetText(data.lastCompleted, 12),
+          sheetText(data.assignedTo, 80),
           'Active',
-          data.createdBy || '',
+          sheetText(data.createdBy, 80),
           new Date().toISOString().split('T')[0],
         ]],
       },
@@ -778,7 +682,7 @@ export async function getAccessControl() {
 
     const rows = response.result.values || [];
     return rows.map(row => ({
-      email: row[0] || '',
+      email: normalizeEmail(row[0]),
       role: row[1] || 'Reader',
       flat: row[2] || '',
       addedBy: row[3] || '',
@@ -810,10 +714,14 @@ export async function addAccessControl(data) {
       }
     }
 
-    // Check if email already exists
-    if (existing.some(u => u.email === data.email && u.status === 'Active')) {
+    const email = normalizeEmail(data.email);
+    if (!email || !email.includes('@')) throw new Error('Enter a valid email address');
+
+    if (existing.some(u => normalizeEmail(u.email) === email && u.status === 'Active')) {
       throw new Error('User already has access');
     }
+
+    const role = data.role === 'Owner' ? 'Owner' : 'Reader';
 
     await window.gapi.client.sheets.spreadsheets.values.append({
       spreadsheetId,
@@ -822,10 +730,10 @@ export async function addAccessControl(data) {
       insertDataOption: 'INSERT_ROWS',
       resource: {
         values: [[
-          data.email,
-          data.role || 'Reader',
-          data.flat || '',
-          data.addedBy || '',
+          email,
+          role,
+          sheetText(data.flat, 8),
+          normalizeEmail(data.addedBy),
           new Date().toISOString().split('T')[0],
           'Active',
         ]],
@@ -846,7 +754,7 @@ export async function removeAccessControl(email) {
     });
 
     const rows = response.result.values || [];
-    const rowIndex = rows.findIndex(r => r[0] === email);
+    const rowIndex = rows.findIndex(r => normalizeEmail(r[0]) === normalizeEmail(email));
 
     if (rowIndex >= 0) {
       await window.gapi.client.sheets.spreadsheets.values.update({
@@ -864,7 +772,7 @@ export async function removeAccessControl(email) {
  */
 export async function checkAccess(email) {
   const accessList = await getAccessControl();
-  const user = accessList.find(u => u.email === email && u.status === 'Active');
+  const user = accessList.find(u => normalizeEmail(u.email) === normalizeEmail(email) && u.status === 'Active');
   return user || null;
 }
 
@@ -888,9 +796,9 @@ export async function addAuditLog(user, action, details) {
       resource: {
         values: [[
           new Date().toISOString(),
-          user || 'System',
-          action || '',
-          details || '',
+          sheetText(user || 'System', 80),
+          sheetText(action, 40),
+          sheetText(details, 400),
         ]],
       },
     });
@@ -940,16 +848,44 @@ export async function addWaterTankerLog(data) {
       insertDataOption: 'INSERT_ROWS',
       resource: {
         values: [[
-          data.date || new Date().toISOString().split('T')[0],
-          data.vendor || '',
-          String(data.litres || 0),
-          String(data.cost || 0),
-          data.orderedBy || '',
-          data.remarks || '',
+          sheetText(data.date || new Date().toISOString().split('T')[0], 12),
+          sheetText(data.vendor, 80),
+          sheetNumber(data.litres),
+          sheetNumber(data.cost),
+          sheetText(data.orderedBy, 80),
+          sheetText(data.remarks, 300),
         ]],
       },
     });
   });
+}
+
+function parseMonthlySummaryRow(row) {
+  const isNewLayout = String(row[6] || '').includes('%');
+  if (isNewLayout) {
+    return {
+      month: row[0] || '',
+      totalCollection: Number(row[1]) || 0,
+      totalMiscFunds: Number(row[2]) || 0,
+      totalExpenses: Number(row[3]) || 0,
+      netBalance: Number(row[4]) || 0,
+      cumulativeBalance: Number(row[5]) || 0,
+      collectionPct: row[6] || '0%',
+      pendingFlats: row[7] || '',
+      status: row[8] || '',
+    };
+  }
+  return {
+    month: row[0] || '',
+    totalCollection: Number(row[1]) || 0,
+    totalMiscFunds: 0,
+    totalExpenses: Number(row[2]) || 0,
+    netBalance: Number(row[3]) || 0,
+    cumulativeBalance: Number(row[4]) || 0,
+    collectionPct: row[5] || '0%',
+    pendingFlats: row[6] || '',
+    status: '',
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1024,7 +960,7 @@ export async function updateMonthlySummary(month) {
         spreadsheetId,
         range: `'${SHEET_NAMES.MONTHLY_SUMMARY}'!A1`,
         valueInputOption: 'RAW',
-        resource: { values: [['Month', 'Collection (₹)', 'Misc Funds (₹)', 'Expenses (₹)', 'Net Balance (₹)', 'Cumulative (₹)', 'Collection %', 'Pending Flats', 'Status']] },
+        resource: { values: [SHEET_HEADERS[SHEET_NAMES.MONTHLY_SUMMARY]] },
       });
     }
 
@@ -1055,19 +991,11 @@ export async function getMonthlySummaries() {
     const spreadsheetId = getSpreadsheetId();
     const response = await window.gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: `'${SHEET_NAMES.MONTHLY_SUMMARY}'!A2:G50`,
+      range: `'${SHEET_NAMES.MONTHLY_SUMMARY}'!A2:I100`,
     });
 
     const rows = response.result.values || [];
-    return rows.map(row => ({
-      month: row[0] || '',
-      totalCollection: Number(row[1]) || 0,
-      totalExpenses: Number(row[2]) || 0,
-      netBalance: Number(row[3]) || 0,
-      cumulativeBalance: Number(row[4]) || 0,
-      collectionPct: row[5] || '0%',
-      pendingFlats: row[6] || '',
-    }));
+    return rows.map(parseMonthlySummaryRow);
   });
 }
 
@@ -1081,21 +1009,35 @@ export async function getMonthlySummaries() {
 export async function getDashboardData() {
   return withAuth(async () => {
     const spreadsheetId = getSpreadsheetId();
+    if (!spreadsheetId) throw new Error('Spreadsheet is not connected.');
+    await ensureMiscFundsSheet(spreadsheetId);
 
     const response = await window.gapi.client.sheets.spreadsheets.values.batchGet({
       spreadsheetId,
       ranges: [
-        `'${SHEET_NAMES.CONFIGURATION}'!A2:C20`,
+        `'${SHEET_NAMES.CONFIGURATION}'!A2:C100`,
         `'${SHEET_NAMES.MAINTENANCE}'!A2:J5000`,
         `'${SHEET_NAMES.EXPENSES}'!A2:K5000`,
         `'${SHEET_NAMES.REMINDERS}'!A2:J200`,
         `'${SHEET_NAMES.EMERGENCY_CONTACTS}'!A2:G200`,
-        `'${SHEET_NAMES.FLATS}'!A2:H12`,
-        `'${SHEET_NAMES.MONTHLY_SUMMARY}'!A2:G50`,
+        `'${SHEET_NAMES.FLATS}'!A2:H50`,
+        `'${SHEET_NAMES.MONTHLY_SUMMARY}'!A2:I100`,
+        `'${SHEET_NAMES.MISC_FUNDS}'!A2:I2000`,
       ],
     });
 
     const ranges = response.result.valueRanges || [];
+    const parseMisc = (rows) => (rows || []).map(row => ({
+      id: row[0] || '',
+      date: row[1] || '',
+      month: row[2] || '',
+      flat: row[3] || '',
+      amount: Number(row[4]) || 0,
+      description: row[5] || '',
+      paymentMode: row[6] || '',
+      collectedBy: row[7] || '',
+      remarks: row[8] || '',
+    }));
 
     // Parse configuration
     const configRows = ranges[0]?.values || [];
@@ -1178,22 +1120,14 @@ export async function getDashboardData() {
       role: row[7] || 'Member',
     }));
 
-    // Parse summaries
     const summaryRows = ranges[6]?.values || [];
-    const summaries = summaryRows.map(row => ({
-      month: row[0] || '',
-      totalCollection: Number(row[1]) || 0,
-      totalExpenses: Number(row[2]) || 0,
-      netBalance: Number(row[3]) || 0,
-      cumulativeBalance: Number(row[4]) || 0,
-      collectionPct: row[5] || '0%',
-      pendingFlats: row[6] || '',
-    }));
+    const summaries = summaryRows.map(parseMonthlySummaryRow);
+    const miscFunds = parseMisc(ranges[7]?.values);
 
-    // Calculate aggregates
     const totalCollected = maintenance.reduce((sum, r) => sum + r.amountPaid, 0);
+    const totalMiscFunds = miscFunds.reduce((sum, f) => sum + f.amount, 0);
     const totalExpenseAmount = expenses.reduce((sum, e) => sum + e.amount, 0);
-    const currentBalance = totalCollected - totalExpenseAmount + config.DEFICIT_LAST_YEAR + config.CORPUS_FUND;
+    const currentBalance = totalCollected + totalMiscFunds - totalExpenseAmount + config.DEFICIT_LAST_YEAR + config.CORPUS_FUND;
 
     // Cache dashboard data
     const dashboardData = {
@@ -1204,8 +1138,10 @@ export async function getDashboardData() {
       contacts,
       flats,
       summaries,
+      miscFunds,
       totals: {
         totalCollected,
+        totalMiscFunds,
         totalExpenses: totalExpenseAmount,
         currentBalance,
         deficit: config.DEFICIT_LAST_YEAR,
@@ -1306,14 +1242,14 @@ export async function addMiscFund(data) {
       resource: {
         values: [[
           id,
-          data.date || new Date().toISOString().split('T')[0],
-          data.month || '',
-          data.flat || '',
-          String(data.amount || 0),
-          data.description || '',
-          data.paymentMode || '',
-          data.collectedBy || '',
-          data.remarks || '',
+          sheetText(data.date || new Date().toISOString().split('T')[0], 12),
+          sheetText(data.month, 12),
+          sheetText(data.flat, 8),
+          sheetNumber(data.amount),
+          sheetText(data.description, 200),
+          sheetText(data.paymentMode, 40),
+          sheetText(data.collectedBy, 80),
+          sheetText(data.remarks, 300),
         ]],
       },
     });
@@ -1413,23 +1349,23 @@ export async function addWatchmanDetail(data) {
     await window.gapi.client.sheets.spreadsheets.values.append({
       spreadsheetId,
       range,
-      valueInputOption: 'USER_ENTERED',
+      valueInputOption: 'RAW',
       resource: {
         values: [[
-          data.name,
-          data.phone,
-          data.altPhone || '',
-          data.address || '',
-          data.salary || 0,
-          data.shiftTiming || '',
-          data.joinDate || new Date().toISOString().split('T')[0],
-          data.idProofType || '',
-          data.idProofNumber || '',
-          data.emergencyContact || '',
-          data.emergencyPhone || '',
-          data.photoDriveLink || '',
-          data.status || 'Active',
-          data.remarks || '',
+          sheetText(data.name, 100),
+          sheetText(data.phone, 20),
+          sheetText(data.altPhone, 20),
+          sheetText(data.address, 200),
+          sheetNumber(data.salary),
+          sheetText(data.shiftTiming, 60),
+          sheetText(data.joinDate || new Date().toISOString().split('T')[0], 12),
+          sheetText(data.idProofType, 40),
+          sheetText(data.idProofNumber, 40),
+          sheetText(data.emergencyContact, 80),
+          sheetText(data.emergencyPhone, 20),
+          sanitizeDriveUrl(data.photoDriveLink),
+          sheetText(data.status || 'Active', 20),
+          sheetText(data.remarks, 300),
         ]],
       },
     });
@@ -1448,23 +1384,23 @@ export async function updateWatchmanDetail(rowIndex, data) {
     await window.gapi.client.sheets.spreadsheets.values.update({
       spreadsheetId,
       range,
-      valueInputOption: 'USER_ENTERED',
+      valueInputOption: 'RAW',
       resource: {
         values: [[
-          data.name,
-          data.phone,
-          data.altPhone || '',
-          data.address || '',
-          data.salary || 0,
-          data.shiftTiming || '',
-          data.joinDate || '',
-          data.idProofType || '',
-          data.idProofNumber || '',
-          data.emergencyContact || '',
-          data.emergencyPhone || '',
-          data.photoDriveLink || '',
-          data.status || 'Active',
-          data.remarks || '',
+          sheetText(data.name, 100),
+          sheetText(data.phone, 20),
+          sheetText(data.altPhone, 20),
+          sheetText(data.address, 200),
+          sheetNumber(data.salary),
+          sheetText(data.shiftTiming, 60),
+          sheetText(data.joinDate, 12),
+          sheetText(data.idProofType, 40),
+          sheetText(data.idProofNumber, 40),
+          sheetText(data.emergencyContact, 80),
+          sheetText(data.emergencyPhone, 20),
+          sanitizeDriveUrl(data.photoDriveLink),
+          sheetText(data.status || 'Active', 20),
+          sheetText(data.remarks, 300),
         ]],
       },
     });
@@ -1483,7 +1419,7 @@ export async function deleteWatchmanDetail(rowIndex) {
     await window.gapi.client.sheets.spreadsheets.values.update({
       spreadsheetId,
       range,
-      valueInputOption: 'USER_ENTERED',
+      valueInputOption: 'RAW',
       resource: {
         values: [['', '', '', '', '', '', '', '', '', '', '', '', 'Deleted', '']],
       },

@@ -15,15 +15,16 @@ import {
   getConfiguration, updateConfiguration,
   getAccessControl, addAccessControl, removeAccessControl,
   getFlats, updateFlat, addAuditLog,
-  getWatchmanDetails, addWatchmanDetail, updateWatchmanDetail, deleteWatchmanDetail
+  getWatchmanDetails, addWatchmanDetail, updateWatchmanDetail, deleteWatchmanDetail,
+  archiveAndCreateFresh, addReminder,
 } from '../services/googleSheets';
 import {
   createBackup, listBackups,
   getSpreadsheetUrl, getRootFolderUrl,
-  shareSpreadsheet, shareFolder
+  shareSpreadsheet, shareFolder, setupFolderStructure,
 } from '../services/googleDrive';
-import { DEFAULT_CONFIG, FLATS, USER_ROLES, STORAGE_KEYS } from '../config/constants';
-import { formatDate, formatCurrency, isValidEmail } from '../utils/helpers';
+import { DEFAULT_CONFIG, DEFAULT_REMINDERS, FLATS, USER_ROLES, STORAGE_KEYS } from '../config/constants';
+import { formatDate, formatCurrency, isValidEmail, calculateNextDue, getLastDayOfCurrentMonth, getFirstDayOfNextMonth } from '../utils/helpers';
 import { InfoBubble } from '../components/common/Tooltip';
 import { hashPin } from '../contexts/AuthContext';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -46,6 +47,7 @@ export default function Settings() {
   const [showWatchmanModal, setShowWatchmanModal] = useState(false);
   const [editingWatchman, setEditingWatchman] = useState(null);
   const [backingUp, setBackingUp] = useState(false);
+  const [creatingFresh, setCreatingFresh] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -155,6 +157,39 @@ export default function Settings() {
       showToast('Failed to create backup', 'error');
     } finally {
       setBackingUp(false);
+    }
+  };
+
+  const handleCreateFreshSheet = async () => {
+    if (!window.confirm(
+      'Create an empty production sheet?\n\nThe current workbook will be renamed (kept in Drive as a SAMPLE archive). A new empty TPT-MaintenanceTracker will become the live source of truth.'
+    )) return;
+    try {
+      setCreatingFresh(true);
+      const folders = await setupFolderStructure();
+      const result = await archiveAndCreateFresh(folders.rootId, user.email);
+      await addAccessControl({ email: user.email, role: 'Owner', flat: '', addedBy: 'System' });
+      for (const reminder of DEFAULT_REMINDERS) {
+        let nextDue;
+        if (reminder.nextDueType === 'end_of_month') nextDue = getLastDayOfCurrentMonth();
+        else if (reminder.nextDueType === 'start_of_month') nextDue = getFirstDayOfNextMonth();
+        else nextDue = calculateNextDue(null, reminder.frequency);
+        await addReminder({
+          title: reminder.title,
+          description: reminder.description,
+          frequency: reminder.frequency,
+          assignedTo: reminder.assignedTo || '',
+          nextDue,
+          createdBy: 'System',
+        });
+      }
+      await addAuditLog(user.email, 'FRESH_SHEET', `Created empty production sheet ${result.spreadsheetId}`);
+      showToast('Fresh production sheet created. Sample workbook was archived in Drive.', 'success');
+      fetchData();
+    } catch (err) {
+      showToast(err.message || 'Failed to create a fresh sheet', 'error');
+    } finally {
+      setCreatingFresh(false);
     }
   };
 
@@ -474,6 +509,25 @@ export default function Settings() {
                 No backups yet. Create your first backup to safeguard your data.
               </p>
             )}
+          </div>
+        )}
+
+        {activeTab === 'backups' && isOwner && (
+          <div className="card mt-4">
+            <h3 className="card-title mb-2">Start fresh after testing</h3>
+            <p className="text-muted text-sm mb-4">
+              Finished trying the sample numbers? This archives the current workbook in Drive
+              (renamed with a SAMPLE date) and creates an empty <strong>TPT-MaintenanceTracker</strong>
+              with Guide + Sample Data tabs only. Live tabs start blank for real collections.
+            </p>
+            <button
+              className="btn btn-secondary"
+              onClick={handleCreateFreshSheet}
+              disabled={creatingFresh}
+            >
+              {creatingFresh ? <RefreshCw size={14} className="animate-spin" /> : <Database size={14} />}
+              {creatingFresh ? 'Creating empty sheet…' : 'Create Fresh Production Sheet'}
+            </button>
           </div>
         )}
 
@@ -921,7 +975,7 @@ function GuestPinSection({ showToast }) {
       <div className="card-header">
         <div>
           <h3 className="card-title">Guest Access PIN</h3>
-          <p className="text-muted text-sm mt-1">Allow residents to view the app without a Google account. PIN valid 24h, read-only.</p>
+          <p className="text-muted text-sm mt-1">Device-local convenience only — the PIN lives in this browser, not in Google. Residents see the last Owner-synced dashboard, read-only, for 24 hours.</p>
         </div>
         {pinSet && <span className="badge badge-success">Active</span>}
       </div>

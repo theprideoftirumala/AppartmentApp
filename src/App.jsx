@@ -10,9 +10,12 @@
  *             AppLayout — Sidebar + BottomNav for authenticated users
  */
 
+import { useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { AppProvider } from './contexts/AppContext';
+import { AppProvider, useApp } from './contexts/AppContext';
+import { getAccessControl } from './services/googleSheets';
+import { normalizeEmail } from './utils/helpers';
 
 import ProtectedRoute from './components/common/ProtectedRoute';
 import AccessDenied from './components/common/AccessDenied';
@@ -31,6 +34,26 @@ import Reminders from './pages/Reminders';
 import EmergencyContacts from './pages/EmergencyContacts';
 import Settings from './pages/Settings';
 import Help from './pages/Help';
+
+function AccessBootstrap() {
+  const { user, isGuest } = useAuth();
+  const { setUserRole, isSetupComplete } = useApp();
+
+  useEffect(() => {
+    if (!user?.email || isGuest || !isSetupComplete) return;
+    let cancelled = false;
+    getAccessControl()
+      .then((acl) => {
+        if (cancelled) return;
+        const entry = acl.find((u) => normalizeEmail(u.email) === normalizeEmail(user.email) && u.status === 'Active');
+        if (entry) setUserRole(entry.role);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [user, isGuest, isSetupComplete, setUserRole]);
+
+  return null;
+}
 
 function AppLayout({ children }) {
   const { user, isGuest } = useAuth();
@@ -118,7 +141,7 @@ function AppRoutes() {
         <Route
           path="/help"
           element={
-            <ProtectedRoute requireOwner>
+            <ProtectedRoute>
               <Help />
             </ProtectedRoute>
           }
@@ -134,6 +157,7 @@ export default function App() {
     <HashRouter>
       <AuthProvider>
         <AppProvider>
+          <AccessBootstrap />
           {/* ErrorBoundary prevents a crashed page from blanking the whole app */}
           <ErrorBoundary>
             <AppRoutes />

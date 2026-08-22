@@ -34,9 +34,9 @@ git push origin main
 1. Go to [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials
 2. Edit your OAuth 2.0 Client ID
 3. Add to **Authorized JavaScript origins**:
-   - `https://vijayraavi.github.io`
+   - `https://theprideoftirumala.github.io`
 4. Add to **Authorized redirect URIs**:
-   - `https://vijayraavi.github.io/AppartmentApp/`
+   - `https://theprideoftirumala.github.io/AppartmentApp/`
 
 ### Step 4: Deploy
 
@@ -45,7 +45,7 @@ git push origin main
 # GitHub Actions will build and deploy automatically
 ```
 
-**Your app will be live at:** `https://vijayraavi.github.io/AppartmentApp/`
+**Your app will be live at:** `https://theprideoftirumala.github.io/AppartmentApp/`
 
 ### Root path deployment on GitHub Pages (`/` instead of `/AppartmentApp/`)
 
@@ -128,7 +128,7 @@ Before first setup, ensure both APIs are enabled in the same Google Cloud projec
 2. Click **Create Credentials** → **API Key**
 3. Restrict the key:
    - **Application restrictions**: HTTP referrers
-   - Add: `https://vijayraavi.github.io/*`
+   - Add: `https://theprideoftirumala.github.io/*`
    - Add: `http://localhost:*`
 4. **API restrictions**: Restrict to Google Sheets API and Google Drive API
 
