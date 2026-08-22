@@ -66,7 +66,17 @@ function loadScript(src) {
     script.onload = resolve;
     script.onerror = reject;
     document.head.appendChild(script);
+    setTimeout(() => reject(new Error(`Timed out loading ${src}`)), 15000);
   });
+}
+
+function withTimeout(promise, ms, message) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error(message)), ms);
+    }),
+  ]);
 }
 
 /**
@@ -74,10 +84,24 @@ function loadScript(src) {
  */
 async function initGapiClient() {
   if (gapiInited) return;
-  await new Promise((resolve) => window.gapi.load('client', resolve));
-  await window.gapi.client.init({
-    discoveryDocs: DISCOVERY_DOCS,
-  });
+  await withTimeout(
+    new Promise((resolve, reject) => {
+      try {
+        window.gapi.load('client', resolve);
+      } catch (err) {
+        reject(err);
+      }
+    }),
+    12000,
+    'Google API script loaded but did not start. Try a normal browser window (not InPrivate) and allow this site in Tracking Prevention.',
+  );
+  await withTimeout(
+    window.gapi.client.init({
+      discoveryDocs: DISCOVERY_DOCS,
+    }),
+    15000,
+    'Google Sheets/Drive client timed out. Check your connection, then refresh.',
+  );
   gapiInited = true;
 }
 
