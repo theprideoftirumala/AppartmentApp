@@ -1918,3 +1918,84 @@
   background: var(--color-success-light);
   opacity: 0.9;
 }
+
+.sheet-id-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.sheet-id-code {
+  font-size: var(--font-size-xs);
+  word-break: break-all;
+}
+
+@media (max-width: 768px) {
+  .setup-page {
+    padding: var(--space-4);
+    align-items: flex-start;
+  }
+
+  .setup-content {
+    padding: var(--space-5);
+  }
+
+  .setup-step-label {
+    max-width: 72px;
+    text-align: center;
+    line-height: 1.2;
+  }
+
+  .config-field {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .config-field-label {
+    min-width: 0;
+  }
+
+  .config-field-input {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .settings-tab {
+    min-height: 44px;
+  }
+
+  .navbar {
+    min-height: 48px;
+    padding-top: max(var(--space-3), env(safe-area-inset-top));
+  }
+
+  .bottom-nav {
+    height: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom));
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .bottom-nav-item {
+    min-height: 48px;
+    min-width: 48px;
+    padding: var(--space-2) var(--space-1);
+  }
+
+  .page-header {
+    align-items: stretch;
+  }
+
+  .page-header .flex {
+    width: 100%;
+  }
+
+  .page-header .btn {
+    width: 100%;
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  .stat-card {
+    min-height: auto;
+  }
+}

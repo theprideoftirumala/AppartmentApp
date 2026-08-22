@@ -12,7 +12,8 @@ import {
   SHEET_FILE_NAME,
   CONFIG_DESCRIPTIONS,
 } from '../config/constants';
-import { ensureValidToken } from './googleAuth';
+import { ensureValidToken, getCurrentUser } from './googleAuth';
+import { isFoundingOwner } from '../config/accessPolicy';
 import { GUIDE_ROWS, SAMPLE_CATALOG_ROWS, buildSampleLiveRows } from '../data/sampleSheetData';
 import { isValidSpreadsheetId, bindSpreadsheet } from '../utils/helpers';
 
@@ -160,6 +161,11 @@ async function sheetIsEmpty(spreadsheetId, title) {
  */
 export async function createSpreadsheet(folderId, options = {}) {
   return withAuth(async () => {
+    const actor = getCurrentUser();
+    // SECURITY: only the founding Google account may mint the society workbook.
+    if (!isFoundingOwner(actor?.email)) {
+      throw new Error('Only the society founding owner can create the society spreadsheet. Ask that account to share it with you as Viewer.');
+    }
     const mode = options.mode === 'sample' ? 'sample' : 'fresh';
     const title = options.title || SHEET_FILE_NAME;
     const sheetNames = Object.values(SHEET_NAMES);
@@ -273,6 +279,9 @@ export async function ensureSheetStructure(spreadsheetId = getSpreadsheetId()) {
  */
 export async function archiveAndCreateFresh(folderId, userEmail) {
   return withAuth(async () => {
+    if (!isFoundingOwner(userEmail) && !isFoundingOwner(getCurrentUser()?.email)) {
+      throw new Error('Only the founding owner can archive the current sheet and create a new one.');
+    }
     const currentId = getSpreadsheetId();
     if (isValidSpreadsheetId(currentId)) {
       const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');

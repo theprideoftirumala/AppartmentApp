@@ -1,12 +1,17 @@
 /**
  * Authentication Context
  * Manages Google OAuth state and Guest PIN sessions
+ *
+ * SECURITY: Role is never inferred as Owner for a random login.
+ * The founding owner (FOUNDING_OWNER_EMAIL) is always Owner. Everyone else must appear
+ * on the society Access Control tab (default Reader).
  */
 
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { initGoogleAuth, signIn as googleSignIn, signOut as googleSignOut } from '../services/googleAuth';
 import { STORAGE_KEYS } from '../config/constants';
 import { getAccessControl, resolveSpreadsheetForUser, isPermissionError } from '../services/googleSheets';
+import { effectiveAppRole, isFoundingOwner } from '../config/accessPolicy';
 import { normalizeEmail, parseJsonSafe, isValidSpreadsheetId } from '../utils/helpers';
 
 const AuthContext = createContext(null);
@@ -23,6 +28,10 @@ async function fetchAccessEntry(email) {
   if (!setupComplete || !isValidSpreadsheetId(spreadsheetId)) return null;
   const acl = await getAccessControl();
   return acl.find(u => normalizeEmail(u.email) === normalizeEmail(email) && u.status === 'Active') || null;
+}
+
+function roleOrDeny(email, entry) {
+  return effectiveAppRole(email, entry);
 }
 
 export function AuthProvider({ children }) {
@@ -59,19 +68,16 @@ export function AuthProvider({ children }) {
               const sheetId = await resolveSpreadsheetForUser(userData.email);
               if (!sheetId) {
                 setUser(userData);
+                if (!isFoundingOwner(userData.email)) setAccessDenied(true);
                 setLoading(false);
                 return;
               }
             }
             const entry = await fetchAccessEntry(userData.email);
-            if (setupComplete && entry === null) {
-              const acl = await getAccessControl();
-              if (acl.length > 0) {
-                setUser(userData);
-                setAccessDenied(true);
-              } else {
-                setUser(userData);
-              }
+            const role = roleOrDeny(userData.email, entry);
+            if (setupComplete && !role) {
+              setUser(userData);
+              setAccessDenied(true);
             } else {
               setUser(userData);
             }
@@ -79,6 +85,8 @@ export function AuthProvider({ children }) {
             setUser(userData);
             if (!isPermissionError(aclErr) && localStorage.getItem(STORAGE_KEYS.SETUP_COMPLETE) === 'true') {
               setError('Could not verify access against the Google Sheet. Check your connection and try again.');
+            } else if (isPermissionError(aclErr) && !isFoundingOwner(userData.email)) {
+              setAccessDenied(true);
             }
           }
         }
@@ -103,6 +111,10 @@ export function AuthProvider({ children }) {
         const sheetId = await resolveSpreadsheetForUser(userData.email);
         if (!sheetId) {
           setUser(userData);
+          if (!isFoundingOwner(userData.email)) {
+            setAccessDenied(true);
+            throw new Error('ACCESS_DENIED');
+          }
           return userData;
         }
         let entry = null;
@@ -112,18 +124,19 @@ export function AuthProvider({ children }) {
           console.warn('ACL check failed during sign-in:', aclErr);
           if (isPermissionError(aclErr)) {
             setUser(userData);
+            if (!isFoundingOwner(userData.email)) {
+              setAccessDenied(true);
+              throw new Error('ACCESS_DENIED');
+            }
             return userData;
           }
           setError('Could not verify access against the Google Sheet. Check your connection and try again.');
           throw new Error('Could not verify access. Please try again.');
         }
-        if (!entry) {
-          const acl = await getAccessControl().catch(() => []);
-          if (acl.length > 0) {
-            setUser(userData);
-            setAccessDenied(true);
-            throw new Error('ACCESS_DENIED');
-          }
+        if (!roleOrDeny(userData.email, entry)) {
+          setUser(userData);
+          setAccessDenied(true);
+          throw new Error('ACCESS_DENIED');
         }
       }
       setUser(userData);
@@ -166,8 +179,9 @@ export function AuthProvider({ children }) {
 
   const value = {
     user, loading, error, accessDenied, isGuest,
-    signIn, signOut, loginAsGuest, signOutGuest,
+    signIn, signOut, loginAsGuest, signOutGuest, setAccessDenied,
     isAuthenticated: !!user || isGuest,
+    isFoundingOwner: isFoundingOwner(user?.email),
   };
 
   return (

@@ -8,7 +8,9 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useApp } from '../../contexts/AppContext';
+import { isFoundingOwner } from '../../config/accessPolicy';
 import LoadingSpinner from './LoadingSpinner';
+import AccessDenied from './AccessDenied';
 
 export default function ProtectedRoute({ children, requireOwner = false }) {
   const { user, isGuest, loading: authLoading } = useAuth();
@@ -34,7 +36,10 @@ export default function ProtectedRoute({ children, requireOwner = false }) {
   }
 
   if (!isGuest && !isSetupComplete) {
-    return <Navigate to="/setup" replace />;
+    if (isFoundingOwner(user?.email)) {
+      return <Navigate to="/setup" replace />;
+    }
+    return <AccessDenied />;
   }
 
   if (requireOwner && userRole !== 'Owner') {

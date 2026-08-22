@@ -4,8 +4,9 @@
  */
 
 import { DRIVE_ROOT_FOLDER, DRIVE_EXPENSES_FOLDER, DRIVE_BACKUPS_FOLDER, STORAGE_KEYS, SHEET_FILE_NAME } from '../config/constants';
-import { ensureValidToken } from './googleAuth';
-import { escapeDriveQuery, isAllowedReceiptFile, isValidSpreadsheetId } from '../utils/helpers';
+import { FOUNDING_OWNER_EMAIL, isFoundingOwner } from '../config/accessPolicy';
+import { ensureValidToken, getCurrentUser } from './googleAuth';
+import { escapeDriveQuery, isAllowedReceiptFile, isValidSpreadsheetId, normalizeEmail } from '../utils/helpers';
 
 /**
  * Wrapper to ensure auth before any API call
@@ -26,40 +27,124 @@ function getRootFolderId() {
 // SPREADSHEET DISCOVERY
 // ═══════════════════════════════════════════════════════════════
 
+const TRACKER_FILE_FIELDS = 'id, name, webViewLink, owners(emailAddress), shared, capabilities(canEdit)';
+
 /**
- * Search Google Drive for an existing spreadsheet by name.
- * Returns the first match or null — prevents creating duplicates.
- * @param {string} name - Exact spreadsheet name to search
- * @returns {{ id, name, webViewLink } | null}
+ * Optional published ID (GitHub Pages / public/sheet-config.json).
+ * Lets members open the society workbook even if Drive search misses it.
  */
-export async function findExistingSpreadsheet(name = SHEET_FILE_NAME) {
+export async function loadPublishedSpreadsheetId() {
+  try {
+    const url = `${import.meta.env.BASE_URL}sheet-config.json`;
+    const response = await fetch(url, { cache: 'no-store' });
+    if (!response.ok) return null;
+    const data = await response.json();
+    return isValidSpreadsheetId(data?.spreadsheetId) ? data.spreadsheetId : null;
+  } catch {
+    return null;
+  }
+}
+
+function ownerEmails(file) {
+  return (file?.owners || []).map((o) => normalizeEmail(o.emailAddress)).filter(Boolean);
+}
+
+/**
+ * SECURITY: A workbook this Google account created privately is NOT the
+ * society source of truth. Members used to become "Owner" of their own copy.
+ */
+export function isPrivateCopyOwnedByUser(file, email) {
+  if (!file || !email) return false;
+  const mine = ownerEmails(file);
+  const me = normalizeEmail(email);
+  if (!mine.includes(me)) return false;
+  if (mine.includes(normalizeEmail(FOUNDING_OWNER_EMAIL))) return false;
+  return true;
+}
+
+/**
+ * Accept only the society tracker: published ID, founding-owner file,
+ * or a file shared with a member — never a stray personal copy.
+ */
+export function isSocietyWorkbook(file, email) {
+  if (!file?.id || file.name !== SHEET_FILE_NAME) return false;
+  if (isFoundingOwner(email)) return true;
+  if (isPrivateCopyOwnedByUser(file, email)) return false;
+  const owners = ownerEmails(file);
+  return owners.includes(normalizeEmail(FOUNDING_OWNER_EMAIL)) || file.shared === true;
+}
+
+async function listTrackerFiles(extraQuery) {
+  const safeName = escapeDriveQuery(SHEET_FILE_NAME);
+  let query = `name='${safeName}' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`;
+  if (extraQuery) query += ` and ${extraQuery}`;
+  const response = await window.gapi.client.drive.files.list({
+    q: query,
+    fields: `files(${TRACKER_FILE_FIELDS})`,
+    spaces: 'drive',
+    corpora: 'user',
+    includeItemsFromAllDrives: true,
+    supportsAllDrives: true,
+    pageSize: 10,
+    orderBy: 'modifiedTime desc',
+  });
+  return response.result.files || [];
+}
+
+export async function getSpreadsheetFileMeta(fileId) {
+  if (!isValidSpreadsheetId(fileId)) return null;
+  try {
+    const response = await window.gapi.client.drive.files.get({
+      fileId,
+      fields: TRACKER_FILE_FIELDS,
+      supportsAllDrives: true,
+    });
+    return response.result || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Find the one society spreadsheet this account is allowed to use.
+ * Founding owner: owned tracker (or published ID).
+ * Everyone else: shared-with-me / founding-owned only — never create a second copy.
+ */
+export async function findSocietySpreadsheet(email) {
   return withAuth(async () => {
-    const names = [...new Set([name, SHEET_FILE_NAME])];
-    const files = [];
-    for (const candidate of names) {
-      const safeName = escapeDriveQuery(candidate);
-      const query = `name='${safeName}' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`;
-      const response = await window.gapi.client.drive.files.list({
-        q: query,
-        fields: 'files(id, name, webViewLink)',
-        spaces: 'drive',
-        pageSize: 10,
-        orderBy: 'modifiedTime desc',
-      });
-      files.push(...(response.result.files || []));
+    const published = await loadPublishedSpreadsheetId();
+    if (published) {
+      const meta = await getSpreadsheetFileMeta(published);
+      // Published ID is the society workbook. Reject only a private copy this user owns.
+      if (meta && !isPrivateCopyOwnedByUser(meta, email)) return meta;
     }
 
-    const unique = [];
-    const seen = new Set();
-    files.forEach((file) => {
-      if (!file?.id || seen.has(file.id)) return;
-      seen.add(file.id);
-      unique.push(file);
-    });
+    if (isFoundingOwner(email)) {
+      const owned = await listTrackerFiles("'me' in owners");
+      const exact = owned.find((f) => f.name === SHEET_FILE_NAME);
+      if (exact) return exact;
+    }
 
-    const exact = unique.find((f) => f.name === SHEET_FILE_NAME);
-    return exact || unique[0] || null;
+    // Members (and founder fallback): files shared with this account.
+    const shared = await listTrackerFiles('sharedWithMe=true');
+    const society = shared.find((f) => isSocietyWorkbook(f, email));
+    if (society) return society;
+
+    if (isFoundingOwner(email)) {
+      const any = await listTrackerFiles('');
+      return any.find((f) => f.name === SHEET_FILE_NAME) || null;
+    }
+
+    return null;
   });
+}
+
+/** @deprecated Use findSocietySpreadsheet — kept so older callers keep compiling. */
+export async function findExistingSpreadsheet(name = SHEET_FILE_NAME) {
+  const user = getCurrentUser();
+  const found = await findSocietySpreadsheet(user?.email);
+  if (found && (!name || found.name === name || name === SHEET_FILE_NAME)) return found;
+  return found;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -313,6 +398,38 @@ export async function listBackups() {
 // ═══════════════════════════════════════════════════════════════
 
 /**
+ * Create or update a Drive permission. Readers get view-only; Owners get writer.
+ * Drive file ACL is the real write barrier — keep it in sync with app role.
+ */
+async function setFilePermission(fileId, email, role) {
+  const address = normalizeEmail(email);
+  const list = await window.gapi.client.drive.permissions.list({
+    fileId,
+    fields: 'permissions(id, emailAddress, role)',
+    supportsAllDrives: true,
+  });
+  const existing = (list.result.permissions || []).find(
+    (p) => normalizeEmail(p.emailAddress) === address,
+  );
+  if (existing) {
+    if (existing.role === role) return;
+    await window.gapi.client.drive.permissions.update({
+      fileId,
+      permissionId: existing.id,
+      resource: { role },
+      supportsAllDrives: true,
+    });
+    return;
+  }
+  await window.gapi.client.drive.permissions.create({
+    fileId,
+    resource: { type: 'user', role, emailAddress: address },
+    sendNotificationEmail: false,
+    supportsAllDrives: true,
+  });
+}
+
+/**
  * Share the spreadsheet with a user
  * @param {string} email - Email to share with
  * @param {string} role - 'reader' or 'writer'
@@ -321,16 +438,7 @@ export async function shareSpreadsheet(email, role = 'reader') {
   return withAuth(async () => {
     const spreadsheetId = localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID);
     if (!isValidSpreadsheetId(spreadsheetId)) throw new Error('Spreadsheet not set up');
-
-    await window.gapi.client.drive.permissions.create({
-      fileId: spreadsheetId,
-      resource: {
-        type: 'user',
-        role: role,
-        emailAddress: email,
-      },
-      sendNotificationEmail: false,
-    });
+    await setFilePermission(spreadsheetId, email, role);
   });
 }
 
@@ -341,16 +449,7 @@ export async function shareFolder(email, role = 'reader') {
   return withAuth(async () => {
     const rootId = getRootFolderId();
     if (!rootId) throw new Error('Root folder not set up');
-
-    await window.gapi.client.drive.permissions.create({
-      fileId: rootId,
-      resource: {
-        type: 'user',
-        role: role,
-        emailAddress: email,
-      },
-      sendNotificationEmail: false,
-    });
+    await setFilePermission(rootId, email, role);
   });
 }
 
@@ -361,20 +460,22 @@ export async function removeSharing(email) {
   return withAuth(async () => {
     const spreadsheetId = localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID);
     if (!isValidSpreadsheetId(spreadsheetId)) return;
+    const address = normalizeEmail(email);
 
-    // List permissions
     const response = await window.gapi.client.drive.permissions.list({
       fileId: spreadsheetId,
       fields: 'permissions(id, emailAddress)',
+      supportsAllDrives: true,
     });
 
     const permissions = response.result.permissions || [];
-    const perm = permissions.find(p => p.emailAddress === email);
+    const perm = permissions.find((p) => normalizeEmail(p.emailAddress) === address);
 
     if (perm) {
       await window.gapi.client.drive.permissions.delete({
         fileId: spreadsheetId,
         permissionId: perm.id,
+        supportsAllDrives: true,
       });
     }
   });

@@ -14,6 +14,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useApp } from '../contexts/AppContext';
 import { getDashboardData, getAccessControl, parseApiError } from '../services/googleSheets';
 import { STORAGE_KEYS } from '../config/constants';
+import { effectiveAppRole, isFoundingOwner } from '../config/accessPolicy';
 import { formatCurrency, getCurrentMonthLabel, getCollectionPercentage, daysUntil, getRelativeTime, groupExpensesByCategory, parseJsonSafe, normalizeEmail } from '../utils/helpers';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Navbar from '../components/common/Navbar';
@@ -60,18 +61,18 @@ export default function Dashboard() {
         try {
           const acl = await getAccessControl();
           const userAccess = acl.find(a => normalizeEmail(a.email) === normalizeEmail(userEmail) && a.status === 'Active');
-          if (userAccess) {
-            setUserRole(userAccess.role);
+          const role = effectiveAppRole(userEmail, userAccess);
+          if (role) {
+            setUserRole(role);
           } else {
             signOut();
             navigate('/login');
-            showToast(`Access denied: ${userEmail} is not authorized. Contact the Treasurer or President.`, 'error');
+            showToast(`Access denied: this account is not on the society access list. Contact the founding owner.`, 'error');
             return;
           }
         } catch (aclErr) {
           console.warn('ACL check failed in dashboard:', aclErr);
-          const setupComplete = localStorage.getItem('tpt_setup_complete') === 'true';
-          if (!setupComplete) setUserRole('Owner');
+          if (isFoundingOwner(userEmail)) setUserRole('Owner');
           else setAccessError('Could not verify your role from the Access Control sheet. Check your connection and retry.');
         }
       }
@@ -114,16 +115,23 @@ export default function Dashboard() {
             <button className="btn btn-primary mt-4" onClick={() => { setAccessError(null); fetchData(); }}>
               <RefreshCw size={16} /> Retry
             </button>
-            <button
-              className="btn btn-secondary mt-2"
-              onClick={() => {
-                resetSetup();
-                setAccessError(null);
-                navigate('/setup');
-              }}
-            >
-              Reconnect sheet
-            </button>
+            {isFoundingOwner(user?.email) ? (
+              <button
+                className="btn btn-secondary mt-2"
+                onClick={() => {
+                  resetSetup();
+                  setAccessError(null);
+                  navigate('/setup');
+                }}
+              >
+                Reconnect society sheet
+              </button>
+            ) : (
+              <p className="text-muted text-sm mt-3">
+                Only the founding owner can create or reconnect the society spreadsheet.
+                Ask that owner to add you as a Reader and share TPT-MaintenanceTracker as Viewer.
+              </p>
+            )}
           </div>
         </div>
       </div>

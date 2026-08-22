@@ -14,7 +14,8 @@ import { useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AppProvider, useApp } from './contexts/AppContext';
-import { getAccessControl, resolveSpreadsheetForUser } from './services/googleSheets';
+import { getAccessControl, resolveSpreadsheetForUser, ensureFoundingOwnerEntry } from './services/googleSheets';
+import { effectiveAppRole, isFoundingOwner } from './config/accessPolicy';
 import { normalizeEmail } from './utils/helpers';
 
 import ProtectedRoute from './components/common/ProtectedRoute';
@@ -36,34 +37,48 @@ import Settings from './pages/Settings';
 import Help from './pages/Help';
 
 function AccessBootstrap() {
-  const { user, isGuest } = useAuth();
-  const { setUserRole, isSetupComplete, resetSetup } = useApp();
+  const { user, isGuest, setAccessDenied } = useAuth();
+  const { setUserRole, isSetupComplete, resetSetup, completeSetup } = useApp();
 
   useEffect(() => {
     if (!user?.email || isGuest) return;
     let cancelled = false;
 
     async function syncSheet() {
-      if (!isSetupComplete) return;
       const sheetId = await resolveSpreadsheetForUser(user.email);
       if (cancelled) return;
+
       if (!sheetId) {
-        resetSetup();
+        if (isFoundingOwner(user.email)) {
+          resetSetup();
+        } else {
+          setAccessDenied(true);
+        }
         return;
       }
+
+      completeSetup();
       try {
+        if (isFoundingOwner(user.email)) {
+          await ensureFoundingOwnerEntry(user.email);
+        }
         const acl = await getAccessControl();
         if (cancelled) return;
         const entry = acl.find((u) => normalizeEmail(u.email) === normalizeEmail(user.email) && u.status === 'Active');
-        if (entry) setUserRole(entry.role);
+        const role = effectiveAppRole(user.email, entry);
+        if (!role) {
+          setAccessDenied(true);
+          return;
+        }
+        setUserRole(role);
       } catch {
-        /* dashboard will surface a reconnect path */
+        if (isFoundingOwner(user.email)) setUserRole('Owner');
       }
     }
 
     syncSheet();
     return () => { cancelled = true; };
-  }, [user, isGuest, isSetupComplete, setUserRole, resetSetup]);
+  }, [user, isGuest, isSetupComplete, setUserRole, resetSetup, completeSetup, setAccessDenied]);
 
   return null;
 }

@@ -11,7 +11,10 @@ export const GOOGLE_CLIENT_ID = '91050465180-vqn4p4qk0rq5ihstdquu95vjpegjcbld.ap
 
 export const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/spreadsheets',
+  // Files this app creates (receipts, backups, the society sheet for the founding owner).
   'https://www.googleapis.com/auth/drive.file',
+  // Lets members LIST a TPT-MaintenanceTracker that was shared with them (not create a second copy).
+  'https://www.googleapis.com/auth/drive.metadata.readonly',
   'https://www.googleapis.com/auth/userinfo.email',
   'https://www.googleapis.com/auth/userinfo.profile',
 ].join(' ');
@@ -24,7 +27,13 @@ export const DISCOVERY_DOCS = [
 // ─── Apartment Configuration ────────────────────────────────────
 export const APP_NAME = 'The Pride of Tirumala';
 export const APP_SHORT_NAME = 'TPT Tracker';
-export const APP_VERSION = '1.2.0';
+export const APP_VERSION = '1.3.0';
+
+/**
+ * Bump this when GOOGLE_SCOPES change so existing sessions re-consent.
+ * v2 added drive.metadata.readonly so shared workbooks are listable.
+ */
+export const OAUTH_SCOPE_VERSION = '2';
 
 export const FLATS = ['101', '102', '201', '202', '301', '302', '401', '402', '501', '502'];
 
@@ -312,4 +321,5 @@ export const STORAGE_KEYS = {
   GUEST_PIN_HASH: 'tpt_guest_pin_hash',
   GUEST_SESSION: 'tpt_guest_session',
   BOUND_EMAIL: 'tpt_bound_email',
+  OAUTH_SCOPE_VERSION: 'tpt_oauth_scope_version',
 };

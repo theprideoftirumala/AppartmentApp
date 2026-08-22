@@ -4,7 +4,7 @@
  * No backend required — uses client-side token flow
  */
 
-import { GOOGLE_CLIENT_ID, GOOGLE_SCOPES, DISCOVERY_DOCS, STORAGE_KEYS } from '../config/constants';
+import { GOOGLE_CLIENT_ID, GOOGLE_SCOPES, DISCOVERY_DOCS, STORAGE_KEYS, OAUTH_SCOPE_VERSION } from '../config/constants';
 import { parseJsonSafe } from '../utils/helpers';
 
 function readUserSession() {
@@ -209,6 +209,7 @@ export function signIn() {
         reject(new Error(tokenResponse.error));
         return;
       }
+      localStorage.setItem(STORAGE_KEYS.OAUTH_SCOPE_VERSION, OAUTH_SCOPE_VERSION);
       fetchUserProfile(tokenResponse.access_token).then((user) => {
         const userData = {
           ...user,
@@ -222,14 +223,10 @@ export function signIn() {
       });
     };
 
-    // Check if we need consent or just a new token
-    if (window.gapi.client.getToken() === null) {
-      // First time — show consent screen
-      tokenClient.requestAccessToken({ prompt: 'consent' });
-    } else {
-      // Returning user — skip consent
-      tokenClient.requestAccessToken({ prompt: '' });
-    }
+    // Re-consent when scopes change (e.g. drive.metadata.readonly) so shared files are listable.
+    const grantedVersion = localStorage.getItem(STORAGE_KEYS.OAUTH_SCOPE_VERSION);
+    const needsConsent = window.gapi.client.getToken() === null || grantedVersion !== OAUTH_SCOPE_VERSION;
+    tokenClient.requestAccessToken({ prompt: needsConsent ? 'consent' : '' });
   });
 }
 

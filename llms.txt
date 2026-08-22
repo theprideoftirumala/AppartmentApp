@@ -22,31 +22,54 @@ The Pride of Tirumala (TPT) Apartment Expense Tracker — a Progressive Web App 
 
 Track monthly maintenance collection (₹3,000/flat × 10 flats), log expenses with receipt uploads, generate monthly PDF reports, manage emergency contacts and recurring reminders. All data stored in a human-readable Google Sheet that serves as the single source of truth. The workbook starts with a Guide tab and a Sample Data tab. Setup can fill live tabs with sample rows for testing, or leave them empty for production. After testing, Settings can archive the sample file and create a fresh sheet.
 
+## Access model (critical)
+
+There is **one society workbook** named `TPT-MaintenanceTracker` and **one founding owner**.
+
+- Founding owner email: `th***@gmail.com` (full value only in `src/config/accessPolicy.js`)
+- Only that account may **create** or **archive-and-recreate** the society spreadsheet
+- Other Google accounts must **never** be auto-promoted to Owner and must **never** create a second tracker
+- The founding owner adds users in **Settings → Access Control**. Default role is **Reader**
+- Readers are shared the existing sheet as Google Drive **Viewer** (`reader`). Owners (if granted) get **writer**
+- The founding owner cannot be removed or demoted
+- Max 20 users, max 2 Owners (founding + at most one additional, granted only by the founding owner)
+- Members discover the sheet via Drive `sharedWithMe` (scope includes `drive.metadata.readonly`), not via files they privately own
+- Optional published ID: `public/sheet-config.json` `{ "spreadsheetId": "..." }`
+- App write APIs use `withWriteAuth` so Readers cannot mutate through the UI even if Drive still has leftover writer
+- Private copies a non-founding user created in their own Drive are **ignored** (that was the bug that showed a personal Gmail as Owner of a private copy)
+
+Policy helpers live in `src/config/accessPolicy.js` and must be reused rather than copying role checks.
+
 ## Key Files
 
-- `src/config/constants.js` — All configurable values
-- `src/services/googleAuth.js` — OAuth 2.0 authentication
+- `src/config/accessPolicy.js` — Founding owner, default Reader, grant/create rules
+- `src/config/constants.js` — All configurable values and OAuth scopes
+- `src/services/googleAuth.js` — OAuth 2.0 authentication (re-consent when scopes bump)
 - `src/services/googleSheets.js` — All CRUD operations (the "backend")
-- `src/services/googleDrive.js` — File upload, folder management, backups
+- `src/services/googleDrive.js` — File upload, sharing, society-sheet discovery
+- `src/services/sheetSetup.js` — Create workbook (founding owner only)
 - `src/services/pdfExport.js` — Monthly report PDF generation
-- `src/contexts/AuthContext.jsx` — Auth state management
+- `src/contexts/AuthContext.jsx` — Auth state; fail-closed Access Denied for non-members
 - `src/contexts/AppContext.jsx` — Global app state, toast notifications
 - `src/pages/Dashboard.jsx` — Main financial dashboard
-- `src/pages/Settings.jsx` — Configuration, access control, backups
+- `src/pages/Settings.jsx` — Configuration, user management, backups
+- `src/pages/Setup.jsx` — Founding-owner wizard only
 - `vite.config.js` — Build config with PWA and chunk splitting
 
 ## Constraints
 
-- Max 20 users, max 2 owners (owners can add/remove users)
+- Max 20 users, max 2 owners
 - 10 flats: 101, 102, 201, 202, 301, 302, 401, 402, 501, 502
-- No backend server — fully client-side static hosting
+- No backend server — fully client-side static hosting. Drive file ACL is the real write barrier; app ACL is defense in depth
 - Must be deployable to GitHub Pages and Azure Static Web Apps
 - PWA installable on iOS, Android, and desktop
 - Fiscal year: September to August
 - Indian Rupee (₹) currency formatting
+- UI must remain usable on mobile (hamburger + bottom nav, stacked cards, 44px tap targets)
 
 ## Deployment
 
 - GitHub Pages: Push to main → auto-deployed via GitHub Actions
 - Azure Static Web Apps: Connected to GitHub, auto-deploys
 - Base path: `/AppartmentApp/` for GitHub Pages
+- After creating the society sheet, optionally paste the ID into `public/sheet-config.json` so members can resolve it without relying only on Drive search

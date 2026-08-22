@@ -90,6 +90,12 @@ export function bindSpreadsheet(id, email) {
   }
 }
 
+/** Drop a stale/private spreadsheet id so the next login cannot reuse it. */
+export function unbindSpreadsheet() {
+  localStorage.removeItem(STORAGE_KEYS.SPREADSHEET_ID);
+  localStorage.removeItem(STORAGE_KEYS.BOUND_EMAIL);
+}
+
 /**
  * Safe JSON.parse — returns fallback instead of throwing.
  */

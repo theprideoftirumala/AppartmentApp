@@ -117,7 +117,7 @@ export default function Sidebar() {
               <div className="sidebar-user-info">
                 <span className="sidebar-user-name">{user.name}</span>
                 <span className="sidebar-user-role badge badge-primary">
-                  {userRole || 'Member'}
+                  {userRole || '…'}
                 </span>
               </div>
             </div>

@@ -5,8 +5,18 @@
  */
 
 import { SHEET_NAMES, SHEET_HEADERS, DEFAULT_CONFIG, FLATS, STORAGE_KEYS } from '../config/constants';
+import {
+  FOUNDING_OWNER_EMAIL,
+  canGrantOwner,
+  canManageUsers,
+  canRemoveUser,
+  canWriteFinancialData,
+  effectiveAppRole,
+  isFoundingOwner,
+  normalizeRequestedRole,
+} from '../config/accessPolicy';
 import { ensureValidToken, getCurrentUser } from './googleAuth';
-import { findExistingSpreadsheet } from './googleDrive';
+import { findSocietySpreadsheet, getSpreadsheetFileMeta, isPrivateCopyOwnedByUser } from './googleDrive';
 import {
   sanitizeForSheet,
   truncateForSheet,
@@ -16,6 +26,7 @@ import {
   sanitizeDriveUrl,
   isValidSpreadsheetId,
   bindSpreadsheet,
+  unbindSpreadsheet,
 } from '../utils/helpers';
 import {
   createSpreadsheet as createSpreadsheetWorkbook,
@@ -42,11 +53,51 @@ async function withAuth(fn) {
 }
 
 /**
+ * SECURITY: Sheets writes must match Access Control, not just a Drive writer grant.
+ * A Reader who still has leftover writer permission cannot mutate through this app.
+ */
+async function assertCanWriteFinancialData() {
+  const user = getCurrentUser();
+  if (!user?.email) throw new Error('Not authenticated');
+  if (isFoundingOwner(user.email)) return;
+  let entry = null;
+  try {
+    const acl = await getAccessControl();
+    entry = acl.find((u) => normalizeEmail(u.email) === normalizeEmail(user.email) && u.status === 'Active') || null;
+  } catch {
+    throw new Error('Could not verify your access. Read-only until the society Owner confirms your role.');
+  }
+  const role = effectiveAppRole(user.email, entry);
+  if (!canWriteFinancialData(user.email, role)) {
+    throw new Error('You have read-only access. Ask the society Owner to grant write permission.');
+  }
+}
+
+async function withWriteAuth(fn) {
+  await ensureValidToken();
+  await assertCanWriteFinancialData();
+  return fn();
+}
+
+async function assertCanManageUsers() {
+  const user = getCurrentUser();
+  if (!user?.email) throw new Error('Not authenticated');
+  if (isFoundingOwner(user.email)) return user;
+  const acl = await getAccessControl();
+  const entry = acl.find((u) => normalizeEmail(u.email) === normalizeEmail(user.email) && u.status === 'Active') || null;
+  const role = effectiveAppRole(user.email, entry);
+  if (!canManageUsers(user.email, role)) {
+    throw new Error('Only the society Owner can manage users.');
+  }
+  return user;
+}
+
+/**
  * Parse a Google API error into a user-friendly message.
  */
 export function parseApiError(error) {
   if (error?.code === 'SHEET_NOT_ACCESSIBLE' || error?.message === 'SHEET_NOT_ACCESSIBLE') {
-    return 'This browser is pointing at a Google Sheet your account cannot open (often left over from a previous Google login). Reconnect to find or create your apartment sheet.';
+    return 'This browser is pointing at a Google Sheet your account cannot open. If you are a resident, ask the society Owner to add you. Only the founding owner can create the society workbook.';
   }
   if (!navigator.onLine) {
     return 'You appear to be offline. Please check your internet connection.';
@@ -73,8 +124,8 @@ export function parseApiError(error) {
     switch (code) {
       case 400: return `Bad request: ${message}`;
       case 401: return 'Session expired. Please sign in again.';
-      case 403: return 'This Google account cannot open the stored spreadsheet. It may belong to a different login. Use Reconnect to attach your own TPT-MaintenanceTracker sheet.';
-      case 404: return 'The Google Sheet was not found. It may have been deleted or moved. Use Reconnect to find or create it.';
+      case 403: return 'This Google account cannot open the society spreadsheet. Ask the founding owner to add you in Settings → Access Control and share the sheet as Viewer.';
+      case 404: return 'The society Google Sheet was not found or is not shared with this account. Ask the founding owner to add you as a Reader.';
       case 429: return 'Google API quota exceeded. Please wait a moment and try again.';
       case 500:
       case 503: return 'Google Sheets service is temporarily unavailable. Please try again.';
@@ -103,8 +154,8 @@ async function canReadSpreadsheet(spreadsheetId) {
 }
 
 /**
- * Attach a spreadsheet this Google account can actually open.
- * Clears a stale ID left by a previous login on the same browser.
+ * Attach the society spreadsheet this Google account is allowed to open.
+ * Clears a stale ID from another login, and ignores private copies members created.
  */
 export async function resolveSpreadsheetForUser(email) {
   return withAuth(async () => {
@@ -112,13 +163,20 @@ export async function resolveSpreadsheetForUser(email) {
     const currentId = localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID);
     const emailMismatch = Boolean(boundEmail && email && boundEmail !== normalizeEmail(email));
 
-    if (isValidSpreadsheetId(currentId) && !emailMismatch && await canReadSpreadsheet(currentId)) {
-      bindSpreadsheet(currentId, email);
-      return currentId;
+    if (isValidSpreadsheetId(currentId) && !emailMismatch) {
+      const meta = await getSpreadsheetFileMeta(currentId);
+      const privateCopy = isPrivateCopyOwnedByUser(meta, email);
+      if (!privateCopy && await canReadSpreadsheet(currentId)) {
+        bindSpreadsheet(currentId, email);
+        return currentId;
+      }
+      unbindSpreadsheet();
+    } else if (emailMismatch) {
+      unbindSpreadsheet();
     }
 
-    const found = await findExistingSpreadsheet();
-    if (found?.id && await canReadSpreadsheet(found.id)) {
+    const found = await findSocietySpreadsheet(email);
+    if (found?.id && !isPrivateCopyOwnedByUser(found, email) && await canReadSpreadsheet(found.id)) {
       bindSpreadsheet(found.id, email);
       return found.id;
     }
@@ -163,7 +221,7 @@ export async function getConfiguration() {
  * Update a single configuration value
  */
 export async function updateConfiguration(key, value) {
-  return withAuth(async () => {
+  return withWriteAuth(async () => {
     const spreadsheetId = getSpreadsheetId();
     if (!spreadsheetId) throw new Error('Spreadsheet is not connected.');
 
@@ -220,7 +278,7 @@ export async function getFlats() {
  * Update a flat's details
  */
 export async function updateFlat(flatNumber, data) {
-  return withAuth(async () => {
+  return withWriteAuth(async () => {
     const spreadsheetId = getSpreadsheetId();
     if (!spreadsheetId) throw new Error('Spreadsheet is not connected.');
     if (!FLATS.includes(flatNumber)) throw new Error(`Invalid flat: ${flatNumber}`);
@@ -295,7 +353,7 @@ export async function getMaintenanceRecords(month = null) {
  * Add or update a maintenance payment
  */
 export async function upsertMaintenancePayment(month, flat, data) {
-  return withAuth(async () => {
+  return withWriteAuth(async () => {
     const spreadsheetId = getSpreadsheetId();
 
     // Check if record exists
@@ -349,7 +407,7 @@ export async function upsertMaintenancePayment(month, flat, data) {
  * Initialize maintenance records for a month
  */
 export async function initializeMonthMaintenance(month, amount) {
-  return withAuth(async () => {
+  return withWriteAuth(async () => {
     const spreadsheetId = getSpreadsheetId();
     const existing = await getMaintenanceRecords(month);
     if (existing.length > 0) {
@@ -418,7 +476,7 @@ export async function getExpenses(month = null) {
  * reach the sheet as a formula.
  */
 export async function addExpense(data) {
-  return withAuth(async () => {
+  return withWriteAuth(async () => {
     const spreadsheetId = getSpreadsheetId();
     const id = `EXP-${Date.now()}`;
 
@@ -452,7 +510,7 @@ export async function addExpense(data) {
  * Delete an expense by ID
  */
 export async function deleteExpense(expenseId) {
-  return withAuth(async () => {
+  return withWriteAuth(async () => {
     const spreadsheetId = getSpreadsheetId();
 
     // Find the row
@@ -526,7 +584,7 @@ export async function getEmergencyContacts() {
  * Add an emergency contact — sanitized against formula injection.
  */
 export async function addEmergencyContact(data) {
-  return withAuth(async () => {
+  return withWriteAuth(async () => {
     const spreadsheetId = getSpreadsheetId();
     await window.gapi.client.sheets.spreadsheets.values.append({
       spreadsheetId,
@@ -552,7 +610,7 @@ export async function addEmergencyContact(data) {
  * Delete an emergency contact by row index
  */
 export async function deleteEmergencyContact(rowIndex) {
-  return withAuth(async () => {
+  return withWriteAuth(async () => {
     const spreadsheetId = getSpreadsheetId();
     const sheetMeta = await window.gapi.client.sheets.spreadsheets.get({
       spreadsheetId,
@@ -616,7 +674,7 @@ export async function getReminders() {
  * Add a new reminder
  */
 export async function addReminder(data) {
-  return withAuth(async () => {
+  return withWriteAuth(async () => {
     const spreadsheetId = getSpreadsheetId();
     const id = `REM-${Date.now()}`;
 
@@ -649,7 +707,7 @@ export async function addReminder(data) {
  * Mark a reminder as completed
  */
 export async function completeReminder(reminderId) {
-  return withAuth(async () => {
+  return withWriteAuth(async () => {
     const spreadsheetId = getSpreadsheetId();
     const response = await window.gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId,
@@ -675,7 +733,7 @@ export async function completeReminder(reminderId) {
  * Delete a reminder
  */
 export async function deleteReminder(reminderId) {
-  return withAuth(async () => {
+  return withWriteAuth(async () => {
     const spreadsheetId = getSpreadsheetId();
     const response = await window.gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId,
@@ -741,35 +799,112 @@ export async function getAccessControl() {
 }
 
 /**
- * Add a user to the access control list
+ * Guarantee the founding owner row exists as Active Owner.
+ * Called after the society workbook is created or reconnected.
+ */
+export async function ensureFoundingOwnerEntry(addedBy = 'System') {
+  return withAuth(async () => {
+    const spreadsheetId = getSpreadsheetId();
+    if (!spreadsheetId) return;
+    const existing = await getAccessControl();
+    const founder = existing.find((u) => isFoundingOwner(u.email));
+    if (founder?.status === 'Active' && founder.role === 'Owner') return;
+
+    const response = await window.gapi.client.sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `'${SHEET_NAMES.ACCESS_CONTROL}'!A2:F50`,
+    });
+    const rows = response.result.values || [];
+    const rowIndex = rows.findIndex((r) => isFoundingOwner(r[0]));
+    const values = [[
+      normalizeEmail(FOUNDING_OWNER_EMAIL),
+      'Owner',
+      '',
+      normalizeEmail(addedBy) || 'System',
+      new Date().toISOString().split('T')[0],
+      'Active',
+    ]];
+
+    if (rowIndex >= 0) {
+      await window.gapi.client.sheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: `'${SHEET_NAMES.ACCESS_CONTROL}'!A${rowIndex + 2}:F${rowIndex + 2}`,
+        valueInputOption: 'RAW',
+        resource: { values },
+      });
+      return;
+    }
+
+    await window.gapi.client.sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: `'${SHEET_NAMES.ACCESS_CONTROL}'!A:F`,
+      valueInputOption: 'RAW',
+      insertDataOption: 'INSERT_ROWS',
+      resource: { values },
+    });
+  });
+}
+
+/**
+ * Add a user to the access control list.
+ * New members default to Reader. Only the founding owner may grant Owner.
  */
 export async function addAccessControl(data) {
   return withAuth(async () => {
+    const actor = await assertCanManageUsers();
     const spreadsheetId = getSpreadsheetId();
 
-    // Check limits
+    const email = normalizeEmail(data.email);
+    if (!email || !email.includes('@')) throw new Error('Enter a valid email address');
+
+    // Never demote the founding owner; never let a non-founder mint Owners.
+    const role = isFoundingOwner(email)
+      ? 'Owner'
+      : normalizeRequestedRole(data.role, actor.email);
+
     const existing = await getAccessControl();
-    const activeUsers = existing.filter(u => u.status === 'Active');
+    const activeUsers = existing.filter((u) => u.status === 'Active');
 
     if (activeUsers.length >= DEFAULT_CONFIG.MAX_USERS) {
       throw new Error(`Maximum ${DEFAULT_CONFIG.MAX_USERS} users allowed`);
     }
 
-    if (data.role === 'Owner') {
-      const owners = activeUsers.filter(u => u.role === 'Owner');
-      if (owners.length >= DEFAULT_CONFIG.MAX_OWNERS) {
+    if (role === 'Owner' && !isFoundingOwner(email)) {
+      const owners = activeUsers.filter((u) => u.role === 'Owner' && !isFoundingOwner(u.email));
+      // Founding owner + at most one additional Owner (MAX_OWNERS = 2).
+      if (owners.length + 1 >= DEFAULT_CONFIG.MAX_OWNERS) {
         throw new Error(`Maximum ${DEFAULT_CONFIG.MAX_OWNERS} owners allowed`);
+      }
+      if (!canGrantOwner(actor.email)) {
+        throw new Error('Only the founding owner can grant Owner access.');
       }
     }
 
-    const email = normalizeEmail(data.email);
-    if (!email || !email.includes('@')) throw new Error('Enter a valid email address');
-
-    if (existing.some(u => normalizeEmail(u.email) === email && u.status === 'Active')) {
+    if (existing.some((u) => normalizeEmail(u.email) === email && u.status === 'Active')) {
       throw new Error('User already has access');
     }
 
-    const role = data.role === 'Owner' ? 'Owner' : 'Reader';
+    const inactiveIndex = existing.findIndex(
+      (u) => normalizeEmail(u.email) === email && u.status !== 'Active',
+    );
+    if (inactiveIndex >= 0) {
+      await window.gapi.client.sheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: `'${SHEET_NAMES.ACCESS_CONTROL}'!A${inactiveIndex + 2}:F${inactiveIndex + 2}`,
+        valueInputOption: 'RAW',
+        resource: {
+          values: [[
+            email,
+            role,
+            sheetText(data.flat, 8),
+            normalizeEmail(data.addedBy || actor.email),
+            new Date().toISOString().split('T')[0],
+            'Active',
+          ]],
+        },
+      });
+      return role;
+    }
 
     await window.gapi.client.sheets.spreadsheets.values.append({
       spreadsheetId,
@@ -781,12 +916,45 @@ export async function addAccessControl(data) {
           email,
           role,
           sheetText(data.flat, 8),
-          normalizeEmail(data.addedBy),
+          normalizeEmail(data.addedBy || actor.email),
           new Date().toISOString().split('T')[0],
           'Active',
         ]],
       },
     });
+    return role;
+  });
+}
+
+/**
+ * Change an existing user's app role. Founding owner row cannot be changed.
+ */
+export async function updateAccessControlRole(email, requestedRole) {
+  return withAuth(async () => {
+    const actor = await assertCanManageUsers();
+    if (!canRemoveUser(email)) {
+      throw new Error('The founding owner cannot be changed or removed.');
+    }
+    const role = normalizeRequestedRole(requestedRole, actor.email);
+    const spreadsheetId = getSpreadsheetId();
+    const existing = await getAccessControl();
+    const rowIndex = existing.findIndex((u) => normalizeEmail(u.email) === normalizeEmail(email));
+    if (rowIndex < 0) throw new Error('User was not found');
+
+    if (role === 'Owner' && existing[rowIndex].role !== 'Owner') {
+      const extraOwners = existing.filter((u) => u.status === 'Active' && u.role === 'Owner' && !isFoundingOwner(u.email));
+      if (extraOwners.length + 1 >= DEFAULT_CONFIG.MAX_OWNERS) {
+        throw new Error(`Maximum ${DEFAULT_CONFIG.MAX_OWNERS} owners allowed`);
+      }
+    }
+
+    await window.gapi.client.sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `'${SHEET_NAMES.ACCESS_CONTROL}'!B${rowIndex + 2}`,
+      valueInputOption: 'RAW',
+      resource: { values: [[role]] },
+    });
+    return role;
   });
 }
 
@@ -795,6 +963,10 @@ export async function addAccessControl(data) {
  */
 export async function removeAccessControl(email) {
   return withAuth(async () => {
+    await assertCanManageUsers();
+    if (!canRemoveUser(email)) {
+      throw new Error('The founding owner cannot be removed.');
+    }
     const spreadsheetId = getSpreadsheetId();
     const response = await window.gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId,
@@ -802,7 +974,7 @@ export async function removeAccessControl(email) {
     });
 
     const rows = response.result.values || [];
-    const rowIndex = rows.findIndex(r => normalizeEmail(r[0]) === normalizeEmail(email));
+    const rowIndex = rows.findIndex((r) => normalizeEmail(r[0]) === normalizeEmail(email));
 
     if (rowIndex >= 0) {
       await window.gapi.client.sheets.spreadsheets.values.update({
@@ -887,7 +1059,7 @@ export async function getWaterTankerLogs() {
  * Add a water tanker entry
  */
 export async function addWaterTankerLog(data) {
-  return withAuth(async () => {
+  return withWriteAuth(async () => {
     const spreadsheetId = getSpreadsheetId();
     await window.gapi.client.sheets.spreadsheets.values.append({
       spreadsheetId,
@@ -945,7 +1117,7 @@ function parseMonthlySummaryRow(row) {
  * Columns: Month | Collection | Misc Funds | Total Expenses | Net Balance | Cumulative | Collection% | Pending Flats | Status
  */
 export async function updateMonthlySummary(month) {
-  return withAuth(async () => {
+  return withWriteAuth(async () => {
     const spreadsheetId = getSpreadsheetId();
 
     const [maintenance, expenses, miscFundsData] = await Promise.all([
@@ -1299,7 +1471,7 @@ export async function getMiscFunds(month = null) {
  * Add a new misc fund entry
  */
 export async function addMiscFund(data) {
-  return withAuth(async () => {
+  return withWriteAuth(async () => {
     const spreadsheetId = getSpreadsheetId();
     await ensureMiscFundsSheet(spreadsheetId);
 
@@ -1331,7 +1503,7 @@ export async function addMiscFund(data) {
  * Delete a misc fund entry by ID
  */
 export async function deleteMiscFund(fundId) {
-  return withAuth(async () => {
+  return withWriteAuth(async () => {
     const spreadsheetId = getSpreadsheetId();
 
     const response = await window.gapi.client.sheets.spreadsheets.values.get({
@@ -1412,7 +1584,7 @@ export async function getWatchmanDetails() {
  * Add a new watchman record
  */
 export async function addWatchmanDetail(data) {
-  return withAuth(async () => {
+  return withWriteAuth(async () => {
     const spreadsheetId = getSpreadsheetId();
     const range = `'${SHEET_NAMES.WATCHMAN_DETAILS}'!A:N`;
 
@@ -1446,7 +1618,7 @@ export async function addWatchmanDetail(data) {
  * Update a watchman record by row index
  */
 export async function updateWatchmanDetail(rowIndex, data) {
-  return withAuth(async () => {
+  return withWriteAuth(async () => {
     const spreadsheetId = getSpreadsheetId();
     const rowNum = rowIndex + 2; // +2 for header row and 0-index
     const range = `'${SHEET_NAMES.WATCHMAN_DETAILS}'!A${rowNum}:N${rowNum}`;
@@ -1481,7 +1653,7 @@ export async function updateWatchmanDetail(rowIndex, data) {
  * Delete a watchman record by row index
  */
 export async function deleteWatchmanDetail(rowIndex) {
-  return withAuth(async () => {
+  return withWriteAuth(async () => {
     const spreadsheetId = getSpreadsheetId();
     const rowNum = rowIndex + 2;
     const range = `'${SHEET_NAMES.WATCHMAN_DETAILS}'!A${rowNum}:N${rowNum}`;

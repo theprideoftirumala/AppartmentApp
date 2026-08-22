@@ -26,10 +26,12 @@
 ```
 src/
 ├── config/constants.js     # All configurable values
+├── config/accessPolicy.js  # Founding owner, Reader default, grant rules
 ├── services/
 │   ├── googleAuth.js       # OAuth 2.0 via GIS
 │   ├── googleSheets.js     # All CRUD operations
-│   ├── googleDrive.js      # File/folder management
+│   ├── googleDrive.js      # File/folder/sharing + society sheet discovery
+│   ├── sheetSetup.js       # Create workbook (founding owner only)
 │   └── pdfExport.js        # Monthly report PDF generation
 ├── contexts/
 │   ├── AuthContext.jsx      # Google auth state
@@ -85,11 +87,20 @@ All configurable values are in `src/config/constants.js` and can be overridden a
 
 ## Security Model
 
-- Google OAuth 2.0 — no passwords stored
-- Email whitelist via Access Control sheet
-- Max 20 users, max 2 owners
-- Audit logging on all write operations
+**One society sheet, one founding owner.** Do not “fix” access by letting each Google login create `TPT-MaintenanceTracker` in their own Drive — that made random accounts appear as Owner of a private copy.
+
+- Founding owner: `th***@gmail.com` (full address only in `src/config/accessPolicy.js`). Always Owner. Cannot be removed.
+- Only the founding owner may create or archive-and-recreate the workbook (`sheetSetup.js`).
+- Manage users in the app: Settings → Access Control. New users default to **Reader**. Drive share is Viewer (`reader`) unless the founding owner grants Owner (`writer`).
+- Members must not hit Setup/create. Unlisted or unshared accounts get Access Denied.
+- Discovery: founding owner searches owned files; members search `sharedWithMe` plus optional `public/sheet-config.json`. Private copies owned by a non-founding user are ignored.
+- OAuth scopes include `drive.metadata.readonly` so shared files are listable. Bump `OAUTH_SCOPE_VERSION` when scopes change so GIS re-consents.
+- Write RPCs go through `withWriteAuth` (Access Control + founding-owner check), not UI hiding alone.
+- Google OAuth 2.0 — no passwords stored. Access tokens in `sessionStorage` only.
+- Max 20 users, max 2 owners. Audit logging on writes.
 - Short-lived access tokens (no refresh tokens stored)
+
+Reuse `accessPolicy.js` helpers (`isFoundingOwner`, `effectiveAppRole`, `normalizeRequestedRole`, `canCreateSocietySpreadsheet`) instead of ad-hoc email checks.
 
 ## Common Modifications
 
@@ -101,6 +112,9 @@ Go to Settings → Flat Details → Edit the flat row.
 
 ### Transition Treasurer/President
 Go to Settings → Configuration → Update TREASURER_FLAT / PRESIDENT_FLAT.
+
+### Add a resident (read-only by default)
+Sign in as the founding owner → Settings → Access Control → Add User. Leave role as Reader. The existing sheet is shared as Viewer; they must not create another spreadsheet.
 
 ### Add a new expense category
 Add to the `EXPENSE_CATEGORIES` array in `src/config/constants.js` and rebuild.
@@ -117,7 +131,7 @@ Update `FISCAL_YEAR_START` in the Configuration sheet.
 ## Client ID
 
 ```
-33627201770-ks4fo1kpdf777h7kanlmva3rtghk7u33.apps.googleusercontent.com
+91050465180-vqn4p4qk0rq5ihstdquu95vjpegjcbld.apps.googleusercontent.com
 ```
 
 This is intentionally in the source code — OAuth client IDs for web apps are public.

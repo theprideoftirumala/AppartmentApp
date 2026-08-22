@@ -7,23 +7,24 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   Settings as SettingsIcon, Users, Shield, Database, Trash2,
   Plus, ExternalLink, Download, UserPlus, UserMinus, Save,
-  RefreshCw, AlertTriangle, Key, Eye, Lock, KeyRound, CheckCircle2
+  RefreshCw, AlertTriangle, Key, Eye, Lock, KeyRound, CheckCircle2, Copy
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
 import {
   getConfiguration, updateConfiguration,
-  getAccessControl, addAccessControl, removeAccessControl,
+  getAccessControl, addAccessControl, removeAccessControl, updateAccessControlRole,
   getFlats, updateFlat, addAuditLog,
   getWatchmanDetails, addWatchmanDetail, updateWatchmanDetail, deleteWatchmanDetail,
-  archiveAndCreateFresh, addReminder,
+  archiveAndCreateFresh, addReminder, ensureFoundingOwnerEntry,
 } from '../services/googleSheets';
 import {
   createBackup, listBackups,
   getSpreadsheetUrl, getRootFolderUrl,
-  shareSpreadsheet, shareFolder, setupFolderStructure,
+  shareSpreadsheet, shareFolder, removeSharing, setupFolderStructure,
 } from '../services/googleDrive';
-import { DEFAULT_CONFIG, DEFAULT_REMINDERS, FLATS, USER_ROLES, STORAGE_KEYS } from '../config/constants';
+import { DEFAULT_CONFIG, DEFAULT_REMINDERS, FLATS, STORAGE_KEYS } from '../config/constants';
+import { DRIVE_ROLE_BY_APP_ROLE, FOUNDING_OWNER_EMAIL, canGrantOwner, canRemoveUser, isFoundingOwner } from '../config/accessPolicy';
 import { formatDate, formatCurrency, isValidEmail, calculateNextDue, getLastDayOfCurrentMonth, getFirstDayOfNextMonth, bindSpreadsheet } from '../utils/helpers';
 import { InfoBubble } from '../components/common/Tooltip';
 import { hashPin } from '../contexts/AuthContext';
@@ -94,20 +95,19 @@ export default function Settings() {
   const handleAddUser = async (email, role, flat) => {
     try {
       setSaving(true);
-      await addAccessControl({
+      const savedRole = await addAccessControl({
         email,
         role,
         flat,
         addedBy: user.email,
       });
 
-      // Share Google resources
-      const driveRole = role === 'Owner' ? 'writer' : 'reader';
+      const driveRole = DRIVE_ROLE_BY_APP_ROLE[savedRole] || 'reader';
       await shareSpreadsheet(email, driveRole);
-      await shareFolder(email, driveRole);
+      await shareFolder(email, driveRole).catch(() => {});
 
-      await addAuditLog(user.email, 'ADD_USER', `${email} as ${role}`);
-      showToast(`Added ${email} as ${role}`, 'success');
+      await addAuditLog(user.email, 'ADD_USER', `${email} as ${savedRole}`);
+      showToast(`Added ${email} as ${savedRole}. They can sign in after you share; they will not create a new sheet.`, 'success');
       setShowAddUser(false);
       fetchData();
     } catch (err) {
@@ -117,15 +117,33 @@ export default function Settings() {
     }
   };
 
+  const handleChangeRole = async (email, nextRole) => {
+    try {
+      const savedRole = await updateAccessControlRole(email, nextRole);
+      const driveRole = DRIVE_ROLE_BY_APP_ROLE[savedRole] || 'reader';
+      await shareSpreadsheet(email, driveRole);
+      await addAuditLog(user.email, 'UPDATE_ROLE', `${email} → ${savedRole}`);
+      showToast(`${email} is now ${savedRole}`, 'success');
+      fetchData();
+    } catch (err) {
+      showToast(err.message || 'Failed to update role', 'error');
+    }
+  };
+
   const handleRemoveUser = async (email) => {
-    if (!confirm(`Remove access for ${email}?`)) return;
+    if (!canRemoveUser(email)) {
+      showToast('The founding owner cannot be removed.', 'error');
+      return;
+    }
+    if (!confirm(`Remove access for ${email}? They will lose Drive access to the society sheet.`)) return;
     try {
       await removeAccessControl(email);
+      await removeSharing(email).catch(() => {});
       await addAuditLog(user.email, 'REMOVE_USER', email);
       showToast(`Removed ${email}`, 'success');
       fetchData();
     } catch (err) {
-      showToast('Failed to remove user', 'error');
+      showToast(err.message || 'Failed to remove user', 'error');
     }
   };
 
@@ -161,6 +179,10 @@ export default function Settings() {
   };
 
   const handleCreateFreshSheet = async () => {
+    if (!isFoundingOwner(user?.email)) {
+      showToast('Only the founding owner can create a new society spreadsheet.', 'error');
+      return;
+    }
     if (!window.confirm(
       'Create an empty production sheet?\n\nThe current workbook will be renamed (kept in Drive as a SAMPLE archive). A new empty TPT-MaintenanceTracker will become the live source of truth.'
     )) return;
@@ -169,7 +191,7 @@ export default function Settings() {
       const folders = await setupFolderStructure();
       const result = await archiveAndCreateFresh(folders.rootId, user.email);
       bindSpreadsheet(result.spreadsheetId, user.email);
-      await addAccessControl({ email: user.email, role: 'Owner', flat: '', addedBy: 'System' });
+      await ensureFoundingOwnerEntry(user.email);
       for (const reminder of DEFAULT_REMINDERS) {
         let nextDue;
         if (reminder.nextDueType === 'end_of_month') nextDue = getLastDayOfCurrentMonth();
@@ -404,15 +426,35 @@ export default function Settings() {
           <div className="card">
             <div className="card-header">
               <h3 className="card-title">Access Control</h3>
-              {isOwner !== false && (
+              {isOwner && (
                 <button className="btn btn-primary btn-sm" onClick={() => setShowAddUser(true)}>
                   <UserPlus size={14} /> Add User
                 </button>
               )}
             </div>
             <p className="text-muted text-sm mb-4">
-              Max {config.MAX_USERS || 20} users, max {config.MAX_OWNERS || 2} owners. Only owners can add/remove users.
+              One society workbook. Founding owner is <strong>{FOUNDING_OWNER_EMAIL}</strong>.
+              New users default to <strong>Reader</strong> (Google Sheet Viewer). Max {config.MAX_USERS || 20} users,
+              max {config.MAX_OWNERS || 2} owners. Only the founding owner can grant Owner.
             </p>
+            {localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID) && (
+              <p className="sheet-id-row text-muted text-sm mb-4">
+                <strong>Sheet ID:</strong>
+                <code className="sheet-id-code">{localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID)}</code>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID) || '');
+                      showToast('Spreadsheet ID copied', 'success');
+                    } catch { /* ignore */ }
+                  }}
+                >
+                  <Copy size={14} /> Copy
+                </button>
+              </p>
+            )}
 
             <div className="table-container">
               <table>
@@ -430,7 +472,12 @@ export default function Settings() {
                 <tbody>
                   {accessList.map((entry, i) => (
                     <tr key={i}>
-                      <td className="font-medium">{entry.email}</td>
+                      <td className="font-medium">
+                        {entry.email}
+                        {isFoundingOwner(entry.email) && (
+                          <span className="badge badge-primary" style={{ marginLeft: 8 }}>Founding</span>
+                        )}
+                      </td>
                       <td>
                         <span className={`badge ${entry.role === 'Owner' ? 'badge-warning' : 'badge-info'}`}>
                           {entry.role}
@@ -445,11 +492,21 @@ export default function Settings() {
                         </span>
                       </td>
                       <td>
-                        {isOwner !== false && entry.email !== user.email && entry.status === 'Active' && (
-                          <button className="btn btn-ghost btn-sm text-danger" onClick={() => handleRemoveUser(entry.email)}>
-                            <UserMinus size={14} />
-                          </button>
-                        )}
+                        <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
+                          {isOwner && canGrantOwner(user?.email) && entry.status === 'Active' && canRemoveUser(entry.email) && (
+                            <button
+                              className="btn btn-ghost btn-sm"
+                              onClick={() => handleChangeRole(entry.email, entry.role === 'Owner' ? 'Reader' : 'Owner')}
+                            >
+                              {entry.role === 'Owner' ? 'Make Reader' : 'Make Owner'}
+                            </button>
+                          )}
+                          {isOwner && canRemoveUser(entry.email) && entry.status === 'Active' && (
+                            <button className="btn btn-ghost btn-sm text-danger" onClick={() => handleRemoveUser(entry.email)}>
+                              <UserMinus size={14} />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -513,7 +570,7 @@ export default function Settings() {
           </div>
         )}
 
-        {activeTab === 'backups' && isOwner && (
+        {activeTab === 'backups' && isOwner && isFoundingOwner(user?.email) && (
           <div className="card mt-4">
             <h3 className="card-title mb-2">Start fresh after testing</h3>
             <p className="text-muted text-sm mb-4">
@@ -616,6 +673,7 @@ export default function Settings() {
         saving={saving}
         accessList={accessList}
         config={config}
+        actorEmail={user?.email}
       />
 
       {/* Edit Flat Modal */}
@@ -694,35 +752,52 @@ function ConfigField({ field, value, onSave, disabled }) {
   );
 }
 
-function AddUserModal({ isOpen, onClose, onSave, saving, accessList, config }) {
+function AddUserModal({ isOpen, onClose, onSave, saving, accessList, config, actorEmail }) {
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('Reader');
   const [flat, setFlat] = useState('');
+  const [emailError, setEmailError] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!isValidEmail(email)) return;
-    onSave(email, role, flat);
+    if (!isValidEmail(email)) {
+      setEmailError('Enter a valid email address');
+      return;
+    }
+    setEmailError('');
+    onSave(email.trim(), role, flat);
   };
 
   const activeOwners = accessList.filter(a => a.role === 'Owner' && a.status === 'Active').length;
   const maxOwnerReached = activeOwners >= (config.MAX_OWNERS || 2);
+  const allowOwnerOption = canGrantOwner(actorEmail) && !maxOwnerReached;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Add User">
       <form onSubmit={handleSubmit} className="form-grid">
+        <p className="text-muted text-sm">
+          Added users receive <strong>read-only</strong> Google Drive access to the existing society sheet.
+          They will not create a new spreadsheet.
+        </p>
         <div className="form-group">
           <label className="form-label">Email *</label>
-          <input type="email" className="form-input" value={email} onChange={e => setEmail(e.target.value)} required />
+          <input
+            type="email"
+            className="form-input"
+            value={email}
+            onChange={e => { setEmail(e.target.value); setEmailError(''); }}
+            required
+          />
+          {emailError && <span className="form-error">{emailError}</span>}
         </div>
         <div className="form-row">
           <div className="form-group">
             <label className="form-label">Role</label>
             <select className="form-select" value={role} onChange={e => setRole(e.target.value)}>
-              <option value="Reader">Reader (View Only)</option>
-              <option value="Owner" disabled={maxOwnerReached}>
-                Owner (Full Access) {maxOwnerReached ? '— Max reached' : ''}
-              </option>
+              <option value="Reader">Reader (View Only) — default</option>
+              {allowOwnerOption && (
+                <option value="Owner">Owner (Full Access)</option>
+              )}
             </select>
           </div>
           <div className="form-group">

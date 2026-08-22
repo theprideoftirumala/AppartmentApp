@@ -10,6 +10,10 @@ import {
     Shield, Download, MessageCircle, Users
 } from 'lucide-react';
 import Navbar from '../components/common/Navbar';
+import { FOUNDING_OWNER_EMAIL, maskEmail } from '../config/accessPolicy';
+
+/** Masked in Help copy so personal inboxes are not duplicated through the page source. */
+const OWNER_EMAIL_MASKED = maskEmail(FOUNDING_OWNER_EMAIL);
 
 const sections = [
     {
@@ -34,10 +38,9 @@ Backups (copies of the sheet) are stored in the "backups" subfolder.`,
             },
             {
                 heading: 'Who can access the app?',
-                text: `Only email addresses listed in the Access Control sheet can log in.
-Owners can add/remove users, edit data, and generate reports.
-Readers can view data and download reports but cannot modify anything.
-Outsiders get an "Access Denied" message even if they sign in with Google.`,
+                text: `Only ${OWNER_EMAIL_MASKED} is the founding Owner and may create the society Google Sheet.
+Everyone else must be added in Settings → Access Control. New users default to Reader (view-only) and are shared the existing TPT-MaintenanceTracker as Viewer — they must not create a second sheet.
+A second Owner can be granted only by the founding owner (max 2 owners). Unlisted Google accounts see Access Denied.`,
             },
         ],
     },
@@ -105,9 +108,9 @@ Note: PDF reports already shared with the group should be re-shared after correc
             },
             {
                 heading: 'Adding a new authorized user',
-                text: `Go to Settings → Access Control → Add User.
-Enter their Gmail address and select their role (Owner or Reader).
-They will be able to log in immediately. Maximum 20 users, 2 owners allowed.`,
+                text: `Go to Settings → Access Control → Add User (founding owner).
+Enter their Gmail. Role defaults to Reader (view-only). The app shares the existing society sheet as Viewer — a new spreadsheet is not created.
+They must re-consent Google Drive scopes on first login after this change. Maximum 20 users, 2 owners.`,
             },
             {
                 heading: 'Opening Balance / Handover Deficit',
@@ -121,8 +124,8 @@ This takes effect from the next time you initialize a new month.`,
             },
             {
                 heading: 'Lost access / new device',
-                text: `Sign in with your Google account. If the app shows "Setup needed", click "Connect or Create".
-The app searches for your existing TPT-MaintenanceTracker in Google Drive and reconnects — no data is lost.`,
+                text: `Sign in with Google. Residents are connected to the shared TPT-MaintenanceTracker (not a new file).
+Only ${OWNER_EMAIL_MASKED} sees Setup and may create the workbook. Others who are not on Access Control see Access Denied.`,
             },
         ],
     },
@@ -211,7 +214,7 @@ The next due date is automatically scheduled based on the frequency (e.g., Month
             },
             {
                 heading: '7. Access Control Tab — User Management',
-                text: `COLUMNS: Email | Role | Flat | Added By | Added Date | Status\n\nUNDERSTANDING:\n- Email: the Gmail address of the authorized user\n- Role: Owner (can edit) or Reader (view only)\n- Flat: which flat they live in (for reference)\n- Added By: who added them\n- Status: Active = can log in, Inactive = blocked\n\nHOW TO BLOCK A USER WITHOUT DELETING:\n1. Find their row by email\n2. Change Status from "Active" to "Inactive"\n3. They will be denied access on next login\n\nHOW TO RESTORE A BLOCKED USER:\n1. Find their row (it will have Status = "Inactive")\n2. Change Status back to "Active"\n\nHOW TO ADD A USER DIRECTLY IN THE SHEET:\n1. Scroll to the next empty row after the last user\n2. Add: Email, Role (Owner or Reader), Flat (optional), Added By (your email), Added Date (today YYYY-MM-DD), Status (Active)\n3. NOTE: They also need to be added as a Test User in Google Cloud Console (see Access & Login Guide)\n\nIMPORTANT: The app enforces max 20 users and max 2 owners. If you add users manually that exceed these limits, the app may show errors.`,
+                text: `COLUMNS: Email | Role | Flat | Added By | Added Date | Status\n\n${OWNER_EMAIL_MASKED} is the founding Owner and cannot be removed.\nNew app users default to Reader. Prefer Settings → Access Control → Add User so Drive is shared as Viewer (not a new spreadsheet).\n\nUNDERSTANDING:\n- Email: Gmail of the authorized user\n- Role: Owner (can edit) or Reader (view only)\n- Status: Active = can log in, Inactive = blocked\n\nDo not list someone as Owner unless the founding owner granted it in the app.`,
             },
             {
                 heading: '8. Audit Log Tab — Activity History',
@@ -246,7 +249,7 @@ The next due date is automatically scheduled based on the frequency (e.g., Month
         content: [
             {
                 heading: '"Access blocked: App has not completed verification" — Fix',
-                text: `This Google error means the app is in Testing mode and your Google account is not added as a Test User.\n\nFix steps (Owner must do this):\n1. Go to console.cloud.google.com\n2. Select the project (search for "Apartment Maintenance App" or find it in your project list)\n3. Go to APIs & Services > OAuth consent screen\n4. Scroll down to "Test users"\n5. Click "+ Add Users"\n6. Enter the Gmail address (e.g., theprideoftirumala@gmail.com)\n7. Click Save\n8. The user can now sign in immediately — no other changes needed\n\nAlternatively, to allow any Google account (not just test users): go to OAuth consent screen > Publishing status > click "Publish App". This removes the test user restriction permanently.`,
+                text: `This Google error means the app is in Testing mode and your Google account is not added as a Test User.\n\nFix steps (Owner must do this):\n1. Go to console.cloud.google.com\n2. Select the project (search for "Apartment Maintenance App" or find it in your project list)\n3. Go to APIs & Services > OAuth consent screen\n4. Scroll down to "Test users"\n5. Click "+ Add Users"\n6. Enter the Gmail address of the founding owner (see Settings → Access Control)\n7. Click Save\n8. The user can now sign in immediately — no other changes needed\n\nAlternatively, to allow any Google account (not just test users): go to OAuth consent screen > Publishing status > click "Publish App". This removes the test user restriction permanently.`,
             },
             {
                 heading: '"Google Drive API has not been used in project" — Fix',
@@ -254,7 +257,7 @@ The next due date is automatically scheduled based on the frequency (e.g., Month
             },
             {
                 heading: 'How to add a new user (Google login)',
-                text: `1. Owner logs in to the app\n2. Go to Settings > Access Control\n3. Click "Add User"\n4. Enter their Gmail address\n5. Select role: Reader (view only) or Owner (full access)\n6. Click Add\n7. The user must ALSO be added as a Test User in Google Cloud Console (see above) unless the app is published\n8. The user can now sign in at the login page`,
+                text: `1. Sign in as the founding owner (${OWNER_EMAIL_MASKED})\n2. Go to Settings > Access Control\n3. Click Add User\n4. Enter their Gmail (role defaults to Reader / view-only)\n5. Optionally grant Owner (founding owner only, max 2 owners)\n6. The app shares the existing society sheet as Viewer or Writer to match the role\n7. If OAuth is in Testing mode, also add them as a Test User in Google Cloud Console\n8. They sign in — they must not create another TPT-MaintenanceTracker`,
             },
             {
                 heading: 'Guest PIN access (no Google account)',
@@ -262,7 +265,7 @@ The next due date is automatically scheduled based on the frequency (e.g., Month
             },
             {
                 heading: 'Reader vs Owner access',
-                text: `Reader (e.g., flat owner viewing reports):\n• Can view Dashboard, Maintenance, Expenses, Reports, Reminders, Contacts\n• Cannot add/edit expenses, record payments, or change settings\n• Cannot add/remove users\n\nOwner (Treasurer/President):\n• Full access to all features\n• Can add/remove users\n• Can edit configuration\n• Can create backups\n• Can see the Help section\n• Maximum 2 Owners allowed`,
+                text: `Founding Owner (${OWNER_EMAIL_MASKED} only, unless they grant Owner):\n• Creates the one society spreadsheet\n• Adds users (default Reader) and shares Drive as Viewer\n• Full write access\n\nReader (default for added residents):\n• View Dashboard, Maintenance, Expenses, Reports, Reminders, Contacts\n• Cannot add expenses, record payments, change settings, or add users\n• Google Sheet permission is Viewer\n\nMaximum 2 Owners. The founding owner cannot be removed.`,
             },
         ],
     },
@@ -277,7 +280,7 @@ The next due date is automatically scheduled based on the frequency (e.g., Month
             },
             {
                 heading: 'What happens if I clear browser history/cache?',
-                text: `The app stores the Google Sheet ID and login session in localStorage. If you clear storage:\n• You will be logged out\n• The "Setup" wizard will appear again\n• The app will search your Google Drive for the existing "TPT-MaintenanceTracker" sheet and reconnect automatically — no data is lost\n\nIf you set a Guest PIN, it will be cleared and the Owner must re-set it.`,
+                text: `The app stores the Google Sheet ID in localStorage. If you clear storage you will be logged out.\nFounding owner: Setup reconnects the owned TPT-MaintenanceTracker and will not create a second file if one exists.\nResidents: you need to be on Access Control and have the sheet shared as Viewer — you cannot create a society sheet.\nGuest PIN is device-local and must be set again.`,
             },
             {
                 heading: 'Can multiple users edit data at the same time?',
@@ -297,7 +300,7 @@ The next due date is automatically scheduled based on the frequency (e.g., Month
             },
             {
                 heading: 'The app shows "Not set up" after I already used it on another device',
-                text: `Each browser/device stores the setup state independently. On the new device:\n1. Log in with Google\n2. You will see the Setup page — click "Connect or Create"\n3. The app will find your existing Google Sheet and reconnect\n4. No data is lost`,
+                text: `Each browser stores the spreadsheet ID locally.\nFounding owner: sign in and Setup will reconnect the owned TPT-MaintenanceTracker (it will not create a second file if one exists).\nResidents: you must already be added in Access Control and have the sheet shared as Viewer. You will not see a create-sheet wizard.`,
             },
             {
                 heading: 'How to update the Opening Balance / Handover Deficit?',

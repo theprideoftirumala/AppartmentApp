@@ -1083,6 +1083,42 @@ tbody tr:last-child td {
   margin-left: auto;
 }
 
+@media (max-width: 560px) {
+  .main-content {
+    padding: var(--space-4);
+    padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + var(--space-4));
+  }
+
+  .page-title {
+    font-size: var(--font-size-xl);
+  }
+
+  .table-container {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .guest-banner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .guest-banner .btn {
+    margin-left: 0;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .form-row {
+    flex-direction: column;
+  }
+
+  .btn-lg {
+    width: 100%;
+    justify-content: center;
+    min-height: 48px;
+  }
+}
+
 /* ─── Settings form label flex ─────────────────────────────── */
 .config-field-label {
   display: flex;

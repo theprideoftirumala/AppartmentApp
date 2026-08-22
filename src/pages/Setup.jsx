@@ -1,20 +1,24 @@
 /**
- * Setup Wizard Page
- * First-time setup: creates Drive folders and Google Sheet
+ * Setup Wizard — founding owner only.
+ *
+ * SECURITY: Other Google accounts must never reach "create spreadsheet".
+ * Members are added in Settings and receive a shared, read-only copy of the
+ * one society workbook (TPT-MaintenanceTracker).
  */
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FolderPlus, FileSpreadsheet, CheckCircle, Loader, Shield, ArrowRight, Search, FlaskConical, FilePlus } from 'lucide-react';
+import { FolderPlus, FileSpreadsheet, CheckCircle, Loader, Shield, ArrowRight, Search, FlaskConical, FilePlus, Copy } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useApp } from '../contexts/AppContext';
-import { setupFolderStructure, findExistingSpreadsheet } from '../services/googleDrive';
+import { setupFolderStructure, findSocietySpreadsheet } from '../services/googleDrive';
 import {
-  createSpreadsheet, addAccessControl, addAuditLog, addReminder, getAccessControl,
-  parseApiError, ensureSheetStructure,
+  createSpreadsheet, addAuditLog, addReminder,
+  parseApiError, ensureSheetStructure, ensureFoundingOwnerEntry,
 } from '../services/googleSheets';
-import { STORAGE_KEYS, APP_NAME, SHEET_FILE_NAME, DEFAULT_REMINDERS } from '../config/constants';
-import { calculateNextDue, getLastDayOfCurrentMonth, getFirstDayOfNextMonth, normalizeEmail, bindSpreadsheet } from '../utils/helpers';
+import { APP_NAME, SHEET_FILE_NAME, DEFAULT_REMINDERS } from '../config/constants';
+import { FOUNDING_OWNER_EMAIL, isFoundingOwner } from '../config/accessPolicy';
+import { calculateNextDue, getLastDayOfCurrentMonth, getFirstDayOfNextMonth, bindSpreadsheet } from '../utils/helpers';
 
 const STEPS = [
   { id: 'welcome', title: 'Welcome', icon: Shield },
@@ -24,7 +28,7 @@ const STEPS = [
 ];
 
 export default function Setup() {
-  const { user } = useAuth();
+  const { user, setAccessDenied } = useAuth();
   const { completeSetup, showToast } = useApp();
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
@@ -32,6 +36,7 @@ export default function Setup() {
   const [error, setError] = useState(null);
   const [results, setResults] = useState({ folderId: null, spreadsheetId: null, foundExisting: false, mode: 'fresh' });
   const [setupMode, setSetupMode] = useState('sample');
+  const founder = isFoundingOwner(user?.email);
 
   const renderErrorMessage = (text) => {
     if (!text) return null;
@@ -49,66 +54,34 @@ export default function Setup() {
     });
   };
 
-  // Check if already set up
-  const existingSpreadsheetId = localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID);
-
-  const handleConnectExisting = () => {
-    if (existingSpreadsheetId) {
-      completeSetup();
-      navigate('/');
-    }
-  };
-
   const handleSetup = async () => {
+    if (!founder) {
+      setAccessDenied(true);
+      return;
+    }
     setProcessing(true);
     setError(null);
 
     try {
-      // Step 1: Create/find folders
       setCurrentStep(1);
       const folders = await setupFolderStructure();
 
-      // Step 2: Search Drive for existing spreadsheet — never create duplicates
       setCurrentStep(2);
       let spreadsheetId = null;
       let foundExisting = false;
 
-      const existingSheet = await findExistingSpreadsheet(SHEET_FILE_NAME);
+      const existingSheet = await findSocietySpreadsheet(user.email);
       if (existingSheet) {
-        // Reuse the existing spreadsheet — it is the source of truth
         spreadsheetId = existingSheet.id;
         bindSpreadsheet(spreadsheetId, user.email);
         foundExisting = true;
-
-        // Verify the current user is in the access control list
-        let aclEntries = [];
-        try {
-          aclEntries = await getAccessControl();
-        } catch {
-          // ACL read failed — allow reconnect for the sheet owner
-        }
-        const isAuthorized = aclEntries.some(u => normalizeEmail(u.email) === normalizeEmail(user.email) && u.status === 'Active');
-
-        if (!isAuthorized && aclEntries.length > 0) {
-          // Sheet exists and has users, but this user is not listed
-          setError(`Access denied. Your email (${user.email}) is not authorized to use this app. Contact the Treasurer or President to be added.`);
-          setProcessing(false);
-          setCurrentStep(0);
-          return;
-        }
-
-        if (!isAuthorized) {
-          await addAccessControl({ email: user.email, role: 'Owner', flat: '', addedBy: 'System' });
-        }
         await ensureSheetStructure(spreadsheetId).catch(() => {});
+        await ensureFoundingOwnerEntry(user.email);
       } else {
         spreadsheetId = await createSpreadsheet(folders.rootId, { mode: setupMode });
         bindSpreadsheet(spreadsheetId, user.email);
+        await ensureFoundingOwnerEntry(user.email);
 
-        // Add current user as Owner
-        await addAccessControl({ email: user.email, role: 'Owner', flat: '', addedBy: 'System' });
-
-        // Seed default reminders so they're ready to use
         for (const reminder of DEFAULT_REMINDERS) {
           let nextDue;
           if (reminder.nextDueType === 'end_of_month') nextDue = getLastDayOfCurrentMonth();
@@ -125,15 +98,13 @@ export default function Setup() {
           });
         }
 
-        await addAuditLog(user.email, 'SETUP', 'Initial app setup completed');
+        await addAuditLog(user.email, 'SETUP', 'Initial society workbook setup completed');
       }
 
       setResults({ folderId: folders.rootId, spreadsheetId, foundExisting, mode: setupMode });
-
-      // Step 3: Done
       setCurrentStep(3);
       completeSetup();
-      showToast(foundExisting ? 'Reconnected to existing data. Welcome back!' : 'Setup complete! Welcome to your expense tracker.', 'success');
+      showToast(foundExisting ? 'Reconnected to the society spreadsheet.' : 'Society spreadsheet is ready. Add residents as Readers in Settings.', 'success');
     } catch (err) {
       console.error('Setup error:', err);
       setError(parseApiError(err) || err.message || 'Setup failed. Please try again.');
@@ -142,10 +113,44 @@ export default function Setup() {
     }
   };
 
+  const copySheetId = async () => {
+    if (!results.spreadsheetId) return;
+    try {
+      await navigator.clipboard.writeText(results.spreadsheetId);
+      showToast('Spreadsheet ID copied. Paste it into public/sheet-config.json if you deploy a new build.', 'success');
+    } catch {
+      showToast(results.spreadsheetId, 'info');
+    }
+  };
+
+  if (!founder) {
+    return (
+      <div className="setup-page">
+        <div className="setup-container animate-fade-in-up">
+          <div className="setup-content">
+            <div className="setup-welcome">
+              <div className="setup-logo">
+                <Shield size={48} />
+              </div>
+              <h2>This account cannot create the tracker</h2>
+              <p>
+                Only <strong>{FOUNDING_OWNER_EMAIL}</strong> may create the society Google Sheet.
+                Other residents get <strong>read-only</strong> access after that owner adds them in Settings.
+              </p>
+              <p className="text-muted mt-3">
+                Signed in as {user?.email || 'unknown'}. Ask the owner to add this email and share
+                {' '}<strong>{SHEET_FILE_NAME}</strong> as Viewer — do not create a second spreadsheet.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="setup-page">
       <div className="setup-container animate-fade-in-up">
-        {/* Progress */}
         <div className="setup-progress">
           {STEPS.map((step, i) => (
             <div
@@ -160,19 +165,18 @@ export default function Setup() {
           ))}
         </div>
 
-        {/* Content */}
         <div className="setup-content">
           {currentStep === 0 && (
             <div className="setup-welcome">
               <div className="setup-logo">
                 <Shield size={48} />
               </div>
-              <h2>Welcome to {APP_NAME}</h2>
-              <p>Let's connect your apartment expense tracker. This will:</p>
+              <h2>Welcome, society Owner</h2>
+              <p>Create or reconnect the single <strong>{SHEET_FILE_NAME}</strong> workbook. Residents you add later will share this file as Viewers — they will not get their own sheet.</p>
               <ul className="setup-checklist">
-                <li>Search for an existing <strong>TPT-MaintenanceTracker</strong> in your Google Drive</li>
-                <li>Create it only if it doesn't already exist — the Google Sheet stays the source of truth</li>
-                <li>Set up the Drive folder structure and add you as the first Owner</li>
+                <li>Search Drive for an existing <strong>{SHEET_FILE_NAME}</strong> owned by {FOUNDING_OWNER_EMAIL}</li>
+                <li>Create it only if it does not already exist</li>
+                <li>Add residents from Settings → Access Control (default role: Reader)</li>
               </ul>
 
               <div className="setup-mode-grid">
@@ -183,7 +187,7 @@ export default function Setup() {
                 >
                   <FlaskConical size={22} />
                   <strong>Test with sample data</strong>
-                  <span>Fills live tabs with pretend Sep–Oct 2026 data so you can click through the app. A Guide tab and a Sample Data tab explain every column.</span>
+                  <span>Fills live tabs with pretend Sep–Oct 2026 data so you can click through the app.</span>
                 </button>
                 <button
                   type="button"
@@ -192,7 +196,7 @@ export default function Setup() {
                 >
                   <FilePlus size={22} />
                   <strong>Start fresh (production)</strong>
-                  <span>Empty live tabs for real collections. Guide + Sample Data stay as a readable template. Use this after testing, or from Settings later.</span>
+                  <span>Empty live tabs for real collections. Guide + Sample Data stay as a readable template.</span>
                 </button>
               </div>
 
@@ -204,15 +208,6 @@ export default function Setup() {
                 >
                   <Search size={18} /> {setupMode === 'sample' ? 'Create sample sheet' : 'Create empty sheet'} <ArrowRight size={18} />
                 </button>
-
-                {existingSpreadsheetId && (
-                  <button
-                    className="btn btn-secondary"
-                    onClick={handleConnectExisting}
-                  >
-                    Use Stored Setup
-                  </button>
-                )}
               </div>
             </div>
           )}
@@ -223,8 +218,8 @@ export default function Setup() {
               <h3>{STEPS[currentStep].title}...</h3>
               <p className="text-muted">
                 {currentStep === 1
-                  ? 'Setting up folder structure in your Google Drive...'
-                  : 'Searching for existing spreadsheet or creating new one...'}
+                  ? 'Setting up folder structure in Google Drive...'
+                  : 'Searching for the society spreadsheet or creating it...'}
               </p>
             </div>
           )}
@@ -234,20 +229,27 @@ export default function Setup() {
               <div className="setup-done-icon">
                 <CheckCircle size={56} />
               </div>
-              <h2>All Set! 🎉</h2>
+              <h2>All Set</h2>
               <p>
                 {results.foundExisting
-                  ? 'Reconnected to your existing data.'
+                  ? 'Reconnected to the existing society workbook.'
                   : results.mode === 'sample'
-                    ? 'Sample workbook is ready. Open the Guide tab in Google Sheets — every column is explained there.'
-                    : 'Empty production workbook is ready. The Guide and Sample Data tabs are your reference; live tabs start blank.'}
+                    ? 'Sample workbook is ready. Add residents as Readers from Settings before they sign in.'
+                    : 'Empty production workbook is ready. Add residents as Readers from Settings.'}
               </p>
 
               <div className="setup-summary card">
                 <p><strong>Google Drive:</strong> TPT-AppartmentApp folder ready</p>
-                <p><strong>Spreadsheet:</strong> {results.foundExisting ? 'Reconnected to existing TPT-MaintenanceTracker' : `TPT-MaintenanceTracker created (${results.mode === 'sample' ? 'sample data' : 'fresh'})`}</p>
-                <p><strong>Your Role:</strong> Owner</p>
-                <p><strong>After testing:</strong> Settings → Create Fresh Production Sheet. The sample file is archived in Drive.</p>
+                <p><strong>Spreadsheet:</strong> {results.foundExisting ? 'Reconnected TPT-MaintenanceTracker' : `TPT-MaintenanceTracker created (${results.mode === 'sample' ? 'sample data' : 'fresh'})`}</p>
+                <p><strong>Your role:</strong> Owner ({FOUNDING_OWNER_EMAIL})</p>
+                {results.spreadsheetId && (
+                  <p className="sheet-id-row">
+                    <strong>Sheet ID:</strong> <code className="sheet-id-code">{results.spreadsheetId}</code>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={copySheetId} aria-label="Copy spreadsheet ID">
+                      <Copy size={14} />
+                    </button>
+                  </p>
+                )}
               </div>
 
               <button
