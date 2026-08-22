@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   Settings as SettingsIcon, Users, Shield, Database, Trash2,
   Plus, ExternalLink, Download, UserPlus, UserMinus, Save,
-  RefreshCw, AlertTriangle, Key, Eye, Lock, KeyRound, CheckCircle2, Copy
+  RefreshCw, AlertTriangle, Key, Eye, Lock, KeyRound, CheckCircle2, Copy, FlaskConical
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -16,7 +16,7 @@ import {
   getAccessControl, addAccessControl, removeAccessControl, updateAccessControlRole,
   getFlats, updateFlat, addAuditLog,
   getWatchmanDetails, addWatchmanDetail, updateWatchmanDetail, deleteWatchmanDetail,
-  archiveAndCreateFresh, addReminder, ensureFoundingOwnerEntry,
+  archiveAndCreateFresh, addReminder, ensureFoundingOwnerEntry, seedSampleLiveData,
 } from '../services/googleSheets';
 import {
   createBackup, listBackups,
@@ -49,6 +49,7 @@ export default function Settings() {
   const [editingWatchman, setEditingWatchman] = useState(null);
   const [backingUp, setBackingUp] = useState(false);
   const [creatingFresh, setCreatingFresh] = useState(false);
+  const [seedingSample, setSeedingSample] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -175,6 +176,27 @@ export default function Settings() {
       showToast('Failed to create backup', 'error');
     } finally {
       setBackingUp(false);
+    }
+  };
+
+  const handleSeedSampleData = async () => {
+    if (!isFoundingOwner(user?.email)) {
+      showToast('Only the founding owner can load sample data.', 'error');
+      return;
+    }
+    if (!window.confirm(
+      'Load pretend Sep/Oct plus this month’s numbers into the existing sheet?\n\nThis replaces Flats, Maintenance, Expenses, contacts, reminders, and related live tabs. Access Control is not changed. You can delete this sheet later and set up a fresh one.'
+    )) return;
+    try {
+      setSeedingSample(true);
+      await seedSampleLiveData();
+      await addAuditLog(user.email, 'SEED_SAMPLE', 'Loaded sample live-tab data for testing');
+      showToast('Sample data loaded. Open Dashboard to try the app. Delete the sheet when you are ready for production.', 'success');
+      fetchData();
+    } catch (err) {
+      showToast(err.message || 'Failed to load sample data', 'error');
+    } finally {
+      setSeedingSample(false);
     }
   };
 
@@ -567,6 +589,26 @@ export default function Settings() {
                 No backups yet. Create your first backup to safeguard your data.
               </p>
             )}
+          </div>
+        )}
+
+        {activeTab === 'backups' && isOwner && isFoundingOwner(user?.email) && (
+          <div className="card mt-4">
+            <h3 className="card-title mb-2">Load sample data for testing</h3>
+            <p className="text-muted text-sm mb-4">
+              Writes pretend collections, expenses, contacts, and reminders into this
+              existing <strong>TPT-MaintenanceTracker</strong> (including the current month
+              so the dashboard is not empty). Does not create another spreadsheet.
+              Access Control is left as-is. Delete the sheet when you set up for real.
+            </p>
+            <button
+              className="btn btn-primary"
+              onClick={handleSeedSampleData}
+              disabled={seedingSample}
+            >
+              {seedingSample ? <RefreshCw size={14} className="animate-spin" /> : <FlaskConical size={14} />}
+              {seedingSample ? 'Loading sample data…' : 'Load sample data'}
+            </button>
           </div>
         )}
 

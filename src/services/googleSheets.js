@@ -28,13 +28,12 @@ import {
   bindSpreadsheet,
   unbindSpreadsheet,
 } from '../utils/helpers';
-import {
-  createSpreadsheet as createSpreadsheetWorkbook,
+export {
+  createSpreadsheet,
   ensureSheetStructure,
   archiveAndCreateFresh,
+  seedSampleLiveData,
 } from './sheetSetup';
-
-export { createSpreadsheetWorkbook as createSpreadsheet, ensureSheetStructure, archiveAndCreateFresh };
 
 /**
  * Get the spreadsheet ID from localStorage

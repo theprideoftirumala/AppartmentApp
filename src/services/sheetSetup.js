@@ -224,6 +224,7 @@ export async function createSpreadsheet(folderId, options = {}) {
         { range: `'${SHEET_NAMES.WATER_TANKER}'!A2`, values: sample[SHEET_NAMES.WATER_TANKER] },
         { range: `'${SHEET_NAMES.WATCHMAN_DETAILS}'!A2`, values: sample[SHEET_NAMES.WATCHMAN_DETAILS] },
         { range: `'${SHEET_NAMES.MONTHLY_SUMMARY}'!A2`, values: sample[SHEET_NAMES.MONTHLY_SUMMARY] },
+        { range: `'${SHEET_NAMES.REMINDERS}'!A2`, values: sample[SHEET_NAMES.REMINDERS] },
       );
     } else {
       liveWrites.push({
@@ -294,6 +295,53 @@ export async function archiveAndCreateFresh(folderId, userEmail) {
 
     const spreadsheetId = await createSpreadsheet(folderId, { mode: 'fresh', title: SHEET_FILE_NAME });
     return { spreadsheetId, archivedId: currentId, ownerEmail: userEmail };
+  });
+}
+
+/**
+ * Fill live tabs on the EXISTING society workbook with pretend data.
+ * Does not create a new spreadsheet. Leaves Access Control and Audit Log alone.
+ */
+export async function seedSampleLiveData() {
+  return withAuth(async () => {
+    if (!isFoundingOwner(getCurrentUser()?.email)) {
+      throw new Error('Only the founding owner can load sample data into the society sheet.');
+    }
+    const spreadsheetId = getSpreadsheetId();
+    if (!isValidSpreadsheetId(spreadsheetId)) {
+      throw new Error('Spreadsheet is not connected.');
+    }
+
+    await ensureSheetStructure(spreadsheetId);
+
+    const sample = buildSampleLiveRows();
+    const tabs = [
+      SHEET_NAMES.FLATS,
+      SHEET_NAMES.MAINTENANCE,
+      SHEET_NAMES.EXPENSES,
+      SHEET_NAMES.MISC_FUNDS,
+      SHEET_NAMES.EMERGENCY_CONTACTS,
+      SHEET_NAMES.REMINDERS,
+      SHEET_NAMES.WATER_TANKER,
+      SHEET_NAMES.WATCHMAN_DETAILS,
+      SHEET_NAMES.MONTHLY_SUMMARY,
+    ];
+
+    await window.gapi.client.sheets.spreadsheets.values.batchClear({
+      spreadsheetId,
+      resource: {
+        ranges: tabs.map((name) => `'${name}'!A2:Z2000`),
+      },
+    });
+
+    const data = tabs
+      .filter((name) => sample[name]?.length)
+      .map((name) => ({
+        range: `'${name}'!A2`,
+        values: sample[name],
+      }));
+    await writeValues(spreadsheetId, data);
+    return { spreadsheetId, tabs: data.length };
   });
 }
 

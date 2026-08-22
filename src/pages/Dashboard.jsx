@@ -7,12 +7,12 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   TrendingUp, TrendingDown, IndianRupee, Users, AlertCircle,
   RefreshCw, Calendar, Bell, Phone, ArrowRight,
-  PieChart, Wallet, Plus, Building2, Info
+  PieChart, Wallet, Plus, Building2, Info, FlaskConical
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useApp } from '../contexts/AppContext';
-import { getDashboardData, getAccessControl, parseApiError } from '../services/googleSheets';
+import { getDashboardData, getAccessControl, parseApiError, seedSampleLiveData } from '../services/googleSheets';
 import { STORAGE_KEYS } from '../config/constants';
 import { effectiveAppRole, isFoundingOwner } from '../config/accessPolicy';
 import { formatCurrency, getCurrentMonthLabel, getCollectionPercentage, daysUntil, getRelativeTime, groupExpensesByCategory, parseJsonSafe, normalizeEmail } from '../utils/helpers';
@@ -25,6 +25,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(!dashboardData);
   const [refreshing, setRefreshing] = useState(false);
   const [accessError, setAccessError] = useState(null);
+  const [seedingSample, setSeedingSample] = useState(false);
   const navigate = useNavigate();
   const currentMonth = getCurrentMonthLabel();
 
@@ -167,6 +168,34 @@ export default function Dashboard() {
       <Navbar onRefresh={() => fetchData(true)} refreshing={refreshing} />
 
       {/* Guest mode banner */}
+      {isFoundingOwner(user?.email) && (data?.maintenance || []).length === 0 && (data?.expenses || []).length === 0 && (
+        <div className="guest-banner">
+          <FlaskConical size={16} />
+          <span>
+            <strong>Test the app</strong> — this sheet has no live rows yet. Load pretend data
+            (this month plus Sep–Oct) without creating another spreadsheet. Delete the sheet later for production.
+          </span>
+          <button
+            className="btn btn-primary btn-sm"
+            disabled={seedingSample}
+            onClick={async () => {
+              try {
+                setSeedingSample(true);
+                await seedSampleLiveData();
+                showToast('Sample data loaded. Refreshing dashboard…', 'success');
+                await fetchData(true);
+              } catch (err) {
+                showToast(err.message || 'Failed to load sample data', 'error');
+              } finally {
+                setSeedingSample(false);
+              }
+            }}
+          >
+            {seedingSample ? 'Loading…' : 'Load sample data'}
+          </button>
+        </div>
+      )}
+
       {isGuest && (
         <div className="guest-banner">
           <Info size={16} />

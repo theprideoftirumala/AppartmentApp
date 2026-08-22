@@ -61,52 +61,125 @@ function sampleFlats() {
   });
 }
 
-function sampleMaintenance() {
-  const sep = {
-    '101': ['3000', '3000', '2026-09-05', 'UPI', 'UPI900101', 'PAID', '0', 'Paid on time'],
-    '102': ['3000', '3000', '2026-09-04', 'UPI', 'UPI900102', 'PAID', '0', ''],
-    '201': ['3000', '3000', '2026-09-08', 'Bank Transfer', 'NEFT201', 'PAID', '0', ''],
-    '202': ['3000', '3000', '2026-09-10', 'UPI', 'UPI900202', 'PAID', '0', ''],
-    '301': ['3000', '3000', '2026-09-06', 'Cash', '', 'PAID', '0', 'Collected at door'],
-    '302': ['3000', '3000', '2026-09-12', 'UPI', 'UPI900302', 'PAID', '0', ''],
-    '401': ['3000', '3000', '2026-09-03', 'UPI', 'UPI900401', 'PAID', '0', 'Treasurer'],
-    '402': ['3000', '3000', '2026-09-09', 'UPI', 'UPI900402', 'PAID', '0', ''],
-    '501': ['3000', '0', '', '', '', 'PENDING', '0', 'Reminder sent'],
-    '502': ['3000', '1500', '2026-09-18', 'UPI', 'UPI900502', 'PARTIAL', '100', 'Promised balance next week'],
-  };
-  const oct = {
-    '101': ['3000', '3000', '2026-10-04', 'UPI', 'UPI100101', 'PAID', '0', ''],
-    '102': ['3000', '3000', '2026-10-03', 'UPI', 'UPI100102', 'PAID', '0', ''],
-    '201': ['3000', '0', '', '', '', 'PENDING', '0', ''],
-    '202': ['3000', '3000', '2026-10-07', 'UPI', 'UPI100202', 'PAID', '0', ''],
-    '301': ['3000', '3000', '2026-10-06', 'Cash', '', 'PAID', '0', ''],
-    '302': ['3000', '0', '', '', '', 'PENDING', '0', ''],
-    '401': ['3000', '3000', '2026-10-02', 'UPI', 'UPI100401', 'PAID', '0', ''],
-    '402': ['3000', '3000', '2026-10-08', 'Bank Transfer', 'NEFT402', 'PAID', '0', ''],
-    '501': ['3000', '0', '', '', '', 'PENDING', '0', ''],
-    '502': ['3000', '3000', '2026-10-11', 'UPI', 'UPI100502', 'PAID', '0', 'Cleared September balance separately'],
-  };
+const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function formatMonthLabel(date) {
+  return `${MONTHS_SHORT[date.getMonth()]}-${String(date.getFullYear()).slice(-2)}`;
+}
+
+function formatYearMonth(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+const PAID_HEAVY = {
+  '101': ['3000', '3000', '05', 'UPI', 'UPI900101', 'PAID', '0', 'Paid on time'],
+  '102': ['3000', '3000', '04', 'UPI', 'UPI900102', 'PAID', '0', ''],
+  '201': ['3000', '3000', '08', 'Bank Transfer', 'NEFT201', 'PAID', '0', ''],
+  '202': ['3000', '3000', '10', 'UPI', 'UPI900202', 'PAID', '0', ''],
+  '301': ['3000', '3000', '06', 'Cash', '', 'PAID', '0', 'Collected at door'],
+  '302': ['3000', '3000', '12', 'UPI', 'UPI900302', 'PAID', '0', ''],
+  '401': ['3000', '3000', '03', 'UPI', 'UPI900401', 'PAID', '0', 'Treasurer'],
+  '402': ['3000', '3000', '09', 'UPI', 'UPI900402', 'PAID', '0', ''],
+  '501': ['3000', '0', '', '', '', 'PENDING', '0', 'Reminder sent'],
+  '502': ['3000', '1500', '18', 'UPI', 'UPI900502', 'PARTIAL', '100', 'Promised balance next week'],
+};
+
+const MIXED_COLLECTION = {
+  '101': ['3000', '3000', '04', 'UPI', 'UPI100101', 'PAID', '0', ''],
+  '102': ['3000', '3000', '03', 'UPI', 'UPI100102', 'PAID', '0', ''],
+  '201': ['3000', '0', '', '', '', 'PENDING', '0', ''],
+  '202': ['3000', '3000', '07', 'UPI', 'UPI100202', 'PAID', '0', ''],
+  '301': ['3000', '3000', '06', 'Cash', '', 'PAID', '0', ''],
+  '302': ['3000', '0', '', '', '', 'PENDING', '0', ''],
+  '401': ['3000', '3000', '02', 'UPI', 'UPI100401', 'PAID', '0', ''],
+  '402': ['3000', '3000', '08', 'Bank Transfer', 'NEFT402', 'PAID', '0', ''],
+  '501': ['3000', '0', '', '', '', 'PENDING', '0', ''],
+  '502': ['3000', '3000', '11', 'UPI', 'UPI100502', 'PAID', '0', ''],
+};
+
+function patternToRows(label, yearMonth, pattern) {
+  return FLATS.map((flat) => {
+    const [due, paid, day, mode, ref, status, late, remarks] = pattern[flat];
+    const date = paid !== '0' && day ? `${yearMonth}-${day}` : '';
+    return [label, flat, due, paid, date, mode, ref, status, late, remarks];
+  });
+}
+
+function sampleMaintenance(refDate = new Date()) {
+  const current = new Date(refDate.getFullYear(), refDate.getMonth(), 1);
+  const prev = new Date(refDate.getFullYear(), refDate.getMonth() - 1, 1);
+  const seen = new Set();
   const rows = [];
-  FLATS.forEach((flat) => rows.push(['Sep-26', flat, ...sep[flat]]));
-  FLATS.forEach((flat) => rows.push(['Oct-26', flat, ...oct[flat]]));
+  const add = (label, yearMonth, pattern) => {
+    if (seen.has(label)) return;
+    seen.add(label);
+    rows.push(...patternToRows(label, yearMonth, pattern));
+  };
+  // Current + previous month so the dashboard is not empty when testing today.
+  add(formatMonthLabel(prev), formatYearMonth(prev), PAID_HEAVY);
+  add(formatMonthLabel(current), formatYearMonth(current), MIXED_COLLECTION);
+  add('Sep-26', '2026-09', PAID_HEAVY);
+  add('Oct-26', '2026-10', MIXED_COLLECTION);
   return rows;
 }
 
-export function buildSampleLiveRows() {
+function sampleExpenses(refDate = new Date()) {
+  const current = new Date(refDate.getFullYear(), refDate.getMonth(), 1);
+  const currentLabel = formatMonthLabel(current);
+  const ym = formatYearMonth(current);
+  const catalog = [
+    ['EXP-SAMPLE-1', '2026-09-05', 'Sep-26', 'Watchman salary — September', 'Watchman Salary', '12000', 'Bank Transfer', 'N', 'Treasurer', '', 'Monthly salary'],
+    ['EXP-SAMPLE-2', '2026-09-08', 'Sep-26', 'BESCOM common area bill', 'Common Electricity', '2400', 'Online', 'Y', 'Treasurer', '', 'Sep cycle'],
+    ['EXP-SAMPLE-3', '2026-09-12', 'Sep-26', 'Water tanker — 6000 L', 'Water Tankers', '1800', 'UPI', 'N', 'Flat 102', '', 'Summer shortage'],
+    ['EXP-SAMPLE-4', '2026-09-18', 'Sep-26', 'Lift AMC visit', 'Lift Maintenance', '1500', 'UPI', 'Y', 'Treasurer', '', 'Monthly inspection'],
+    ['EXP-SAMPLE-5', '2026-09-22', 'Sep-26', 'Generator diesel 20 L', 'Generator Fuel', '1800', 'Cash', 'N', 'Treasurer', '', ''],
+    ['EXP-SAMPLE-6', '2026-10-05', 'Oct-26', 'Watchman salary — October', 'Watchman Salary', '12000', 'Bank Transfer', 'N', 'Treasurer', '', 'Monthly salary'],
+    ['EXP-SAMPLE-7', '2026-10-09', 'Oct-26', 'Common area cleaning', 'Cleaning / Housekeeping', '800', 'Cash', 'N', 'Treasurer', '', 'Staircase + lobby'],
+    ['EXP-SAMPLE-8', '2026-10-14', 'Oct-26', 'Plumbing — terrace leak', 'Plumbing', '950', 'UPI', 'Y', 'Flat 102', '', 'Emergency call'],
+  ];
+  if (currentLabel === 'Sep-26' || currentLabel === 'Oct-26') return catalog;
+  return [
+    [`EXP-SAMPLE-NOW-1`, `${ym}-05`, currentLabel, `Watchman salary — ${currentLabel}`, 'Watchman Salary', '12000', 'Bank Transfer', 'N', 'Treasurer', '', 'Sample current month'],
+    [`EXP-SAMPLE-NOW-2`, `${ym}-08`, currentLabel, 'BESCOM common area bill', 'Common Electricity', '2100', 'Online', 'Y', 'Treasurer', '', 'Sample current month'],
+    [`EXP-SAMPLE-NOW-3`, `${ym}-12`, currentLabel, 'Water tanker — 6000 L', 'Water Tankers', '1800', 'UPI', 'N', 'Flat 102', '', 'Sample current month'],
+    ...catalog,
+  ];
+}
+
+function sampleReminders(refDate = new Date()) {
+  const today = refDate.toISOString().split('T')[0];
+  const soon = new Date(refDate);
+  soon.setDate(soon.getDate() + 3);
+  const soonStr = soon.toISOString().split('T')[0];
+  return [
+    ['REM-SAMPLE-1', 'Lift Maintenance Check', 'Call AMC vendor for monthly inspection', 'Monthly', soonStr, '', 'Treasurer', 'Active', 'System', today],
+    ['REM-SAMPLE-2', 'Take Monthly Data Backup', 'Create a Drive backup of the tracker', 'Monthly', soonStr, '', 'Treasurer', 'Active', 'System', today],
+    ['REM-SAMPLE-3', 'Maintenance Collection Reminder', 'WhatsApp reminder for pending flats', 'Monthly', today, '', 'Treasurer', 'Active', 'System', today],
+  ];
+}
+
+export function buildSampleLiveRows(refDate = new Date()) {
+  const current = new Date(refDate.getFullYear(), refDate.getMonth(), 1);
+  const prev = new Date(refDate.getFullYear(), refDate.getMonth() - 1, 1);
+  const currentLabel = formatMonthLabel(current);
+  const prevLabel = formatMonthLabel(prev);
+  const summaries = [
+    [prevLabel, '25500', '500', '19500', '6500', '1300', '80%', '501(PENDING), 502(PARTIAL)', 'SURPLUS'],
+    [currentLabel, '21000', '500', '15900', '5600', '6900', '70%', '201(PENDING), 302(PENDING), 501(PENDING)', 'SURPLUS'],
+  ];
+  if (currentLabel !== 'Sep-26' && prevLabel !== 'Sep-26') {
+    summaries.push(['Sep-26', '25500', '500', '19500', '6500', '1300', '80%', '501(PENDING), 502(PARTIAL)', 'SURPLUS']);
+  }
+  if (currentLabel !== 'Oct-26' && prevLabel !== 'Oct-26') {
+    summaries.push(['Oct-26', '21000', '1000', '13750', '8250', '9550', '70%', '201(PENDING), 302(PENDING), 501(PENDING)', 'SURPLUS']);
+  }
+
   return {
     [SHEET_NAMES.FLATS]: sampleFlats(),
-    [SHEET_NAMES.MAINTENANCE]: sampleMaintenance(),
-    [SHEET_NAMES.EXPENSES]: [
-      ['EXP-SAMPLE-1', '2026-09-05', 'Sep-26', 'Watchman salary — September', 'Watchman Salary', '12000', 'Bank Transfer', 'N', 'Treasurer', '', 'Monthly salary'],
-      ['EXP-SAMPLE-2', '2026-09-08', 'Sep-26', 'BESCOM common area bill', 'Common Electricity', '2400', 'Online', 'Y', 'Treasurer', '', 'Sep cycle'],
-      ['EXP-SAMPLE-3', '2026-09-12', 'Sep-26', 'Water tanker — 6000 L', 'Water Tankers', '1800', 'UPI', 'N', 'Flat 102', '', 'Summer shortage'],
-      ['EXP-SAMPLE-4', '2026-09-18', 'Sep-26', 'Lift AMC visit', 'Lift Maintenance', '1500', 'UPI', 'Y', 'Treasurer', '', 'Monthly inspection'],
-      ['EXP-SAMPLE-5', '2026-09-22', 'Sep-26', 'Generator diesel 20 L', 'Generator Fuel', '1800', 'Cash', 'N', 'Treasurer', '', ''],
-      ['EXP-SAMPLE-6', '2026-10-05', 'Oct-26', 'Watchman salary — October', 'Watchman Salary', '12000', 'Bank Transfer', 'N', 'Treasurer', '', 'Monthly salary'],
-      ['EXP-SAMPLE-7', '2026-10-09', 'Oct-26', 'Common area cleaning', 'Cleaning / Housekeeping', '800', 'Cash', 'N', 'Treasurer', '', 'Staircase + lobby'],
-      ['EXP-SAMPLE-8', '2026-10-14', 'Oct-26', 'Plumbing — terrace leak', 'Plumbing', '950', 'UPI', 'Y', 'Flat 102', '', 'Emergency call'],
-    ],
+    [SHEET_NAMES.MAINTENANCE]: sampleMaintenance(refDate),
+    [SHEET_NAMES.EXPENSES]: sampleExpenses(refDate),
     [SHEET_NAMES.MISC_FUNDS]: [
+      ['MISC-SAMPLE-NOW', `${formatYearMonth(current)}-15`, currentLabel, '202', '500', 'Sample extra collection', 'UPI', 'Treasurer', 'Test row'],
       ['MISC-SAMPLE-1', '2026-09-20', 'Sep-26', '202', '500', 'Ganesh festival contribution', 'UPI', 'Treasurer', 'Voluntary'],
       ['MISC-SAMPLE-2', '2026-10-02', 'Oct-26', '401', '1000', 'Diwali lighting share', 'Cash', 'Treasurer', ''],
     ],
@@ -118,16 +191,15 @@ export function buildSampleLiveRows() {
       ['Police', 'Sample Police Station', 'Control room', '100', '', '', 'Dial 100'],
       ['Watchman', 'Sample Watchman', 'Night shift', '9876500888', '', 'Staff quarters', '8PM–8AM'],
     ],
+    [SHEET_NAMES.REMINDERS]: sampleReminders(refDate),
     [SHEET_NAMES.WATER_TANKER]: [
+      [`${formatYearMonth(current)}-12`, 'Sample Water Supply', '6000', '1800', 'Flat 102', 'Sample current month'],
       ['2026-09-12', 'Sample Water Supply', '6000', '1800', 'Flat 102', 'Summer shortage'],
       ['2026-10-16', 'Sample Water Supply', '6000', '1800', 'Treasurer', 'Tank low'],
     ],
     [SHEET_NAMES.WATCHMAN_DETAILS]: [
       ['Sample Watchman', '9876500888', '', 'Staff quarters', '12000', 'Night (8PM - 8AM)', '2026-04-01', 'Aadhaar', 'SAMPLE-NOT-REAL', 'Sample Contact', '9876500777', '', 'Active', 'Night shift — sample row'],
     ],
-    [SHEET_NAMES.MONTHLY_SUMMARY]: [
-      ['Sep-26', '25500', '500', '19500', '6500', '1300', '80%', '501(PENDING), 502(PARTIAL)', 'SURPLUS'],
-      ['Oct-26', '21000', '1000', '13750', '8250', '9550', '70%', '201(PENDING), 302(PENDING), 501(PENDING)', 'SURPLUS'],
-    ],
+    [SHEET_NAMES.MONTHLY_SUMMARY]: summaries,
   };
 }
