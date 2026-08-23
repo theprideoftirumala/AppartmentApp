@@ -32,7 +32,7 @@ All data is stored in a Google Sheet in your Google Drive — the sheet is the s
 Open it anytime from Settings > Open Sheet. Start with the Guide tab — it explains every column in plain language.
 Use Pending Dues to see unpaid flats for any month, and Monthly Summary for surplus or deficit (those tabs use formulas, so they stay correct if you edit Maintenance by hand).
 The Sample Data tab holds copy-paste examples and does not change dashboard totals.
-First-time setup can fill live tabs with sample rows for testing, or leave them empty for production.
+The first time only, setup can fill live tabs with sample rows for testing, or leave them empty for production. Later visits reconnect the existing sheet — you are not asked to create it again.
 After testing, Settings > Backups > Create Fresh Production Sheet archives the sample file and opens an empty live sheet.
 Backups (copies of the sheet) are stored in the "backups" subfolder.`,
             },
@@ -133,7 +133,7 @@ This takes effect from the next time you initialize a new month.`,
             {
                 heading: 'Lost access / new device',
                 text: `Sign in with Google. Residents are connected to the shared TPT-MaintenanceTracker (not a new file).
-Only ${OWNER_EMAIL_MASKED} sees Setup and may create the workbook. Others who are not on Access Control see Access Denied.
+Only ${OWNER_EMAIL_MASKED} may create the workbook, and only if Drive search finds none. Others who are not on Access Control see Access Denied.
 If the phone shows a Google API error, open Chrome or Safari (not WhatsApp/Instagram), allow pop-ups, then Settings → Appearance → Clear cache.
 Each Owner Google sign-in takes a Drive backup of the society sheet. Readers and Guest PIN logins do not.`,
             },

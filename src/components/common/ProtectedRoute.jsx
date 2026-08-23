@@ -1,6 +1,7 @@
 /**
  * Protected Route Component
- * Redirects to login if not authenticated (Google or Guest PIN), to setup if not configured.
+ * Redirects to login if not authenticated (Google or Guest PIN).
+ * Founding owner goes to setup only when no workbook is bound yet.
  * Guest users (PIN only, no Google token) are restricted to the Dashboard — all other pages
  * require the Google Sheets API which is unavailable without an OAuth token.
  */
@@ -8,7 +9,9 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useApp } from '../../contexts/AppContext';
+import { STORAGE_KEYS } from '../../config/constants';
 import { isFoundingOwner } from '../../config/accessPolicy';
+import { isValidSpreadsheetId } from '../../utils/helpers';
 import LoadingSpinner from './LoadingSpinner';
 import AccessDenied from './AccessDenied';
 
@@ -35,7 +38,8 @@ export default function ProtectedRoute({ children, requireOwner = false }) {
     return <Navigate to="/" replace />;
   }
 
-  if (!isGuest && !isSetupComplete) {
+  const hasBoundSheet = isValidSpreadsheetId(localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID));
+  if (!isGuest && !isSetupComplete && !hasBoundSheet) {
     if (isFoundingOwner(user?.email)) {
       return <Navigate to="/setup" replace />;
     }

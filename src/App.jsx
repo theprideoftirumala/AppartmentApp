@@ -41,7 +41,7 @@ import ActivityFunds from './pages/ActivityFunds';
 
 function AccessBootstrap() {
   const { user, isGuest, setAccessDenied } = useAuth();
-  const { setUserRole, isSetupComplete, resetSetup, completeSetup } = useApp();
+  const { setUserRole, isSetupComplete, completeSetup } = useApp();
 
   useEffect(() => {
     if (!user?.email || isGuest) return;
@@ -52,9 +52,7 @@ function AccessBootstrap() {
       if (cancelled) return;
 
       if (!sheetId) {
-        if (isFoundingOwner(user.email)) {
-          resetSetup();
-        } else {
+        if (!isFoundingOwner(user.email)) {
           setAccessDenied(true);
         }
         return;
@@ -81,7 +79,7 @@ function AccessBootstrap() {
 
     syncSheet();
     return () => { cancelled = true; };
-  }, [user, isGuest, isSetupComplete, setUserRole, resetSetup, completeSetup, setAccessDenied]);
+  }, [user, isGuest, isSetupComplete, setUserRole, completeSetup, setAccessDenied]);
 
   return null;
 }

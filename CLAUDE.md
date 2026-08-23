@@ -104,7 +104,7 @@ All configurable values are in `src/config/constants.js` and can be overridden a
 - Only the founding owner may create or archive-and-recreate the workbook (`sheetSetup.js`).
 - Manage users in the app: Settings → Access Control. New users default to **Reader**. Drive share is Viewer (`reader`) unless the founding owner grants Owner (`writer`).
 - Members must not hit Setup/create. Unlisted or unshared accounts get Access Denied.
-- Discovery: founding owner searches owned files; members search `sharedWithMe` plus optional `public/sheet-config.json`. Private copies owned by a non-founding user are ignored.
+- Discovery: founding owner searches owned files; members search `sharedWithMe` plus optional `public/sheet-config.json`. Private copies owned by a non-founding user are ignored. A failed lookup must not wipe a bound workbook or reopen the create wizard — create is first-time only, after search confirms the sheet is missing.
 - OAuth scopes include `drive.metadata.readonly` so shared files are listable. Bump `OAUTH_SCOPE_VERSION` when scopes change so GIS re-consents.
 - Write RPCs go through `withWriteAuth` (Access Control + founding-owner check), not UI hiding alone.
 - Google OAuth 2.0 — no passwords stored. Access tokens in `sessionStorage` only.

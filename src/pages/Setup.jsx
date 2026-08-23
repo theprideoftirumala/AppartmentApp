@@ -4,10 +4,12 @@
  * SECURITY: Other Google accounts must never reach "create spreadsheet".
  * Members are added in Settings and receive a shared, read-only copy of the
  * one society workbook (TPT-MaintenanceTracker).
+ *
+ * Create cards appear only after Drive search confirms the workbook is missing.
  */
 
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { FolderPlus, FileSpreadsheet, CheckCircle, Loader, Shield, ArrowRight, Search, FlaskConical, FilePlus, Copy } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useApp } from '../contexts/AppContext';
@@ -16,9 +18,10 @@ import {
   createSpreadsheet, addAuditLog, addReminder,
   parseApiError, ensureSheetStructure, ensureFoundingOwnerEntry,
 } from '../services/googleSheets';
-import { APP_NAME, SHEET_FILE_NAME, DEFAULT_REMINDERS } from '../config/constants';
-import { FOUNDING_OWNER_EMAIL, isFoundingOwner } from '../config/accessPolicy';
-import { calculateNextDue, getLastDayOfCurrentMonth, getFirstDayOfNextMonth, bindSpreadsheet } from '../utils/helpers';
+import { DEFAULT_REMINDERS, SHEET_FILE_NAME, STORAGE_KEYS } from '../config/constants';
+import { FOUNDING_OWNER_EMAIL, isFoundingOwner, maskEmail } from '../config/accessPolicy';
+import { calculateNextDue, getLastDayOfCurrentMonth, getFirstDayOfNextMonth, bindSpreadsheet, isValidSpreadsheetId } from '../utils/helpers';
+import { shouldOfferSheetCreation } from '../utils/setupFlow';
 
 const STEPS = [
   { id: 'welcome', title: 'Welcome', icon: Shield },
@@ -27,16 +30,27 @@ const STEPS = [
   { id: 'done', title: 'All Set!', icon: CheckCircle },
 ];
 
+const OWNER_EMAIL_MASKED = maskEmail(FOUNDING_OWNER_EMAIL);
+
 export default function Setup() {
   const { user, setAccessDenied } = useAuth();
-  const { completeSetup, showToast } = useApp();
+  const { completeSetup, isSetupComplete, showToast } = useApp();
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
   const [processing, setProcessing] = useState(false);
+  const [looking, setLooking] = useState(true);
+  const [searchConfirmedEmpty, setSearchConfirmedEmpty] = useState(false);
+  const [lookupFailed, setLookupFailed] = useState(false);
   const [error, setError] = useState(null);
   const [results, setResults] = useState({ folderId: null, spreadsheetId: null, foundExisting: false, mode: 'fresh' });
   const [setupMode, setSetupMode] = useState('sample');
   const founder = isFoundingOwner(user?.email);
+  const alreadyBound = isValidSpreadsheetId(localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID));
+  const showCreateCards = shouldOfferSheetCreation({
+    searchConfirmedEmpty,
+    lookupFailed,
+    alreadyBound,
+  });
 
   const renderErrorMessage = (text) => {
     if (!text) return null;
@@ -53,6 +67,56 @@ export default function Setup() {
       return <span key={`txt-${idx}`}>{part}</span>;
     });
   };
+
+  const reconnectExisting = useCallback(async (spreadsheetId, folderId = null) => {
+    bindSpreadsheet(spreadsheetId, user.email);
+    await ensureSheetStructure(spreadsheetId).catch(() => {});
+    await ensureFoundingOwnerEntry(user.email);
+    setResults({ folderId, spreadsheetId, foundExisting: true, mode: 'existing' });
+    completeSetup();
+    showToast('Connected to the existing society sheet.', 'success');
+    navigate('/', { replace: true });
+  }, [completeSetup, navigate, showToast, user?.email]);
+
+  const searchGen = useRef(0);
+  const autoSearchKey = useRef('');
+
+  const lookForExistingSheet = useCallback(async () => {
+    if (!founder) return;
+    const gen = ++searchGen.current;
+    setLooking(true);
+    setLookupFailed(false);
+    setSearchConfirmedEmpty(false);
+    setError(null);
+    try {
+      const folders = await setupFolderStructure();
+      const existing = await findSocietySpreadsheet(user.email);
+      if (gen !== searchGen.current) return;
+      if (existing?.id) {
+        setCurrentStep(2);
+        await reconnectExisting(existing.id, folders?.rootId);
+        return;
+      }
+      setSearchConfirmedEmpty(true);
+      setCurrentStep(0);
+    } catch (err) {
+      if (gen !== searchGen.current) return;
+      console.error('Society sheet lookup failed:', err);
+      setLookupFailed(true);
+      setError(parseApiError(err) || err.message || 'Could not search Drive. Please try again.');
+    } finally {
+      if (gen === searchGen.current) setLooking(false);
+    }
+  }, [founder, reconnectExisting, user?.email]);
+
+  useEffect(() => {
+    if (!founder) return;
+    if (isSetupComplete && alreadyBound) return;
+    const key = user?.email || '';
+    if (autoSearchKey.current === key) return;
+    autoSearchKey.current = key;
+    lookForExistingSheet();
+  }, [alreadyBound, founder, isSetupComplete, lookForExistingSheet, user?.email]);
 
   const handleSetup = async () => {
     if (!founder) {
@@ -123,6 +187,10 @@ export default function Setup() {
     }
   };
 
+  if (founder && isSetupComplete && alreadyBound && currentStep === 0 && !processing) {
+    return <Navigate to="/" replace />;
+  }
+
   if (!founder) {
     return (
       <div className="setup-page">
@@ -134,11 +202,11 @@ export default function Setup() {
               </div>
               <h2>This account cannot create the tracker</h2>
               <p>
-                Only <strong>{FOUNDING_OWNER_EMAIL}</strong> may create the society Google Sheet.
+                Only the society owner ({OWNER_EMAIL_MASKED}) may create the society Google Sheet.
                 Other residents get <strong>read-only</strong> access after that owner adds them in Settings.
               </p>
               <p className="text-muted mt-3">
-                Signed in as {user?.email || 'unknown'}. Ask the owner to add this email and share
+                Signed in as {user?.email ? maskEmail(user.email) : 'unknown'}. Ask the owner to add this email and share
                 {' '}<strong>{SHEET_FILE_NAME}</strong> as Viewer — do not create a second spreadsheet.
               </p>
             </div>
@@ -166,16 +234,29 @@ export default function Setup() {
         </div>
 
         <div className="setup-content">
-          {currentStep === 0 && (
+          {looking && currentStep === 0 && (
+            <div className="setup-processing">
+              <Loader size={48} className="animate-spin" />
+              <h3>Looking for the society sheet…</h3>
+              <p className="text-muted">
+                Searching Drive for an existing <strong>{SHEET_FILE_NAME}</strong>. Create is offered only if it is not found.
+              </p>
+            </div>
+          )}
+
+          {showCreateCards && currentStep === 0 && (
             <div className="setup-welcome">
               <div className="setup-logo">
                 <Shield size={48} />
               </div>
-              <h2>Welcome, society Owner</h2>
-              <p>Create or reconnect the single <strong>{SHEET_FILE_NAME}</strong> workbook. Residents you add later will share this file as Viewers — they will not get their own sheet.</p>
+              <h2>Create the society sheet (first time)</h2>
+              <p>
+                No <strong>{SHEET_FILE_NAME}</strong> workbook was found. Create the single society file now.
+                Residents you add later will share this file as Viewers — they will not get their own sheet.
+              </p>
               <ul className="setup-checklist">
-                <li>Search Drive for an existing <strong>{SHEET_FILE_NAME}</strong> owned by {FOUNDING_OWNER_EMAIL}</li>
-                <li>Create it only if it does not already exist</li>
+                <li>Drive was searched for <strong>{SHEET_FILE_NAME}</strong> owned by {OWNER_EMAIL_MASKED}</li>
+                <li>Create it only because it does not already exist</li>
                 <li>Add residents from Settings → Access Control (default role: Reader)</li>
               </ul>
 
@@ -219,7 +300,7 @@ export default function Setup() {
               <p className="text-muted">
                 {currentStep === 1
                   ? 'Setting up folder structure in Google Drive...'
-                  : 'Searching for the society spreadsheet or creating it...'}
+                  : 'Connecting the existing society spreadsheet...'}
               </p>
             </div>
           )}
@@ -241,7 +322,7 @@ export default function Setup() {
               <div className="setup-summary card">
                 <p><strong>Google Drive:</strong> TPT-AppartmentApp folder ready</p>
                 <p><strong>Spreadsheet:</strong> {results.foundExisting ? 'Reconnected TPT-MaintenanceTracker' : `TPT-MaintenanceTracker created (${results.mode === 'sample' ? 'sample data' : 'fresh'})`}</p>
-                <p><strong>Your role:</strong> Owner ({FOUNDING_OWNER_EMAIL})</p>
+                <p><strong>Your role:</strong> Owner ({OWNER_EMAIL_MASKED})</p>
                 {results.spreadsheetId && (
                   <p className="sheet-id-row">
                     <strong>Sheet ID:</strong> <code className="sheet-id-code">{results.spreadsheetId}</code>
@@ -266,9 +347,9 @@ export default function Setup() {
               <p className="text-danger">{renderErrorMessage(error)}</p>
               <button
                 className="btn btn-secondary"
-                onClick={() => { setCurrentStep(0); setError(null); }}
+                onClick={() => { setCurrentStep(0); setError(null); lookForExistingSheet(); }}
               >
-                Try Again
+                Search again
               </button>
             </div>
           )}
