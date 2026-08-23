@@ -13,8 +13,8 @@ The Pride of Tirumala (TPT) Apartment Expense Tracker — a Progressive Web App 
 - Google Drive API v3 (file storage for receipts and backups)
 - Google Identity Services (OAuth 2.0 authentication)
 - jsPDF (client-side PDF report generation)
-- Tesseract.js (on-device receipt OCR; no cloud)
-- Web Speech API (on-device voice fill)
+- Tesseract.js v5 `eng` (on-device receipt OCR; no cloud, no API key)
+- Web Speech API (on-device voice fill; Chrome/Safari; no cloud model)
 - vite-plugin-pwa (service worker for offline support)
 - Vitest (unit tests)
 - Vanilla CSS with custom properties (design system)
@@ -55,7 +55,9 @@ Policy helpers live in `src/config/accessPolicy.js` and must be reused rather th
 - `src/services/pdfExport.js` — Monthly + activity PDFs (declare summary cards before cardWidth)
 - `src/services/activityFunds.js` — Optional named funds; one Drive spreadsheet per activity, reused by name
 - `src/utils/gapi.js` — Wrap gapi thenables (`Promise.resolve`) so `.catch` works on phones
+- `src/utils/voiceExpense.js` — Web Speech + local parse; never auto-submits
 - `src/utils/receiptOcr.js` — Local Tesseract; user must review before save
+- `docs/architecture.png` — High-level architecture PNG
 - `src/contexts/AuthContext.jsx` — Auth state; Owner login triggers a Drive backup once per session
 - `src/contexts/AppContext.jsx` — Global app state, toast notifications
 - `src/pages/Dashboard.jsx` — Main financial dashboard

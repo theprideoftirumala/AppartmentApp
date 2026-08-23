@@ -12,6 +12,9 @@
 - **Auth**: Google Identity Services (GIS) — client-side OAuth 2.0
 - **Hosting**: GitHub Pages or Azure Static Web Apps
 - **PWA**: vite-plugin-pwa with Workbox service worker
+- **Voice fill**: browser Web Speech API + local parse (no cloud model)
+- **Receipt fill**: Tesseract.js `eng` OCR in the browser (no cloud model)
+- Architecture diagram: `docs/architecture.png`
 
 ## Key Design Decisions
 

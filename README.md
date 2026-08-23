@@ -29,6 +29,8 @@ React PWA (Static Site) ←→ Google Sheets API (Database)
 
 **No backend server** — everything runs in the browser. Google Sheets is the single source of truth.
 
+See `docs/architecture.png` and `Explanation.md` for voice fill (Web Speech API) and receipt OCR (Tesseract.js on-device, no paid AI).
+
 ## 🚀 Quick Start
 
 ```bash

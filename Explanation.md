@@ -1,7 +1,8 @@
 # TPT Apartment Expense Tracker — Architecture & Code Explanation
 
 > **The Pride of Tirumala (TPT)** — A Progressive Web App for managing apartment maintenance finances.  
-> Stack: React 19 · Vite 8 · Google Sheets API v4 · Google Drive API v3 · Google Identity Services (OAuth 2.0) · jsPDF
+> Stack: React 19 · Vite 8 · Google Sheets API v4 · Google Drive API v3 · Google Identity Services (OAuth 2.0) · jsPDF · Web Speech API · Tesseract.js  
+> Architecture PNG: `docs/architecture.png`
 
 ---
 
@@ -23,7 +24,8 @@ graph TD
         SVC_DRIVE["googleDrive.js\n(files + backups)"]
         SVC_PDF["pdfExport.js\n(jsPDF)"]
         SVC_ACT["activityFunds.js\n(optional named funds)"]
-        OCR["receiptOcr.js\n(Tesseract on-device)"]
+        VOICE["voiceExpense.js\n(Web Speech API)"]
+        OCR["receiptOcr.js\n(Tesseract.js OCR)"]
         LS[("localStorage\ncache + session")]
     end
 
@@ -39,7 +41,10 @@ graph TD
     APP_CTX --> SVC_SHEETS
     APP_CTX --> SVC_DRIVE
     UI --> SVC_ACT
+    UI --> VOICE
     UI --> OCR
+    VOICE -->|"fills form only"| UI
+    OCR -->|"fills form only"| UI
     SVC_AUTH <--> OAUTH
     SVC_SHEETS <--> SHEETS
     SVC_ACT <--> SHEETS
@@ -48,6 +53,31 @@ graph TD
     APP_CTX --> LS
     SVC_PDF --> UI
     AUTH_CTX -.->|"Owner sign-in only"| DRIVE
+```
+
+---
+
+## 1b. Free on-device helpers (not paid AI)
+
+These are **not** ChatGPT / Gemini / cloud models. Nothing from the receipt or spoken sentence is sent to an AI vendor. The user must review the form and tap Save.
+
+| Helper | What it is | How it is used | Limits |
+|--------|------------|----------------|--------|
+| **Web Speech API** (`voiceExpense.js`) | Browser speech-to-text (Chrome / Safari / Edge). Free, built into the browser. | Owner taps **Fill with voice**, says e.g. `watchman salary 12000 and electricity 2400`. Local regex maps amount, category aliases, and payment mode. | Needs a microphone and a supporting browser. Hindi / noisy rooms often mis-hear amounts. Does not work well in WhatsApp in-app browsers. Never auto-submits. |
+| **Tesseract.js v5** (`receiptOcr.js`) | Open-source OCR engine (`eng` traineddata) running **in the browser**. Free, no API key. | Owner taps **Fill from camera**, photo stays on the device while Tesseract reads printed text. Largest rupee figure and category words are suggested. | Slow on older phones (first load downloads worker + language data). Handwriting, crumpled bills, and low light fail often. Dates can be wrong (DD/MM vs MM/DD). First-load cache can be several MB. Never auto-submits. |
+| **Local parsers** | Small JavaScript (`parseOneExpense`, `parseReceiptText`). | Split on “and / then / also”; detect ₹ / Rs / category aliases. | Only understands phrases we coded. “twelve thousand” (words) is not parsed. |
+
+```mermaid
+flowchart LR
+    A[Owner on Expenses] --> B{Fill how?}
+    B -->|Voice| C[Web Speech API<br/>browser STT]
+    B -->|Camera| D[Tesseract.js<br/>on-device OCR]
+    C --> E[Local parse<br/>amount + category]
+    D --> E
+    E --> F[Form lines shown]
+    F --> G{Owner reviews?}
+    G -->|Edit / Save| H[Google Sheets]
+    G -->|Cancel| I[Nothing written]
 ```
 
 ---
