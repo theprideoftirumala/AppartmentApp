@@ -11,7 +11,7 @@
  */
 
 import jsPDF from 'jspdf';
-import { maskEmail } from '../config/accessPolicy';
+import { maskEmail, maskEmailsInText } from '../config/accessPolicy';
 import { FEATURES, SOCIETY_DISCLAIMER } from '../config/constants';
 import { maskIdNumber, maskPhone } from '../utils/helpers';
 
@@ -583,7 +583,7 @@ export async function generateMonthlyReport(reportData) {
         doc.setFontSize(7);
         pdfFont(doc, 'normal');
         doc.setTextColor(100, 100, 100);
-        const detail = (item.details || '').substring(0, 60);
+        const detail = maskEmailsInText(item.details || '').substring(0, 80);
         const user = maskEmail(item.user);
         doc.text(`  - ${detail}  (by ${user})`, margin + 4, y + 4);
         y += 5;

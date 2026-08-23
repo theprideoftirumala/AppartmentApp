@@ -29,6 +29,7 @@ import StatusBadge from '../components/common/StatusBadge';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Navbar from '../components/common/Navbar';
 import { FEATURES } from '../config/constants';
+import { maskEmail, maskEmailsInText } from '../config/accessPolicy';
 
 export default function Reports() {
   const { showToast } = useApp();
@@ -603,9 +604,9 @@ export default function Reports() {
                           <div className="activity-content">
                             <div className="activity-action">
                               <span className="badge badge-info">{activity.action}</span>
-                              <span className="activity-user">{activity.user?.split('@')[0]}</span>
+                              <span className="activity-user">{maskEmail(activity.user)}</span>
                             </div>
-                            <p className="activity-details">{activity.details}</p>
+                            <p className="activity-details">{maskEmailsInText(activity.details)}</p>
                             <span className="activity-time">{formatDate(activity.timestamp)}</span>
                           </div>
                         </div>

@@ -35,6 +35,14 @@ export function maskEmail(email) {
   return `${visible}***@${domain}`;
 }
 
+/** Mask every email-like token in a free-text audit or report line. */
+export function maskEmailsInText(text) {
+  return String(text || '').replace(
+    /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g,
+    (email) => maskEmail(email),
+  );
+}
+
 /** Default role when the founding owner adds a resident. */
 export const DEFAULT_MEMBER_ROLE = 'Reader';
 

@@ -4,12 +4,21 @@ import {
   effectiveAppRole,
   isFoundingOwner,
   maskEmail,
+  maskEmailsInText,
   normalizeRequestedRole,
 } from './accessPolicy';
 
 describe('maskEmail', () => {
   it('hides the local part after two characters', () => {
     expect(maskEmail('jane.owner@example.com')).toBe('ja***@example.com');
+  });
+});
+
+describe('maskEmailsInText', () => {
+  it('masks every address in an audit line', () => {
+    expect(maskEmailsInText('resident.one@gmail.com as Reader (by treasurer@example.com)')).toBe(
+      're***@gmail.com as Reader (by tr***@example.com)',
+    );
   });
 });
 
