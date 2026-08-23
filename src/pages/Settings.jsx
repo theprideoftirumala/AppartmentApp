@@ -24,7 +24,7 @@ import {
   getSpreadsheetUrl, getRootFolderUrl,
   shareSpreadsheet, shareFolder, removeSharing, setupFolderStructure,
 } from '../services/googleDrive';
-import { DEFAULT_CONFIG, DEFAULT_REMINDERS, FLATS, STORAGE_KEYS } from '../config/constants';
+import { DEFAULT_CONFIG, DEFAULT_REMINDERS, FEATURES, FLATS, STORAGE_KEYS, isSampleDataEnabled } from '../config/constants';
 import { clearAppCachesAndReload } from '../utils/appCache';
 import { DRIVE_ROLE_BY_APP_ROLE, FOUNDING_OWNER_EMAIL, canGrantOwner, canRemoveUser, isFoundingOwner } from '../config/accessPolicy';
 import { formatDate, formatCurrency, isValidEmail, calculateNextDue, getLastDayOfCurrentMonth, getFirstDayOfNextMonth, bindSpreadsheet } from '../utils/helpers';
@@ -186,6 +186,10 @@ export default function Settings() {
   const handleSeedSampleData = async () => {
     if (!isFoundingOwner(user?.email)) {
       showToast('Only the founding owner can load sample data.', 'error');
+      return;
+    }
+    if (!isSampleDataEnabled(config)) {
+      showToast('Sample data is turned off. Set Sample data to Y in Configuration first.', 'error');
       return;
     }
     if (!window.confirm(
@@ -418,7 +422,11 @@ export default function Settings() {
                   key: 'PRESIDENT_FLAT', label: 'President Flat', type: 'select', options: FLATS,
                   info: 'Flat number of the current President. Shown on PDF reports and footer.'
                 },
-              ].map(field => (
+                FEATURES.SAMPLE_DATA && {
+                  key: 'SAMPLE_DATA', label: 'Sample data (Y/N)', type: 'select', options: ['N', 'Y'],
+                  info: 'Y allows the founding owner to load pretend test rows. Leave N for real society accounts.'
+                },
+              ].filter(Boolean).map(field => (
                 <ConfigField
                   key={field.key}
                   field={field}
@@ -660,7 +668,7 @@ export default function Settings() {
           </div>
         )}
 
-        {activeTab === 'backups' && isOwner && isFoundingOwner(user?.email) && (
+        {activeTab === 'backups' && isOwner && isFoundingOwner(user?.email) && isSampleDataEnabled(config) && (
           <div className="card mt-4">
             <h3 className="card-title mb-2">Load sample data for testing</h3>
             <p className="text-muted text-sm mb-4">

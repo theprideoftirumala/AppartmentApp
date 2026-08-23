@@ -11,6 +11,8 @@ import {
   STORAGE_KEYS,
   SHEET_FILE_NAME,
   CONFIG_DESCRIPTIONS,
+  FEATURES,
+  isSampleDataEnabled,
 } from '../config/constants';
 import { ensureValidToken, getCurrentUser } from './googleAuth';
 import { isFoundingOwner } from '../config/accessPolicy';
@@ -337,7 +339,7 @@ export async function createSpreadsheet(folderId, options = {}) {
     if (!isFoundingOwner(actor?.email)) {
       throw new Error('Only the society founding owner can create the society spreadsheet. Ask that account to share it with you as Viewer.');
     }
-    const mode = options.mode === 'sample' ? 'sample' : 'fresh';
+    const mode = options.mode === 'sample' && FEATURES.SAMPLE_DATA ? 'sample' : 'fresh';
     const title = options.title || SHEET_FILE_NAME;
     const sheetNames = Object.values(SHEET_NAMES);
 
@@ -448,6 +450,26 @@ export async function ensureSheetStructure(spreadsheetId = getSpreadsheetId()) {
     }
 
     await upgradeWorkbookLayout(spreadsheetId);
+    await ensureConfigKeys(spreadsheetId);
+  });
+}
+
+async function ensureConfigKeys(spreadsheetId) {
+  const response = await window.gapi.client.sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${SHEET_NAMES.CONFIGURATION}'!A2:A100`,
+  });
+  const existing = new Set((response.result.values || []).map((row) => row[0]));
+  const missing = Object.entries(DEFAULT_CONFIG)
+    .filter(([key]) => !existing.has(key))
+    .map(([key, value]) => [key, String(value), CONFIG_DESCRIPTIONS[key] || '']);
+  if (!missing.length) return;
+  await window.gapi.client.sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: `'${SHEET_NAMES.CONFIGURATION}'!A:C`,
+    valueInputOption: 'RAW',
+    insertDataOption: 'INSERT_ROWS',
+    resource: { values: missing },
   });
 }
 
@@ -486,6 +508,17 @@ export async function seedSampleLiveData() {
     const spreadsheetId = getSpreadsheetId();
     if (!isValidSpreadsheetId(spreadsheetId)) {
       throw new Error('Spreadsheet is not connected.');
+    }
+    const cfgResponse = await window.gapi.client.sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `'${SHEET_NAMES.CONFIGURATION}'!A2:B100`,
+    });
+    const cfg = {};
+    (cfgResponse.result.values || []).forEach(([key, value]) => {
+      if (key) cfg[key] = value;
+    });
+    if (!isSampleDataEnabled({ ...DEFAULT_CONFIG, ...cfg })) {
+      throw new Error('Sample data is turned off. Set SAMPLE_DATA to Y in Settings → Configuration.');
     }
 
     await ensureSheetStructure(spreadsheetId);

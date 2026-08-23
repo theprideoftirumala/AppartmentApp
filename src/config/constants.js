@@ -27,7 +27,7 @@ export const DISCOVERY_DOCS = [
 // ─── Apartment Configuration ────────────────────────────────────
 export const APP_NAME = 'The Pride of Tirumala';
 export const APP_SHORT_NAME = 'TPT Tracker';
-export const APP_VERSION = '1.7.2';
+export const APP_VERSION = '1.7.3';
 
 /**
  * Bump this when GOOGLE_SCOPES change so existing sessions re-consent.
@@ -48,7 +48,20 @@ export const FEATURES = {
   CAMERA_EXPENSES: true,
   ACTIVITY_FUNDS: true,
   LOGIN_BACKUP: true,
+  SAMPLE_DATA: true,
 };
+
+export function isYesFlag(value) {
+  const v = String(value ?? '').trim().toLowerCase();
+  return v === 'y' || v === 'yes' || v === 'true' || v === '1';
+}
+
+/** Sample live-tab data is off unless Settings → Configuration sets SAMPLE_DATA to Y. */
+export function isSampleDataEnabled(config) {
+  if (!FEATURES.SAMPLE_DATA) return false;
+  const raw = config?.SAMPLE_DATA ?? DEFAULT_CONFIG.SAMPLE_DATA;
+  return isYesFlag(raw);
+}
 
 /**
  * Shown at the bottom of the website and on every generated PDF.
@@ -74,6 +87,7 @@ export const DEFAULT_CONFIG = {
   WATCHMAN_PHONE: '',
   WATCHMAN_SALARY: 0,
   WATCHMAN_SHIFT: 'Night (8PM - 8AM)',
+  SAMPLE_DATA: 'N',
 };
 
 // ─── Google Drive Folder Names ──────────────────────────────────
@@ -123,6 +137,7 @@ export const CONFIG_DESCRIPTIONS = {
   WATCHMAN_PHONE: 'Default watchman phone (optional)',
   WATCHMAN_SALARY: 'Default monthly watchman salary in ₹ (optional)',
   WATCHMAN_SHIFT: 'Default shift timing text (optional)',
+  SAMPLE_DATA: 'Y to allow loading pretend test rows. N keeps live tabs for real collections only.',
 };
 
 export const SHEET_HEADERS = {

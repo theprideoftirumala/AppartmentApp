@@ -10,6 +10,7 @@ import { FLATS, PAYMENT_MODES } from '../config/constants';
 import {
   addActivityExpense,
   closeActivityFund,
+  dedupeActivityFunds,
   getActivityDetail,
   listActivityFunds,
   saveActivityMembers,
@@ -35,7 +36,10 @@ export default function ActivityFunds() {
   const refresh = useCallback(async () => {
     try {
       setLoading(true);
-      const [list, flatRows] = await Promise.all([listActivityFunds(), getFlats().catch(() => [])]);
+      const [list, flatRows] = await Promise.all([
+        isOwner ? dedupeActivityFunds().catch(() => listActivityFunds()) : listActivityFunds(),
+        getFlats().catch(() => []),
+      ]);
       setActivities(list);
       setFlats(flatRows);
     } catch (err) {
@@ -43,7 +47,7 @@ export default function ActivityFunds() {
     } finally {
       setLoading(false);
     }
-  }, [showToast]);
+  }, [isOwner, showToast]);
 
   useEffect(() => {
     refresh();

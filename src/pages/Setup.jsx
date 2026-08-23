@@ -18,7 +18,7 @@ import {
   createSpreadsheet, addAuditLog, addReminder,
   parseApiError, ensureSheetStructure, ensureFoundingOwnerEntry,
 } from '../services/googleSheets';
-import { DEFAULT_REMINDERS, SHEET_FILE_NAME, STORAGE_KEYS } from '../config/constants';
+import { DEFAULT_REMINDERS, FEATURES, SHEET_FILE_NAME, STORAGE_KEYS, isSampleDataEnabled } from '../config/constants';
 import { FOUNDING_OWNER_EMAIL, isFoundingOwner, maskEmail } from '../config/accessPolicy';
 import { calculateNextDue, getLastDayOfCurrentMonth, getFirstDayOfNextMonth, bindSpreadsheet, isValidSpreadsheetId } from '../utils/helpers';
 import { shouldOfferSheetCreation } from '../utils/setupFlow';
@@ -43,7 +43,8 @@ export default function Setup() {
   const [lookupFailed, setLookupFailed] = useState(false);
   const [error, setError] = useState(null);
   const [results, setResults] = useState({ folderId: null, spreadsheetId: null, foundExisting: false, mode: 'fresh' });
-  const [setupMode, setSetupMode] = useState('sample');
+  const allowSampleCreate = FEATURES.SAMPLE_DATA && isSampleDataEnabled();
+  const [setupMode, setSetupMode] = useState(allowSampleCreate ? 'sample' : 'fresh');
   const founder = isFoundingOwner(user?.email);
   const alreadyBound = isValidSpreadsheetId(localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID));
   const showCreateCards = shouldOfferSheetCreation({
@@ -260,26 +261,32 @@ export default function Setup() {
                 <li>Add residents from Settings → Access Control (default role: Reader)</li>
               </ul>
 
-              <div className="setup-mode-grid">
-                <button
-                  type="button"
-                  className={`setup-mode-card ${setupMode === 'sample' ? 'setup-mode-card-active' : ''}`}
-                  onClick={() => setSetupMode('sample')}
-                >
-                  <FlaskConical size={22} />
-                  <strong>Test with sample data</strong>
-                  <span>Fills live tabs with pretend Sep–Oct 2026 data so you can click through the app.</span>
-                </button>
-                <button
-                  type="button"
-                  className={`setup-mode-card ${setupMode === 'fresh' ? 'setup-mode-card-active' : ''}`}
-                  onClick={() => setSetupMode('fresh')}
-                >
-                  <FilePlus size={22} />
-                  <strong>Start fresh (production)</strong>
-                  <span>Empty live tabs for real collections. Guide + Sample Data stay as a readable template.</span>
-                </button>
-              </div>
+              {allowSampleCreate ? (
+                <div className="setup-mode-grid">
+                  <button
+                    type="button"
+                    className={`setup-mode-card ${setupMode === 'sample' ? 'setup-mode-card-active' : ''}`}
+                    onClick={() => setSetupMode('sample')}
+                  >
+                    <FlaskConical size={22} />
+                    <strong>Test with sample data</strong>
+                    <span>Fills live tabs with pretend Sep–Oct 2026 data so you can click through the app.</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`setup-mode-card ${setupMode === 'fresh' ? 'setup-mode-card-active' : ''}`}
+                    onClick={() => setSetupMode('fresh')}
+                  >
+                    <FilePlus size={22} />
+                    <strong>Start fresh (production)</strong>
+                    <span>Empty live tabs for real collections. Guide + Sample Data stay as a readable template.</span>
+                  </button>
+                </div>
+              ) : (
+                <p className="text-muted">
+                  Live tabs start empty for real collections. Turn on sample data later from Settings → Configuration if you need pretend rows for testing.
+                </p>
+              )}
 
               <div className="setup-actions">
                 <button

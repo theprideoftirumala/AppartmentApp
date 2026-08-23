@@ -4,7 +4,8 @@
  * Google Sheet is the single source of truth / database
  */
 
-import { SHEET_NAMES, SHEET_HEADERS, DEFAULT_CONFIG, FLATS, STORAGE_KEYS } from '../config/constants';
+import { SHEET_NAMES, SHEET_HEADERS, DEFAULT_CONFIG, CONFIG_DESCRIPTIONS, FLATS, STORAGE_KEYS } from '../config/constants';
+import { duplicateExpenseMessage, firstDuplicateExpense } from '../utils/expenseDuplicate';
 import {
   FOUNDING_OWNER_EMAIL,
   canGrantOwner,
@@ -263,7 +264,17 @@ export async function updateConfiguration(key, value) {
         valueInputOption: 'RAW',
         resource: { values: [[sheetText(value, 200)]] },
       });
+      return;
     }
+    await window.gapi.client.sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: `'${SHEET_NAMES.CONFIGURATION}'!A:C`,
+      valueInputOption: 'RAW',
+      insertDataOption: 'INSERT_ROWS',
+      resource: {
+        values: [[key, sheetText(value, 200), CONFIG_DESCRIPTIONS[key] || '']],
+      },
+    });
   });
 }
 
@@ -537,6 +548,11 @@ export async function addExpenses(items) {
     }
 
     const spreadsheetId = getSpreadsheetId();
+    const existing = await getExpenses();
+    const duplicate = firstDuplicateExpense(items, existing);
+    if (duplicate) {
+      throw new Error(duplicateExpenseMessage(duplicate));
+    }
     const base = Date.now();
     const values = items.map((data, i) => expenseRowValues(data, `EXP-${base}-${i + 1}`));
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { APP_VERSION, FEATURES, SOCIETY_DISCLAIMER } from './constants';
+import { APP_VERSION, DEFAULT_CONFIG, FEATURES, SOCIETY_DISCLAIMER, isSampleDataEnabled } from './constants';
 
 describe('feature flags', () => {
   it('keeps late fee and misc funds off in the app', () => {
@@ -8,6 +8,14 @@ describe('feature flags', () => {
     expect(FEATURES.VOICE_EXPENSES).toBe(true);
     expect(FEATURES.CAMERA_EXPENSES).toBe(true);
     expect(FEATURES.ACTIVITY_FUNDS).toBe(true);
+    expect(FEATURES.SAMPLE_DATA).toBe(true);
+    expect(DEFAULT_CONFIG.SAMPLE_DATA).toBe('N');
+  });
+
+  it('enables sample data only when SAMPLE_DATA is Y', () => {
+    expect(isSampleDataEnabled()).toBe(false);
+    expect(isSampleDataEnabled({ SAMPLE_DATA: 'N' })).toBe(false);
+    expect(isSampleDataEnabled({ SAMPLE_DATA: 'Y' })).toBe(true);
   });
 });
 

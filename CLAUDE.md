@@ -67,7 +67,7 @@ The workbook is designed so a treasurer can understand every number without open
 
 Late fee and the old Misc Funds tab stay in the workbook for history. The app no longer collects them. Use **Activity Funds** for Ganesh, motor, or similar optional collections.
 
-Setup can create a **sample** workbook (live tabs pre-filled for testing) or a **fresh** production workbook (live tabs empty). After testing, Settings → Create Fresh Production Sheet archives the sample file in Drive.
+Setup creates a **fresh** production workbook by default. Sample live-tab data is off until Settings → Configuration → SAMPLE_DATA is set to Y. After testing, Settings → Create Fresh Production Sheet archives the sample file in Drive.
 
 ## Google Drive Structure
 
@@ -95,6 +95,7 @@ All configurable values are in `src/config/constants.js` and can be overridden a
 - Deficit: -₹5,200 (configurable)
 - Treasurer: Flat 401, President: Flat 102 (configurable)
 - Late fee: ₹100 after 15th (configurable)
+- Sample data: off (`SAMPLE_DATA=N`) until Settings → Configuration sets it to Y
 
 ## Security Model
 
@@ -132,6 +133,9 @@ Add to the `EXPENSE_CATEGORIES` array in `src/config/constants.js` and rebuild.
 
 ### Change fiscal year
 Update `FISCAL_YEAR_START` in the Configuration sheet.
+
+### Enable or disable sample test data
+Settings → Configuration → Sample data (Y/N). Leave N for real accounts. Y unlocks Load sample data for the founding owner.
 
 ## API Quotas
 

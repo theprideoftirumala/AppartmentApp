@@ -13,7 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useApp } from '../contexts/AppContext';
 import { getDashboardData, getAccessControl, parseApiError, seedSampleLiveData, ensureSheetStructure } from '../services/googleSheets';
-import { STORAGE_KEYS } from '../config/constants';
+import { STORAGE_KEYS, isSampleDataEnabled } from '../config/constants';
 import { effectiveAppRole, isFoundingOwner } from '../config/accessPolicy';
 import { formatCurrency, getCurrentMonthLabel, getCollectionPercentage, daysUntil, getRelativeTime, groupExpensesByCategory, parseJsonSafe, normalizeEmail } from '../utils/helpers';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -197,7 +197,7 @@ export default function Dashboard() {
       <Navbar onRefresh={() => fetchData(true)} refreshing={refreshing} />
 
       {/* Guest mode banner */}
-      {isFoundingOwner(user?.email) && (data?.maintenance || []).length === 0 && (data?.expenses || []).length === 0 && (
+      {isFoundingOwner(user?.email) && isSampleDataEnabled(config) && (data?.maintenance || []).length === 0 && (data?.expenses || []).length === 0 && (
         <div className="guest-banner">
           <FlaskConical size={16} />
           <span>

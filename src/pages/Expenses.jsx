@@ -13,6 +13,7 @@ import { formatCurrency, formatDate, getCurrentMonthLabel, getCurrentYearMonth, 
 import { EXPENSE_CATEGORIES, PAYMENT_MODES, FEATURES } from '../config/constants';
 import { createSpeechRecognizer, parseExpensesFromSpeech, speechSupported } from '../utils/voiceExpense';
 import { parseReceiptText, recognizeReceiptImage } from '../utils/receiptOcr';
+import { duplicateExpenseMessage, firstDuplicateExpense } from '../utils/expenseDuplicate';
 import Modal from '../components/common/Modal';
 import FileUpload from '../components/common/FileUpload';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -51,17 +52,12 @@ export default function Expenses() {
     try {
       setSaving(true);
 
-      for (const line of batch.lines) {
-        const duplicate = expenses.find((e) =>
-          e.description?.toLowerCase().trim() === line.description?.toLowerCase().trim()
-          && Number(e.amount) === Number(line.amount)
-          && e.date === batch.date
-        );
-        if (duplicate) {
-          showToast(`Duplicate: "${line.description}" for ₹${line.amount} on ${batch.date} already exists.`, 'error');
-          setSaving(false);
-          return;
-        }
+      const incoming = batch.lines.map((line) => ({ ...line, date: batch.date }));
+      const duplicate = firstDuplicateExpense(incoming, expenses);
+      if (duplicate) {
+        showToast(duplicateExpenseMessage(duplicate), 'error');
+        setSaving(false);
+        return;
       }
 
       let receiptLink = '';
@@ -355,6 +351,11 @@ function AddExpenseModal({ isOpen, onClose, onSave, saving }) {
     e.preventDefault();
     const valid = lines.filter((line) => line.description.trim() && line.category && Number(line.amount) > 0);
     if (valid.length === 0) return;
+    const duplicate = firstDuplicateExpense(valid.map((line) => ({ ...line, date })));
+    if (duplicate) {
+      setVoiceHint(duplicateExpenseMessage(duplicate));
+      return;
+    }
     onSave({ date, month, lines: valid }, files);
   };
 

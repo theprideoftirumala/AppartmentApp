@@ -14,8 +14,10 @@ import {
 } from '../config/constants';
 import { canWriteFinancialData, DRIVE_ROLE_BY_APP_ROLE, effectiveAppRole } from '../config/accessPolicy';
 import { activityFileName, normalizeActivityName } from '../utils/activityName';
+import { pickCanonicalActivityFile, registryRowsToDrop } from '../utils/activityDedupe';
+import { duplicateExpenseMessage, firstDuplicateExpense } from '../utils/expenseDuplicate';
 import { gapiCall } from '../utils/gapi';
-import { isValidSpreadsheetId, sheetNumber, sheetText } from '../utils/helpers';
+import { escapeDriveQuery, isValidSpreadsheetId, sheetNumber, sheetText } from '../utils/helpers';
 import { getCurrentUser, ensureValidToken } from './googleAuth';
 import { getActivityFolder, shareFile } from './googleDrive';
 import { getAccessControl } from './googleSheets';
@@ -99,14 +101,109 @@ async function upsertRegistry(activity) {
   }));
 }
 
-async function findExistingWorkbook(fileName, folderId) {
-  const safe = fileName.replace(/'/g, "\\'");
+async function listWorkbooksByName(fileName, folderId) {
+  const safe = escapeDriveQuery(fileName);
   const response = await gapiCall(window.gapi.client.drive.files.list({
     q: `name='${safe}' and '${folderId}' in parents and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`,
-    fields: 'files(id, name)',
-    pageSize: 5,
+    fields: 'files(id, name, createdTime)',
+    pageSize: 25,
+    orderBy: 'createdTime',
+    supportsAllDrives: true,
   })).catch(() => ({ result: { files: [] } }));
-  return response.result.files?.[0] || null;
+  return response.result.files || [];
+}
+
+async function listActivityWorkbooks(folderId) {
+  const prefix = escapeDriveQuery(ACTIVITY_FILE_PREFIX);
+  const response = await gapiCall(window.gapi.client.drive.files.list({
+    q: `name contains '${prefix}' and '${folderId}' in parents and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`,
+    fields: 'files(id, name, createdTime)',
+    pageSize: 50,
+    orderBy: 'createdTime',
+    supportsAllDrives: true,
+  })).catch(() => ({ result: { files: [] } }));
+  return response.result.files || [];
+}
+
+async function trashDriveFile(fileId) {
+  if (!isValidSpreadsheetId(fileId)) return;
+  await gapiCall(window.gapi.client.drive.files.update({
+    fileId,
+    resource: { trashed: true },
+    supportsAllDrives: true,
+  }));
+}
+
+async function trashDuplicateWorkbooks(files, keepId) {
+  const extras = files.filter((file) => file.id !== keepId);
+  for (const file of extras) {
+    await trashDriveFile(file.id).catch(() => {});
+  }
+  return extras.length;
+}
+
+async function getTabSheetId(spreadsheetId, title) {
+  const meta = await gapiCall(window.gapi.client.sheets.spreadsheets.get({
+    spreadsheetId,
+    fields: 'sheets.properties',
+  }));
+  const sheet = (meta.result.sheets || []).find((row) => row.properties.title === title);
+  return sheet?.properties?.sheetId;
+}
+
+async function deleteRegistryRows(indexes) {
+  if (!indexes.length) return;
+  const spreadsheetId = societyId();
+  const sheetId = await getTabSheetId(spreadsheetId, SHEET_NAMES.ACTIVITY_FUNDS);
+  if (sheetId == null) return;
+  const requests = [...indexes]
+    .sort((a, b) => b - a)
+    .map((index) => ({
+      deleteDimension: {
+        range: {
+          sheetId,
+          dimension: 'ROWS',
+          startIndex: index + 1,
+          endIndex: index + 2,
+        },
+      },
+    }));
+  await gapiCall(window.gapi.client.sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    resource: { requests },
+  }));
+}
+
+/**
+ * Keep one Drive file and one registry row per activity name. Extra copies go to trash.
+ */
+export async function dedupeActivityFunds() {
+  await ensureValidToken();
+  const folderId = await getActivityFolder();
+  const [files, existing] = await Promise.all([listActivityWorkbooks(folderId), listActivityFunds()]);
+  const byName = new Map();
+  files.forEach((file) => {
+    const key = file.name;
+    if (!byName.has(key)) byName.set(key, []);
+    byName.get(key).push(file);
+  });
+
+  const keepIds = new Set();
+  for (const [fileName, group] of byName) {
+    const registry = existing.find((row) => activityFileName(row.name) === fileName);
+    const keep = pickCanonicalActivityFile(group, registry?.spreadsheetId);
+    if (!keep) continue;
+    keepIds.add(keep.id);
+    if (group.length > 1) await trashDuplicateWorkbooks(group, keep.id);
+    if (registry && registry.spreadsheetId !== keep.id) {
+      await upsertRegistry({ ...registry, spreadsheetId: keep.id });
+    }
+  }
+
+  const latest = await listActivityFunds();
+  const drop = registryRowsToDrop(latest, keepIds);
+  await deleteRegistryRows(drop);
+  return listActivityFunds();
 }
 
 async function createActivityWorkbook(name, target, notes, optedFlats, flats) {
@@ -170,18 +267,37 @@ export async function startActivityFund({ name, target = 0, notes = '', optedFla
     const displayName = normalizeActivityName(name);
     if (!displayName) throw new Error('Give this activity a name.');
 
+    await dedupeActivityFunds().catch(() => []);
     const existing = await listActivityFunds();
-    const open = existing.find((row) => normalizeActivityName(row.name).toLowerCase() === displayName.toLowerCase() && row.status === 'Open');
-    if (open?.spreadsheetId) return open;
+    const sameName = existing.find((row) => normalizeActivityName(row.name).toLowerCase() === displayName.toLowerCase());
 
     const folderId = await getActivityFolder();
-    const foundFile = await findExistingWorkbook(activityFileName(displayName), folderId);
-    const id = `${ACTIVITY_FILE_PREFIX}${Date.now()}`;
-    const spreadsheetId = foundFile?.id || await createActivityWorkbook(displayName, target, notes, optedFlats, flats);
-    if (!foundFile) await shareWithSociety(spreadsheetId, acl);
+    const files = await listWorkbooksByName(activityFileName(displayName), folderId);
+    const keep = pickCanonicalActivityFile(files, sameName?.spreadsheetId);
+    if (files.length > 1 && keep) await trashDuplicateWorkbooks(files, keep.id);
+
+    if (sameName?.spreadsheetId || keep?.id) {
+      const spreadsheetId = keep?.id || sameName.spreadsheetId;
+      const activity = {
+        ...sameName,
+        id: sameName?.id || `${ACTIVITY_FILE_PREFIX}${Date.now()}`,
+        name: displayName,
+        spreadsheetId,
+        status: 'Open',
+        created: sameName?.created || new Date().toISOString().slice(0, 10),
+        createdBy: sameName?.createdBy || user.email,
+        target: Number(target) || sameName?.target || 0,
+        notes: notes || sameName?.notes || '',
+      };
+      await upsertRegistry(activity);
+      return activity;
+    }
+
+    const spreadsheetId = await createActivityWorkbook(displayName, target, notes, optedFlats, flats);
+    await shareWithSociety(spreadsheetId, acl);
 
     const activity = {
-      id,
+      id: `${ACTIVITY_FILE_PREFIX}${Date.now()}`,
       name: displayName,
       spreadsheetId,
       status: 'Open',
@@ -265,6 +381,11 @@ export async function saveActivityMembers(spreadsheetId, members) {
 
 export async function addActivityExpense(spreadsheetId, expense) {
   return withOwnerWrite(async () => {
+    const detail = await getActivityDetail(spreadsheetId);
+    const duplicate = firstDuplicateExpense([expense], detail.expenses);
+    if (duplicate) {
+      throw new Error(duplicateExpenseMessage(duplicate));
+    }
     await gapiCall(window.gapi.client.sheets.spreadsheets.values.append({
       spreadsheetId,
       range: `'${ACTIVITY_TABS.EXPENSES}'!A:F`,
