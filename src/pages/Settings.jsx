@@ -391,8 +391,8 @@ export default function Settings() {
             <div className="settings-grid">
               {[
                 {
-                  key: 'APARTMENT_NAME', label: 'Apartment Name', type: 'text',
-                  info: 'Name displayed on reports and the dashboard header.'
+                  key: 'APARTMENT_NAME', label: 'Apartment Name', type: 'text', readonly: true,
+                  info: 'Shown on the dashboard and PDFs. Read-only here — change it only in the Configuration tab of the Google Sheet if the society name ever changes.'
                 },
                 {
                   key: 'MONTHLY_MAINTENANCE', label: 'Monthly Maintenance (₹)', type: 'number',

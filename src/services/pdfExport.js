@@ -188,13 +188,13 @@ export async function generateMonthlyReport(reportData) {
   y = 58;
 
   // ─── Financial Summary Cards ───────────────────────────
-  const cardWidth = contentWidth / summaryCards.length - 3;
   const summaryCards = [
     { label: 'Total Collection', value: formatCurrency(totalCollection), color: [40, 167, 69], bg: [235, 250, 240] },
     ...(FEATURES.MISC_FUNDS ? [{ label: 'Misc Funds', value: formatCurrency(totalMiscFunds || 0), color: [50, 80, 200], bg: [230, 240, 255] }] : []),
     { label: 'Total Expenses', value: formatCurrency(totalExpenses), color: [220, 53, 69], bg: [255, 235, 238] },
     { label: 'Net Balance', value: formatCurrency(netBalance), color: netBalance >= 0 ? [40, 167, 69] : [220, 53, 69], bg: netBalance >= 0 ? [235, 250, 240] : [255, 235, 238] },
   ];
+  const cardWidth = contentWidth / summaryCards.length - 3;
 
   summaryCards.forEach((card, i) => {
     const x = margin + i * (cardWidth + 4);
@@ -645,6 +645,87 @@ export async function generateMonthlyReport(reportData) {
   }
 
   return doc;
+}
+
+/**
+ * Download the generated PDF
+ */
+export async function generateActivityReport({ activity, detail }) {
+  const doc = new jsPDF('p', 'mm', 'a4');
+  try {
+    await loadRupeeFont(doc);
+  } catch {
+    rupeeFontReady = false;
+  }
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 15;
+  const contentWidth = pageWidth - 2 * margin;
+  let y = 20;
+
+  doc.setFontSize(16);
+  pdfFont(doc, 'bold');
+  doc.text(activity.name || 'Activity Fund', pageWidth / 2, y, { align: 'center' });
+  y += 8;
+  doc.setFontSize(10);
+  pdfFont(doc, 'normal');
+  doc.text(`Status: ${activity.status || 'Open'}  |  Target per joining flat: ${formatCurrency(activity.target)}`, pageWidth / 2, y, { align: 'center' });
+  y += 12;
+
+  const cards = [
+    { label: 'Collected', value: formatCurrency(detail.collected) },
+    { label: 'Spent', value: formatCurrency(detail.spent) },
+    { label: 'Balance', value: formatCurrency(detail.balance) },
+  ];
+  const cardW = contentWidth / 3 - 3;
+  cards.forEach((card, i) => {
+    const x = margin + i * (cardW + 4);
+    doc.setFillColor(245, 247, 250);
+    doc.roundedRect(x, y, cardW, 16, 2, 2, 'F');
+    doc.setFontSize(8);
+    doc.text(card.label, x + 3, y + 6);
+    pdfFont(doc, 'bold');
+    doc.setFontSize(11);
+    doc.text(card.value, x + 3, y + 13);
+    pdfFont(doc, 'normal');
+  });
+  y += 24;
+
+  y = drawSectionHeader(doc, 'Members who joined', y, pageWidth, margin);
+  y = drawTableHeader(doc, ['Flat', 'Name', 'Due', 'Paid'], [22, 70, 40, 40], y, margin, contentWidth);
+  (detail.members || []).filter((row) => row.optedIn).forEach((row) => {
+    y = checkPageBreak(doc, y, margin, 8);
+    doc.setFontSize(8);
+    doc.text(String(row.flat), margin + 2, y + 5);
+    doc.text(String(row.name || '—').slice(0, 28), margin + 24, y + 5);
+    doc.text(formatCurrency(row.amountDue), margin + 94, y + 5);
+    doc.text(formatCurrency(row.amountPaid), margin + 134, y + 5);
+    y += 7;
+  });
+  y += 6;
+
+  y = drawSectionHeader(doc, 'Expenses from this fund', y, pageWidth, margin);
+  (detail.expenses || []).forEach((row) => {
+    y = checkPageBreak(doc, y, margin, 8);
+    doc.setFontSize(8);
+    doc.text(`${row.date}  ${row.description}  ${formatCurrency(row.amount)}`.slice(0, 90), margin + 2, y + 5);
+    y += 7;
+  });
+  y += 10;
+
+  const disclaimerLines = doc.splitTextToSize(SOCIETY_DISCLAIMER, contentWidth - 8);
+  y = checkPageBreak(doc, y, margin, 20);
+  doc.setFontSize(7);
+  doc.setTextColor(90, 90, 90);
+  doc.text(disclaimerLines, margin, y);
+
+  return doc;
+}
+
+export async function downloadActivityReport(payload) {
+  const doc = await generateActivityReport(payload);
+  const fileName = `TPT_Activity_${(payload.activity?.name || 'Fund').replace(/\s+/g, '_')}.pdf`;
+  doc.save(fileName);
+  return fileName;
 }
 
 /**

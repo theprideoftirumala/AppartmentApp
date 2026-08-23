@@ -10,12 +10,13 @@ A **Progressive Web App (PWA)** for managing apartment maintenance finances, bui
 
 - **📊 Financial Dashboard** — Real-time balance, collection status, expense breakdown
 - **🏠 Maintenance Tracking** — Mark payments for 10 flats with status (Paid/Pending/Partial)
-- **💰 Expense Management** — Log expenses with categories, receipt uploads, and approval
+- **💰 Expense Management** — Log expenses with categories, receipt uploads, voice or on-device camera fill (review before save)
+- **🎉 Activity Funds** — Optional named collections (festival, motor) each with their own reusable Google Sheet and PDF
 - **📄 PDF Reports** — Generate and download monthly financial reports
 - **🔔 Reminders** — Recurring reminders for lift maintenance, water tankers, AMC renewals
 - **📞 Emergency Contacts** — Click-to-call contact directory with categories
 - **👥 Access Control** — Email whitelist with Owner/Reader roles (max 20 users, 2 owners)
-- **💾 Backups** — One-click spreadsheet backup to Google Drive
+- **💾 Backups** — Automatic Drive backup on each Owner Google sign-in (not Readers or Guest PIN)
 - **📱 PWA** — Installable on iOS, Android, and desktop
 - **🔐 Secure** — Google OAuth 2.0, audit logging, role-based access
 

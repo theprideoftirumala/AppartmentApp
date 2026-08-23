@@ -16,6 +16,7 @@ import { ensureValidToken, getCurrentUser } from './googleAuth';
 import { isFoundingOwner } from '../config/accessPolicy';
 import { GUIDE_ROWS, SAMPLE_CATALOG_ROWS, buildSampleLiveRows } from '../data/sampleSheetData';
 import { isValidSpreadsheetId, bindSpreadsheet, getCurrentMonthLabel } from '../utils/helpers';
+import { gapiCall } from '../utils/gapi';
 import {
   maintenanceStillDueFormula,
   monthlySummaryFormulaRow,
@@ -150,10 +151,10 @@ async function getSheetIdByTitle(spreadsheetId, title) {
  * Write the layman Pending Dues lookup tab. Keeps B3 if it already looks like MMM-YY.
  */
 export async function writePendingDuesTemplate(spreadsheetId) {
-  const existing = await window.gapi.client.sheets.spreadsheets.values.get({
+  const existing = await gapiCall(window.gapi.client.sheets.spreadsheets.values.get({
     spreadsheetId,
     range: `'${SHEET_NAMES.PENDING_DUES}'!B3`,
-  }).catch(() => ({ result: { values: [] } }));
+  })).catch(() => ({ result: { values: [] } }));
   const typed = String(existing.result.values?.[0]?.[0] || '').trim();
   const monthLabel = /^[A-Za-z]{3}-\d{2}$/.test(typed) ? typed : getCurrentMonthLabel();
 

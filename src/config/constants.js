@@ -27,7 +27,7 @@ export const DISCOVERY_DOCS = [
 // ─── Apartment Configuration ────────────────────────────────────
 export const APP_NAME = 'The Pride of Tirumala';
 export const APP_SHORT_NAME = 'TPT Tracker';
-export const APP_VERSION = '1.6.0';
+export const APP_VERSION = '1.7.0';
 
 /**
  * Bump this when GOOGLE_SCOPES change so existing sessions re-consent.
@@ -45,13 +45,17 @@ export const FEATURES = {
   LATE_FEE: false,
   MISC_FUNDS: false,
   VOICE_EXPENSES: true,
+  CAMERA_EXPENSES: true,
+  ACTIVITY_FUNDS: true,
+  LOGIN_BACKUP: true,
 };
 
 /**
  * Shown at the bottom of the website and on every generated PDF.
+ * Volunteer-toned: cooperative, not blaming members.
  */
 export const SOCIETY_DISCLAIMER =
-  'We are not responsible for anything. We are only maintaining this year’s accounts on behalf of the society. Please do not complain about delays — we also have our own work. We will try to do our best at our convenience. Please cooperate. We will try to help as soon as possible with the help of all owners.';
+  'These accounts are kept by resident volunteers on behalf of the society, alongside their own work. Figures may be updated as bills arrive. Please bear with us and support one another — we will help as soon as we can. The Google Sheet is the source of truth.';
 
 export const DEFAULT_CONFIG = {
   APARTMENT_NAME: 'The Pride of Tirumala',
@@ -76,7 +80,9 @@ export const DEFAULT_CONFIG = {
 export const DRIVE_ROOT_FOLDER = 'TPT-AppartmentApp';
 export const DRIVE_EXPENSES_FOLDER = 'expenses-evidence';
 export const DRIVE_BACKUPS_FOLDER = 'backups';
+export const DRIVE_ACTIVITY_FOLDER = 'activity-funds';
 export const SHEET_FILE_NAME = 'TPT-MaintenanceTracker';
+export const ACTIVITY_FILE_PREFIX = 'TPT-Activity-';
 export const SHEET_SAMPLE_SUFFIX = '-SAMPLE';
 
 // ─── Google Sheets Structure ────────────────────────────────────
@@ -97,6 +103,7 @@ export const SHEET_NAMES = {
   MONTHLY_SUMMARY: 'Monthly Summary',
   WATCHMAN_DETAILS: 'Watchman Details',
   SAMPLE_DATA: 'Sample Data',
+  ACTIVITY_FUNDS: 'Activity Funds',
 };
 
 export const CONFIG_DESCRIPTIONS = {
@@ -167,6 +174,32 @@ export const SHEET_HEADERS = {
     'Payment Mode', 'Collected By', 'Remarks',
   ],
   [SHEET_NAMES.SAMPLE_DATA]: ['Sheet / Section', 'Example row (copy into the live tab)', 'Notes'],
+  [SHEET_NAMES.ACTIVITY_FUNDS]: [
+    'Activity ID', 'Name', 'Spreadsheet ID', 'Status (Open/Closed)',
+    'Created Date (YYYY-MM-DD)', 'Created By', 'Target Amount (₹)', 'Notes',
+  ],
+};
+
+/** Tabs inside each optional activity workbook (Ganesh, motor, etc.). */
+export const ACTIVITY_TABS = {
+  GUIDE: 'Guide',
+  CONFIGURATION: 'Configuration',
+  MEMBERS: 'Members',
+  EXPENSES: 'Expenses',
+  SUMMARY: 'Summary',
+};
+
+export const ACTIVITY_TAB_HEADERS = {
+  [ACTIVITY_TABS.GUIDE]: ['Topic', 'What it means', 'How to use'],
+  [ACTIVITY_TABS.CONFIGURATION]: ['Key', 'Value', 'Description'],
+  [ACTIVITY_TABS.MEMBERS]: [
+    'Flat', 'Name', 'Opted In (Y/N)', 'Amount Due (₹)', 'Amount Paid (₹)',
+    'Payment Date (YYYY-MM-DD)', 'Payment Mode', 'Remarks',
+  ],
+  [ACTIVITY_TABS.EXPENSES]: [
+    'Date (YYYY-MM-DD)', 'Description', 'Amount (₹)', 'Paid By', 'Payment Mode', 'Remarks',
+  ],
+  [ACTIVITY_TABS.SUMMARY]: ['Metric', 'Value', 'Notes'],
 };
 
 // ─── Maintenance Constraints ───────────────────────────────────
@@ -343,4 +376,5 @@ export const STORAGE_KEYS = {
   GUEST_SESSION: 'tpt_guest_session',
   BOUND_EMAIL: 'tpt_bound_email',
   OAUTH_SCOPE_VERSION: 'tpt_oauth_scope_version',
+  LOGIN_BACKUP_DONE: 'tpt_login_backup_done',
 };

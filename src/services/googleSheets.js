@@ -28,6 +28,7 @@ import {
   bindSpreadsheet,
   unbindSpreadsheet,
 } from '../utils/helpers';
+import { gapiCall } from '../utils/gapi';
 import {
   createSpreadsheet,
   ensureSheetStructure,
@@ -147,6 +148,9 @@ export function parseApiError(error) {
   const raw = String(error?.message || '');
   if (/popup_closed|popup_blocked|access_denied/i.test(raw)) {
     return 'Google sign-in was blocked. On a phone use Chrome or Safari, allow pop-ups, then sign in again.';
+  }
+  if (/catch is not a function/i.test(raw)) {
+    return 'Google on this phone returned an incomplete response. Settings → Appearance → Clear cache, then sign in again in Chrome or Safari.';
   }
   if (/Failed to fetch|NetworkError|Load failed|Timed out/i.test(raw)) {
     return 'Could not reach Google. Check mobile data/Wi‑Fi, then Settings → Appearance → Clear cache, and retry. Avoid in-app browsers (WhatsApp/Instagram).';
@@ -1234,17 +1238,17 @@ export async function getDashboardData() {
 
     let ranges;
     try {
-      const response = await window.gapi.client.sheets.spreadsheets.values.batchGet({
+      const response = await gapiCall(window.gapi.client.sheets.spreadsheets.values.batchGet({
         spreadsheetId,
         ranges: rangesWithMisc,
-      });
+      }));
       ranges = response.result.valueRanges || [];
     } catch (err) {
       if (isPermissionError(err)) throw err;
-      const response = await window.gapi.client.sheets.spreadsheets.values.batchGet({
+      const response = await gapiCall(window.gapi.client.sheets.spreadsheets.values.batchGet({
         spreadsheetId,
         ranges: coreRanges,
-      });
+      }));
       ranges = response.result.valueRanges || [];
     }
     const parseMisc = (rows) => (rows || []).map(row => ({

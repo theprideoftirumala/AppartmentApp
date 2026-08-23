@@ -22,13 +22,15 @@ graph TD
         SVC_SHEETS["googleSheets.js\n(CRUD)"]
         SVC_DRIVE["googleDrive.js\n(files + backups)"]
         SVC_PDF["pdfExport.js\n(jsPDF)"]
+        SVC_ACT["activityFunds.js\n(optional named funds)"]
+        OCR["receiptOcr.js\n(Tesseract on-device)"]
         LS[("localStorage\ncache + session")]
     end
 
     subgraph Google["☁️ Google Cloud"]
         OAUTH["Google Identity\nServices (OAuth 2.0)"]
-        SHEETS["Google Sheets API v4\n(TPT-MaintenanceTracker)"]
-        DRIVE["Google Drive API v3\n(files + backups)"]
+        SHEETS["Google Sheets API v4\n(society + activity workbooks)"]
+        DRIVE["Google Drive API v3\n(receipts, backups, activity-funds)"]
     end
 
     UI --> AUTH_CTX
@@ -36,12 +38,16 @@ graph TD
     AUTH_CTX --> SVC_AUTH
     APP_CTX --> SVC_SHEETS
     APP_CTX --> SVC_DRIVE
+    UI --> SVC_ACT
+    UI --> OCR
     SVC_AUTH <--> OAUTH
     SVC_SHEETS <--> SHEETS
+    SVC_ACT <--> SHEETS
     SVC_DRIVE <--> DRIVE
     SVC_AUTH --> LS
     APP_CTX --> LS
     SVC_PDF --> UI
+    AUTH_CTX -.->|"Owner sign-in only"| DRIVE
 ```
 
 ---
@@ -161,6 +167,7 @@ graph TD
     PR --> MAINT["Maintenance\n(/maintenance)"]
     PR --> EXP["Expenses\n(/expenses)"]
     PR --> REP["Reports\n(/reports)"]
+    PR --> ACT["Activity Funds\n(/activities)"]
     PR --> REM["Reminders\n(/reminders)"]
     PR --> CONT["Emergency Contacts\n(/contacts)"]
     PR --> SETT["Settings\n(/settings)"]

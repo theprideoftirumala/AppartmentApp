@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, Search, Trash2, ExternalLink, Receipt, Mic, Square } from 'lucide-react';
+import { Plus, Search, Trash2, ExternalLink, Receipt, Mic, Square, Camera } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
 import { getExpenses, addExpenses, deleteExpense, addAuditLog } from '../services/googleSheets';
@@ -12,6 +12,7 @@ import { uploadReceipt } from '../services/googleDrive';
 import { formatCurrency, formatDate, getCurrentMonthLabel, getCurrentYearMonth, getFiscalMonthOptions } from '../utils/helpers';
 import { EXPENSE_CATEGORIES, PAYMENT_MODES, FEATURES } from '../config/constants';
 import { createSpeechRecognizer, parseExpensesFromSpeech, speechSupported } from '../utils/voiceExpense';
+import { parseReceiptText, recognizeReceiptImage } from '../utils/receiptOcr';
 import Modal from '../components/common/Modal';
 import FileUpload from '../components/common/FileUpload';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -262,9 +263,12 @@ function AddExpenseModal({ isOpen, onClose, onSave, saving }) {
   const [files, setFiles] = useState([]);
   const [listening, setListening] = useState(false);
   const [voiceHint, setVoiceHint] = useState('');
+  const [scanning, setScanning] = useState(false);
+  const cameraRef = useRef(null);
   const recognizerRef = useRef(null);
   const monthOptions = getFiscalMonthOptions();
   const canVoice = FEATURES.VOICE_EXPENSES && speechSupported();
+  const canCamera = FEATURES.CAMERA_EXPENSES;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -274,6 +278,7 @@ function AddExpenseModal({ isOpen, onClose, onSave, saving }) {
     setFiles([]);
     setListening(false);
     setVoiceHint('');
+    setScanning(false);
   }, [isOpen]);
 
   const handleVoice = () => {
@@ -307,6 +312,30 @@ function AddExpenseModal({ isOpen, onClose, onSave, saving }) {
     rec.start();
   };
 
+  const handleReceiptScan = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setFiles([file]);
+    setScanning(true);
+    setVoiceHint('Reading the receipt on this device. Nothing is uploaded for OCR.');
+    try {
+      const text = await recognizeReceiptImage(file);
+      const parsed = parseReceiptText(text, EXPENSE_CATEGORIES);
+      if (parsed.amount || parsed.description) {
+        setLines([parsed]);
+        if (parsed.date) setDate(parsed.date);
+        setVoiceHint('Filled from the photo. Check every field, then save.');
+      } else {
+        setVoiceHint('Could not read amounts from the photo. Type the details and keep the picture attached.');
+      }
+    } catch {
+      setVoiceHint('Could not read the photo. Type the expense and keep the picture attached.');
+    } finally {
+      setScanning(false);
+    }
+  };
+
   const updateLine = (index, key, value) => {
     setLines((prev) => prev.map((line, i) => (i === index ? { ...line, [key]: value } : line)));
   };
@@ -335,12 +364,28 @@ function AddExpenseModal({ isOpen, onClose, onSave, saving }) {
         <p className="text-muted text-sm">
           Same date and month for this batch. Add as many lines as you need. One optional receipt is attached to every line.
         </p>
-        {canVoice && (
+        {(canVoice || canCamera) && (
           <div className="voice-expense-bar">
-            <button type="button" className={`btn ${listening ? 'btn-danger' : 'btn-secondary'}`} onClick={handleVoice}>
-              {listening ? <Square size={16} /> : <Mic size={16} />}
-              {listening ? 'Listening…' : 'Fill with voice'}
-            </button>
+            {canVoice && (
+              <button type="button" className={`btn ${listening ? 'btn-danger' : 'btn-secondary'}`} onClick={handleVoice}>
+                {listening ? <Square size={16} /> : <Mic size={16} />}
+                {listening ? 'Listening…' : 'Fill with voice'}
+              </button>
+            )}
+            {canCamera && (
+              <button type="button" className="btn btn-secondary" disabled={scanning} onClick={() => cameraRef.current?.click()}>
+                <Camera size={16} />
+                {scanning ? 'Reading photo…' : 'Fill from camera'}
+              </button>
+            )}
+            <input
+              ref={cameraRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="sr-only"
+              onChange={handleReceiptScan}
+            />
             {voiceHint && <p className="text-sm text-muted">{voiceHint}</p>}
           </div>
         )}

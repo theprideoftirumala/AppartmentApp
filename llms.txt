@@ -13,7 +13,10 @@ The Pride of Tirumala (TPT) Apartment Expense Tracker — a Progressive Web App 
 - Google Drive API v3 (file storage for receipts and backups)
 - Google Identity Services (OAuth 2.0 authentication)
 - jsPDF (client-side PDF report generation)
+- Tesseract.js (on-device receipt OCR; no cloud)
+- Web Speech API (on-device voice fill)
 - vite-plugin-pwa (service worker for offline support)
+- Vitest (unit tests)
 - Vanilla CSS with custom properties (design system)
 - Lucide React (icon library)
 - React Router v6 with HashRouter (routing)
@@ -49,8 +52,11 @@ Policy helpers live in `src/config/accessPolicy.js` and must be reused rather th
 - `src/services/googleDrive.js` — File upload, sharing, society-sheet discovery
 - `src/services/sheetSetup.js` — Create workbook (founding owner only); upgrades formulas / Pending Dues
 - `src/services/sheetFormulas.js` — Layman-readable Sheets formulas (Still Due, surplus/deficit, pending lookup)
-- `src/services/pdfExport.js` — Monthly report PDF (₹ glyph + masked emails/phones)
-- `src/contexts/AuthContext.jsx` — Auth state; fail-closed Access Denied for non-members
+- `src/services/pdfExport.js` — Monthly + activity PDFs (declare summary cards before cardWidth)
+- `src/services/activityFunds.js` — Optional named funds; one Drive spreadsheet per activity, reused by name
+- `src/utils/gapi.js` — Wrap gapi thenables (`Promise.resolve`) so `.catch` works on phones
+- `src/utils/receiptOcr.js` — Local Tesseract; user must review before save
+- `src/contexts/AuthContext.jsx` — Auth state; Owner login triggers a Drive backup once per session
 - `src/contexts/AppContext.jsx` — Global app state, toast notifications
 - `src/pages/Dashboard.jsx` — Main financial dashboard
 - `src/pages/Settings.jsx` — Configuration, user management, backups

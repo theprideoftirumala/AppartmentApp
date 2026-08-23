@@ -9,8 +9,9 @@
 
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { initGoogleAuth, signIn as googleSignIn, signOut as googleSignOut } from '../services/googleAuth';
-import { STORAGE_KEYS } from '../config/constants';
+import { FEATURES, STORAGE_KEYS } from '../config/constants';
 import { getAccessControl, resolveSpreadsheetForUser, isPermissionError } from '../services/googleSheets';
+import { createBackup } from '../services/googleDrive';
 import { effectiveAppRole, isFoundingOwner } from '../config/accessPolicy';
 import { normalizeEmail, parseJsonSafe, isValidSpreadsheetId } from '../utils/helpers';
 
@@ -32,6 +33,16 @@ async function fetchAccessEntry(email) {
 
 function roleOrDeny(email, entry) {
   return effectiveAppRole(email, entry);
+}
+
+function queueOwnerLoginBackup() {
+  if (sessionStorage.getItem(STORAGE_KEYS.LOGIN_BACKUP_DONE) === '1') return;
+  if (!localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID)) return;
+  sessionStorage.setItem(STORAGE_KEYS.LOGIN_BACKUP_DONE, '1');
+  createBackup().catch((err) => {
+    console.warn('Login backup skipped', err);
+    sessionStorage.removeItem(STORAGE_KEYS.LOGIN_BACKUP_DONE);
+  });
 }
 
 export function AuthProvider({ children }) {
@@ -107,6 +118,7 @@ export function AuthProvider({ children }) {
     try {
       const userData = await googleSignIn();
       const setupComplete = localStorage.getItem(STORAGE_KEYS.SETUP_COMPLETE) === 'true';
+      let entry = null;
       if (setupComplete) {
         const sheetId = await resolveSpreadsheetForUser(userData.email);
         if (!sheetId) {
@@ -117,7 +129,6 @@ export function AuthProvider({ children }) {
           }
           return userData;
         }
-        let entry = null;
         try {
           entry = await fetchAccessEntry(userData.email);
         } catch (aclErr) {
@@ -140,6 +151,10 @@ export function AuthProvider({ children }) {
         }
       }
       setUser(userData);
+      const role = setupComplete ? roleOrDeny(userData.email, entry) : null;
+      if (FEATURES.LOGIN_BACKUP && role === 'Owner') {
+        queueOwnerLoginBackup();
+      }
       return userData;
     } catch (err) {
       if (!err.message?.startsWith('ACCESS_DENIED')) setError(err.message);
@@ -149,6 +164,7 @@ export function AuthProvider({ children }) {
 
   const signOut = useCallback(() => {
     googleSignOut();
+    sessionStorage.removeItem(STORAGE_KEYS.LOGIN_BACKUP_DONE);
     setUser(null);
     setAccessDenied(false);
     setError(null);

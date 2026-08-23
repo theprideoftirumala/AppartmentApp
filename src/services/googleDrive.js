@@ -3,7 +3,8 @@
  * Handles folder creation, file uploads, backups, and sharing
  */
 
-import { DRIVE_ROOT_FOLDER, DRIVE_EXPENSES_FOLDER, DRIVE_BACKUPS_FOLDER, STORAGE_KEYS, SHEET_FILE_NAME } from '../config/constants';
+import { DRIVE_ROOT_FOLDER, DRIVE_EXPENSES_FOLDER, DRIVE_BACKUPS_FOLDER, DRIVE_ACTIVITY_FOLDER, STORAGE_KEYS, SHEET_FILE_NAME } from '../config/constants';
+import { gapiCall } from '../utils/gapi';
 import { FOUNDING_OWNER_EMAIL, isFoundingOwner } from '../config/accessPolicy';
 import { ensureValidToken, getCurrentUser } from './googleAuth';
 import { escapeDriveQuery, isAllowedReceiptFile, isValidSpreadsheetId, normalizeEmail } from '../utils/helpers';
@@ -222,10 +223,15 @@ export async function setupFolderStructure() {
       backupsId = await createFolder(DRIVE_BACKUPS_FOLDER, rootId);
     }
 
+    let activityId = await findFolder(DRIVE_ACTIVITY_FOLDER, rootId);
+    if (!activityId) {
+      activityId = await createFolder(DRIVE_ACTIVITY_FOLDER, rootId);
+    }
+
     // Save root folder ID
     localStorage.setItem(STORAGE_KEYS.ROOT_FOLDER_ID, rootId);
 
-    return { rootId, expensesId, backupsId };
+    return { rootId, expensesId, backupsId, activityId };
   });
 }
 
@@ -247,6 +253,19 @@ export async function getMonthlyFolder(yearMonth) {
     }
 
     return monthlyId;
+  });
+}
+
+/** Folder that holds one Google Sheet per optional activity fund. */
+export async function getActivityFolder() {
+  return withAuth(async () => {
+    const rootId = getRootFolderId();
+    if (!rootId) throw new Error('Root folder not set up');
+    let folderId = await findFolder(DRIVE_ACTIVITY_FOLDER, rootId);
+    if (!folderId) {
+      folderId = await createFolder(DRIVE_ACTIVITY_FOLDER, rootId);
+    }
+    return folderId;
   });
 }
 
@@ -344,8 +363,10 @@ export async function createBackup() {
     const rootId = getRootFolderId();
     if (!isValidSpreadsheetId(spreadsheetId) || !rootId) throw new Error('Setup not complete');
 
-    const backupsId = await findFolder(DRIVE_BACKUPS_FOLDER, rootId);
-    if (!backupsId) throw new Error('Backups folder not found');
+    let backupsId = await findFolder(DRIVE_BACKUPS_FOLDER, rootId);
+    if (!backupsId) {
+      backupsId = await createFolder(DRIVE_BACKUPS_FOLDER, rootId);
+    }
 
     const now = new Date();
     const timestamp = now.toISOString()
@@ -354,14 +375,14 @@ export async function createBackup() {
       .slice(0, 15);
     const backupName = `TPT-MaintenanceTracker_${timestamp}`;
 
-    const response = await window.gapi.client.drive.files.copy({
+    const response = await gapiCall(window.gapi.client.drive.files.copy({
       fileId: spreadsheetId,
       resource: {
         name: backupName,
         parents: [backupsId],
       },
       fields: 'id, name, createdTime',
-    });
+    }));
 
     return {
       id: response.result.id,
@@ -426,6 +447,18 @@ async function setFilePermission(fileId, email, role) {
     resource: { type: 'user', role, emailAddress: address },
     sendNotificationEmail: false,
     supportsAllDrives: true,
+  });
+}
+
+/**
+ * Share the spreadsheet with a user
+ * @param {string} email - Email to share with
+ * @param {string} role - 'reader' or 'writer'
+ */
+export async function shareFile(fileId, email, role = 'reader') {
+  return withAuth(async () => {
+    if (!fileId) throw new Error('File is missing');
+    await setFilePermission(fileId, email, role);
   });
 }
 

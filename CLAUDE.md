@@ -25,21 +25,20 @@
 
 ```
 src/
-├── config/constants.js     # All configurable values
-├── config/accessPolicy.js  # Founding owner, Reader default, grant rules
+├── config/constants.js      # Feature flags, disclaimer, sheet names
+├── config/accessPolicy.js   # Founding owner, Reader default, grant rules
 ├── services/
-│   ├── googleAuth.js       # OAuth 2.0 via GIS
-│   ├── googleSheets.js     # All CRUD operations
-│   ├── googleDrive.js      # File/folder/sharing + society sheet discovery
-│   ├── sheetSetup.js       # Create workbook (founding owner only)
-│   └── pdfExport.js        # Monthly report PDF generation
-├── contexts/
-│   ├── AuthContext.jsx      # Google auth state
-│   └── AppContext.jsx       # Global app state, toasts
-├── components/common/       # Reusable components
-├── pages/                   # Route pages
-├── styles/                  # CSS design system
-└── utils/helpers.js         # Formatters, validators
+│   ├── googleAuth.js        # OAuth 2.0 via GIS
+│   ├── googleSheets.js      # Society workbook CRUD
+│   ├── googleDrive.js       # Receipts, backups, activity folder
+│   ├── activityFunds.js     # One reusable sheet per optional activity
+│   ├── sheetSetup.js        # Create/upgrade society workbook
+│   └── pdfExport.js         # Monthly + activity PDFs
+├── pages/ActivityFunds.jsx  # Start / view optional activity funds
+├── utils/gapi.js            # Promise.resolve wrapper for gapi thenables
+├── utils/voiceExpense.js    # On-device speech parse
+├── utils/receiptOcr.js      # On-device Tesseract parse
+└── utils/appCache.js        # Clear local + service-worker cache
 ```
 
 ## Google Sheet Structure (source of truth)
@@ -61,6 +60,9 @@ The workbook is designed so a treasurer can understand every number without open
 13. **Monthly Summary** — Live formulas: collection, misc, expenses, net, cumulative, %, pending flats, SURPLUS/DEFICIT
 14. **Watchman Details** — Staff record
 15. **Sample Data** — Copy-paste examples; does not affect dashboard totals
+16. **Activity Funds** — Registry of optional named collections. Each activity also has its own Google Spreadsheet under `activity-funds/` and is reused if the same name is started again.
+
+Late fee and the old Misc Funds tab stay in the workbook for history. The app no longer collects them. Use **Activity Funds** for Ganesh, motor, or similar optional collections.
 
 Setup can create a **sample** workbook (live tabs pre-filled for testing) or a **fresh** production workbook (live tabs empty). After testing, Settings → Create Fresh Production Sheet archives the sample file in Drive.
 
@@ -72,9 +74,14 @@ TPT-AppartmentApp/
 ├── expenses-evidence/
 │   ├── 2026-09/
 │   └── ...
+├── activity-funds/
+│   ├── TPT-Activity-ganesh-festival
+│   └── TPT-Activity-new-motor-fund
 └── backups/
     └── TPT-MaintenanceTracker_YYYYMMDD_HHMMSS
 ```
+
+Owner Google sign-in copies the society sheet into `backups/`. Readers and Guest PIN sessions do not.
 
 ## Configuration
 

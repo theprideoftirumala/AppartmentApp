@@ -6,14 +6,17 @@ describe('feature flags', () => {
     expect(FEATURES.LATE_FEE).toBe(false);
     expect(FEATURES.MISC_FUNDS).toBe(false);
     expect(FEATURES.VOICE_EXPENSES).toBe(true);
+    expect(FEATURES.CAMERA_EXPENSES).toBe(true);
+    expect(FEATURES.ACTIVITY_FUNDS).toBe(true);
   });
 });
 
 describe('society disclaimer', () => {
-  it('asks owners to cooperate and not complain about delays', () => {
-    expect(SOCIETY_DISCLAIMER).toMatch(/not responsible/i);
-    expect(SOCIETY_DISCLAIMER).toMatch(/cooperate/i);
-    expect(SOCIETY_DISCLAIMER).toMatch(/convenience/i);
+  it('is cooperative and does not blame members', () => {
+    expect(SOCIETY_DISCLAIMER).toMatch(/volunteers/i);
+    expect(SOCIETY_DISCLAIMER).toMatch(/support one another/i);
+    expect(SOCIETY_DISCLAIMER).not.toMatch(/do not complain/i);
+    expect(SOCIETY_DISCLAIMER).not.toMatch(/not responsible for anything/i);
   });
 });
 

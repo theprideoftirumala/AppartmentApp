@@ -37,6 +37,7 @@ import Reminders from './pages/Reminders';
 import EmergencyContacts from './pages/EmergencyContacts';
 import Settings from './pages/Settings';
 import Help from './pages/Help';
+import ActivityFunds from './pages/ActivityFunds';
 
 function AccessBootstrap() {
   const { user, isGuest, setAccessDenied } = useAuth();
@@ -144,6 +145,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <Reports />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/activities"
+          element={
+            <ProtectedRoute>
+              <ActivityFunds />
             </ProtectedRoute>
           }
         />

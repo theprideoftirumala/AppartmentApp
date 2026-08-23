@@ -6,7 +6,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Building2, Receipt, FileBarChart,
   Bell, Phone, Settings, LogOut, ExternalLink,
-  ChevronLeft, Shield, HelpCircle
+  ChevronLeft, Shield, HelpCircle, PartyPopper
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useApp } from '../../contexts/AppContext';
@@ -19,6 +19,7 @@ const navItems = [
   { to: '/maintenance', icon: Building2, label: 'Maintenance' },
   { to: '/expenses', icon: Receipt, label: 'Expenses' },
   { to: '/reports', icon: FileBarChart, label: 'Reports' },
+  { to: '/activities', icon: PartyPopper, label: 'Activity Funds' },
   { to: '/reminders', icon: Bell, label: 'Reminders' },
   { to: '/contacts', icon: Phone, label: 'Emergency' },
   { to: '/settings', icon: Settings, label: 'Settings' },

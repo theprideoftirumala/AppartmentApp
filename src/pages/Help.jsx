@@ -67,10 +67,16 @@ Select the correct category (Watchman Salary, Electricity, Lift Maintenance, etc
 Upload a bill/receipt photo if available — it gets stored in Google Drive and is attached to every line in that batch.`,
             },
             {
-                heading: '4. Add expenses by voice (optional)',
-                text: `On Expenses → Add expenses, tap Fill with voice (Chrome or Safari).
-Say the amount and what it is for, for example: "watchman salary 12000 and electricity 2400".
-Review every line, then tap Save. Voice only fills the form — it does not submit by itself.`,
+                heading: '4. Add expenses by voice or camera (optional)',
+                text: `On Expenses → Add expenses, tap Fill with voice (Chrome or Safari) or Fill from camera.
+Voice example: "watchman salary 12000 and electricity 2400".
+Camera reads the bill on this phone only (Tesseract, no cloud). Review every line, then tap Save. Nothing is submitted until you confirm.`,
+            },
+            {
+                heading: '4b. Optional activity funds',
+                text: `Use Activity Funds for Ganesh festival, a new motor, or any named collection that not every flat joins.
+An Owner starts the activity (the name is configurable). The app creates or reuses one Google Sheet for that activity and lists it so you can open it later.
+Record who joined, what they paid, and expenses from that fund. Download a PDF from the activity view.`,
             },
             {
                 heading: '5. End of Month — Generate Report',
@@ -128,7 +134,8 @@ This takes effect from the next time you initialize a new month.`,
                 heading: 'Lost access / new device',
                 text: `Sign in with Google. Residents are connected to the shared TPT-MaintenanceTracker (not a new file).
 Only ${OWNER_EMAIL_MASKED} sees Setup and may create the workbook. Others who are not on Access Control see Access Denied.
-If the phone shows a Google API error, open Chrome or Safari (not WhatsApp/Instagram), allow pop-ups, then Settings → Appearance → Clear cache.`,
+If the phone shows a Google API error, open Chrome or Safari (not WhatsApp/Instagram), allow pop-ups, then Settings → Appearance → Clear cache.
+Each Owner Google sign-in takes a Drive backup of the society sheet. Readers and Guest PIN logins do not.`,
             },
         ],
     },
