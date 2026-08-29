@@ -62,6 +62,7 @@ Policy helpers live in `src/config/accessPolicy.js` and must be reused rather th
 - `src/config/accessPolicy.js` — Founding owner, default Reader, grant rules
 - `src/config/constants.js` — Sheet name, aliases, feature flags, OAuth scopes. No LATE_FEE / LATE_FEE_AFTER_DAY / EMERGENCY_RESERVE defaults.
 - `src/utils/setupFlow.js` — `shouldOfferSheetCreation` is always false
+- `src/utils/sheetRangeError.js` — Detect missing-tab Sheets errors so Dashboard can add app tabs and retry
 - `src/utils/legacySheetImport.js` — Parse Summary / Exp-Detailed into app rows (no names, no late fees, through Aug 2026)
 - `src/data/handoverLedger.js` — Nov 2020–Aug 2026 totals (no owner names)
 - `src/services/googleAuth.js` — OAuth 2.0 authentication (re-consent when scopes bump)

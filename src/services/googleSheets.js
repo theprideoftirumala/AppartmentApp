@@ -4,8 +4,9 @@
  * Google Sheet is the single source of truth / database
  */
 
-import { SHEET_NAMES, SHEET_HEADERS, DEFAULT_CONFIG, CONFIG_DESCRIPTIONS, FLATS, STORAGE_KEYS, isSocietySheetName, isGoogleSpreadsheetMime } from '../config/constants';
+import { SHEET_NAMES, SHEET_HEADERS, DEFAULT_CONFIG, CONFIG_DESCRIPTIONS, FLATS, STORAGE_KEYS, SHEET_FILE_NAME, isSocietySheetName, isGoogleSpreadsheetMime } from '../config/constants';
 import { isLiveAppMonth } from '../utils/legacySheetImport';
+import { isMissingSheetRangeError } from '../utils/sheetRangeError';
 import { duplicateExpenseMessage, firstDuplicateExpense } from '../utils/expenseDuplicate';
 import {
   FOUNDING_OWNER_EMAIL,
@@ -137,6 +138,10 @@ export function parseApiError(error) {
       return 'Google Sheets API is not enabled for this project. Enable it in Google Cloud Console: https://console.cloud.google.com/apis/library/sheets.googleapis.com, wait 5-10 minutes, then try again.';
     }
 
+    if (/Unable to parse range/i.test(msg)) {
+      return 'The society workbook is missing an app tab (such as Configuration). Sign in as the founding owner and click Retry — the app will add the missing tabs beside the history tabs. If the file is still Excel, convert it in Drive first (Open with Google Sheets → Save as Google Sheets).';
+    }
+
     switch (code) {
       case 400: return `Bad request: ${message}`;
       case 401: return 'Session expired. Please sign in again.';
@@ -159,6 +164,25 @@ export function parseApiError(error) {
     return 'Could not reach Google. Check mobile data/Wi‑Fi, then Settings → Appearance → Clear cache, and retry. Avoid in-app browsers (WhatsApp/Instagram).';
   }
   return raw || 'An unexpected error occurred. Please try again.';
+}
+
+async function addMissingAppTabsOrThrow(spreadsheetId) {
+  const meta = await getSpreadsheetFileMeta(spreadsheetId);
+  if (meta?.mimeType && !isGoogleSpreadsheetMime(meta.mimeType)) {
+    throw new Error(
+      `This file is still Excel. In Drive: Open with Google Sheets → File → Save as Google Sheets. Keep the name ${SHEET_FILE_NAME}, then Reconnect society sheet.`,
+    );
+  }
+  try {
+    await ensureSheetStructure(spreadsheetId);
+  } catch (setupErr) {
+    if (isPermissionError(setupErr)) {
+      throw new Error(
+        'The society workbook is missing app tabs (Configuration, Maintenance, …). Ask the founding owner to open the app once or use Settings → Backups → Refresh sheet layout.',
+      );
+    }
+    throw setupErr;
+  }
 }
 
 export function isPermissionError(error) {
@@ -229,24 +253,33 @@ export async function getConfiguration() {
   return withAuth(async () => {
     const spreadsheetId = getSpreadsheetId();
     if (!spreadsheetId) throw new Error('Spreadsheet is not connected.');
-    const response = await window.gapi.client.sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: `'${SHEET_NAMES.CONFIGURATION}'!A2:C100`,
-    });
 
-    const rows = response.result.values || [];
-    const config = {};
-    rows.forEach(([key, value]) => {
-      if (key) {
-        // Convert numeric strings to numbers
-        const numVal = Number(value);
-        config[key] = isNaN(numVal) ? value : numVal;
-      }
-    });
+    const readConfig = async () => {
+      const response = await window.gapi.client.sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: `'${SHEET_NAMES.CONFIGURATION}'!A2:C100`,
+      });
 
-    // Cache config
-    localStorage.setItem(STORAGE_KEYS.CACHED_CONFIG, JSON.stringify(config));
-    return { ...DEFAULT_CONFIG, ...config };
+      const rows = response.result.values || [];
+      const config = {};
+      rows.forEach(([key, value]) => {
+        if (key) {
+          const numVal = Number(value);
+          config[key] = isNaN(numVal) ? value : numVal;
+        }
+      });
+
+      localStorage.setItem(STORAGE_KEYS.CACHED_CONFIG, JSON.stringify(config));
+      return { ...DEFAULT_CONFIG, ...config };
+    };
+
+    try {
+      return await readConfig();
+    } catch (err) {
+      if (isPermissionError(err) || !isMissingSheetRangeError(err)) throw err;
+      await addMissingAppTabsOrThrow(spreadsheetId);
+      return readConfig();
+    }
   });
 }
 
@@ -1219,14 +1252,21 @@ export async function updateMonthlySummary(month) {
 export async function getMonthlySummaries() {
   return withAuth(async () => {
     const spreadsheetId = getSpreadsheetId();
-    const response = await window.gapi.client.sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: `'${SHEET_NAMES.MONTHLY_SUMMARY}'!A2:I100`,
-      valueRenderOption: 'UNFORMATTED_VALUE',
-    });
-
-    const rows = response.result.values || [];
-    return rows.map(parseMonthlySummaryRow);
+    const readSummaries = async () => {
+      const response = await window.gapi.client.sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: `'${SHEET_NAMES.MONTHLY_SUMMARY}'!A2:I100`,
+        valueRenderOption: 'UNFORMATTED_VALUE',
+      });
+      return (response.result.values || []).map(parseMonthlySummaryRow);
+    };
+    try {
+      return await readSummaries();
+    } catch (err) {
+      if (isPermissionError(err) || !isMissingSheetRangeError(err)) throw err;
+      await addMissingAppTabsOrThrow(spreadsheetId);
+      return readSummaries();
+    }
   });
 }
 
@@ -1261,20 +1301,30 @@ export async function getDashboardData() {
       `'${SHEET_NAMES.MISC_FUNDS}'!A2:I2000`,
     ];
 
+    const batchGetRanges = async (rangeList) => {
+      const response = await gapiCall(window.gapi.client.sheets.spreadsheets.values.batchGet({
+        spreadsheetId,
+        ranges: rangeList,
+      }));
+      return response.result.valueRanges || [];
+    };
+
     let ranges;
     try {
-      const response = await gapiCall(window.gapi.client.sheets.spreadsheets.values.batchGet({
-        spreadsheetId,
-        ranges: rangesWithMisc,
-      }));
-      ranges = response.result.valueRanges || [];
+      ranges = await batchGetRanges(rangesWithMisc);
     } catch (err) {
       if (isPermissionError(err)) throw err;
-      const response = await gapiCall(window.gapi.client.sheets.spreadsheets.values.batchGet({
-        spreadsheetId,
-        ranges: coreRanges,
-      }));
-      ranges = response.result.valueRanges || [];
+      if (isMissingSheetRangeError(err)) {
+        await addMissingAppTabsOrThrow(spreadsheetId);
+        try {
+          ranges = await batchGetRanges(rangesWithMisc);
+        } catch (retryErr) {
+          if (isPermissionError(retryErr)) throw retryErr;
+          ranges = await batchGetRanges(coreRanges);
+        }
+      } else {
+        ranges = await batchGetRanges(coreRanges);
+      }
     }
     const parseMisc = (rows) => (rows || []).map(row => ({
       id: row[0] || '',
