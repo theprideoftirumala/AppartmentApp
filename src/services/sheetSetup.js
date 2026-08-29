@@ -511,6 +511,18 @@ async function migrateConfigValues(spreadsheetId, availableBalance = null) {
       }
     }
   });
+  const hasBalanceKey = (response.result.values || []).some((row) => row[0] === 'AVAILABLE_BALANCE');
+  if (!hasBalanceKey && Number.isFinite(availableBalance) && availableBalance > 0) {
+    await window.gapi.client.sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: `'${SHEET_NAMES.CONFIGURATION}'!A:C`,
+      valueInputOption: 'RAW',
+      insertDataOption: 'INSERT_ROWS',
+      resource: {
+        values: [['AVAILABLE_BALANCE', String(availableBalance), CONFIG_DESCRIPTIONS.AVAILABLE_BALANCE || '']],
+      },
+    });
+  }
   if (updates.length) await writeValues(spreadsheetId, updates);
 }
 

@@ -39,7 +39,7 @@ There is **one society workbook** named `The Pride of Tirumala-APP` and **one fo
 - A Drive copy is taken before first Setup and on every Google sign-in (not Guest PIN)
 - Use the existing The Pride of Tirumala-APP Google Sheet. Do not create another society file.
 - Collected maintenance comes from the Summary tab grid (flat × month, including grouped columns). Founding-owner Dashboard/Maintenance load writes those amounts to Maintenance and refreshes Monthly Summary (the collection sheet). Owner names stay on the sheet only.
-- Available balance is the green Summary cell, copied into Configuration. Surplus/deficit and late-fee rows are ignored. Sep 2026+ is live only.
+- Available balance is the green Summary cell, copied into Configuration. It is not a `DEFAULT_CONFIG` number. Surplus/deficit and late-fee rows are ignored. Sep 2026+ is live only.
 - `public/sheet-config.json` holds the published spreadsheet ID.
 - Sample live-tab data is compile-time off (`FEATURES.SAMPLE_DATA`)
 
@@ -63,11 +63,12 @@ Policy helpers live in `src/config/accessPolicy.js` and must be reused rather th
 ## Key Files
 
 - `src/config/accessPolicy.js` — Founding owner, default Reader, grant rules
-- `src/config/constants.js` — Sheet name, aliases, feature flags, OAuth scopes. No LATE_FEE / LATE_FEE_AFTER_DAY / EMERGENCY_RESERVE defaults.
+- `src/config/constants.js` — Sheet name, aliases, feature flags, OAuth scopes. No LATE_FEE / LATE_FEE_AFTER_DAY / EMERGENCY_RESERVE / AVAILABLE_BALANCE defaults.
 - `src/utils/setupFlow.js` — `shouldOfferSheetCreation` is always false
 - `src/utils/sheetRangeError.js` — Detect missing-tab Sheets errors so Dashboard can add app tabs and retry
 - `src/utils/legacySheetImport.js` — Parse Summary / Exp-Detailed into app rows (no names, no late fees, through Aug 2026)
-- `src/data/handoverLedger.js` — Nov 2020–Aug 2026 totals (no owner names)
+- `src/utils/helpers.js` — `sheetAvailableBalance` reads Configuration (sheet copy of the Summary cell)
+- `src/data/handoverLedger.js` — Nov 2020–Aug 2026 totals (no owner names; not a live balance default)
 - `src/services/googleAuth.js` — OAuth 2.0 authentication (re-consent when scopes bump)
 - `src/services/googleSheets.js` — All CRUD operations (the "backend")
 - `src/services/googleDrive.js` — Discovery of The Pride of Tirumala-APP, backups, sharing

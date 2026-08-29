@@ -27,7 +27,7 @@ export const DISCOVERY_DOCS = [
 // ─── Apartment Configuration ────────────────────────────────────
 export const APP_NAME = 'The Pride of Tirumala';
 export const APP_SHORT_NAME = 'TPT Tracker';
-export const APP_VERSION = '1.8.8';
+export const APP_VERSION = '1.8.9';
 
 /**
  * Bump this when GOOGLE_SCOPES change so existing sessions re-consent.
@@ -72,12 +72,12 @@ export function isSampleDataEnabled(config) {
 export const SOCIETY_DISCLAIMER =
   'These accounts are kept by resident volunteers on behalf of the society, alongside their own work. Figures may be updated as bills arrive. Please bear with us and support one another — we will help as soon as we can. The Google Sheet is the source of truth.';
 
+/** AVAILABLE_BALANCE is not listed here — the app copies the Summary tab green cell. */
 export const DEFAULT_CONFIG = {
   APARTMENT_NAME: 'The Pride of Tirumala',
   MONTHLY_MAINTENANCE: 3000,
   CORPUS_FUND: 0,
   DEFICIT_LAST_YEAR: 0,
-  AVAILABLE_BALANCE: 1712.54,
   FISCAL_YEAR_START: '2020-11',
   TREASURER_FLAT: '401',
   PRESIDENT_FLAT: '102',
@@ -169,7 +169,7 @@ export const CONFIG_DESCRIPTIONS = {
   MONTHLY_MAINTENANCE: 'Monthly maintenance amount each flat pays (₹). Example: 3000',
   CORPUS_FUND: 'One-time corpus fund balance (₹). Edit here; the app reads this value.',
   DEFICIT_LAST_YEAR: 'Do not add an extra opening amount. History from Summary and Exp-Detailed is already in Maintenance and Expenses.',
-  AVAILABLE_BALANCE: 'Green Available balance cell on the Summary tab. The app copies this figure on Refresh sheet layout.',
+  AVAILABLE_BALANCE: 'Copied from the green Available balance cell on the Summary tab. Do not type a fixed number in the app source.',
   APARTMENT_ADDRESS: 'Postal address of the apartment',
   FISCAL_YEAR_START: 'First month on the books as YYYY-MM. History starts 2020-11.',
   TREASURER_FLAT: 'Flat number of the current Treasurer (must match a row in the Flats tab)',

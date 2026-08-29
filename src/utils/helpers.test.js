@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatCurrency, maskIdNumber, maskPhone, sanitizeForSheet } from './helpers';
+import { formatCurrency, maskIdNumber, maskPhone, sanitizeForSheet, sheetAvailableBalance } from './helpers';
 
 describe('sanitizeForSheet', () => {
   it('strips formula prefixes', () => {
@@ -34,5 +34,16 @@ describe('formatCurrency', () => {
   it('formats rupees with the Indian grouping', () => {
     expect(formatCurrency(3000)).toBe('₹3,000');
     expect(formatCurrency(null)).toBe('₹0');
+  });
+});
+
+describe('sheetAvailableBalance', () => {
+  it('reads a finite number from Configuration', () => {
+    expect(sheetAvailableBalance({ AVAILABLE_BALANCE: 1732.54 })).toBe(1732.54);
+  });
+
+  it('returns 0 when the sheet value is missing', () => {
+    expect(sheetAvailableBalance({})).toBe(0);
+    expect(sheetAvailableBalance(undefined)).toBe(0);
   });
 });

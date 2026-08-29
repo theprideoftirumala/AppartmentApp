@@ -63,7 +63,7 @@ All settings are configurable from the app's Settings page or directly from the 
 |---------|---------|-------------|
 | Monthly Maintenance | ₹3,000 | Amount per flat per month |
 | Corpus Fund | ₹0 | Corpus fund balance |
-| Available balance | ₹1,712.54 | Summary tab figure on 29 Aug 2026 |
+| Available balance | (from Summary) | Green Available balance cell on the Summary tab |
 | Treasurer Flat | 401 | Current treasurer |
 | President Flat | 102 | Current president |
 

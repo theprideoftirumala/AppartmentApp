@@ -24,7 +24,7 @@ import {
   getMiscFunds, parseApiError,
 } from '../services/googleSheets';
 import { downloadReport, shareReport } from '../services/pdfExport';
-import { formatCurrency, formatDate, getCurrentMonthLabel, getFiscalMonthOptions, groupExpensesByCategory } from '../utils/helpers';
+import { formatCurrency, formatDate, getCurrentMonthLabel, getFiscalMonthOptions, groupExpensesByCategory, sheetAvailableBalance } from '../utils/helpers';
 import StatusBadge from '../components/common/StatusBadge';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Navbar from '../components/common/Navbar';
@@ -33,9 +33,7 @@ import { isLiveAppMonth } from '../utils/legacySheetImport';
 import { maskEmail, maskEmailsInText } from '../config/accessPolicy';
 
 function monthRunningBalance(netBalance, monthLabel, config) {
-  const snapshot = Number(config?.AVAILABLE_BALANCE);
-  const opening = Number.isFinite(snapshot) ? snapshot : 1712.54;
-  return isLiveAppMonth(monthLabel) ? opening + netBalance : netBalance;
+  return isLiveAppMonth(monthLabel) ? sheetAvailableBalance(config) + netBalance : netBalance;
 }
 
 export default function Reports() {
@@ -415,7 +413,7 @@ export default function Reports() {
                   </div>
                   <div className="report-stat">
                     <span>Available balance (29 Aug 2026)</span>
-                    <strong>{formatCurrency(reportData.config.AVAILABLE_BALANCE || 1712.54)}</strong>
+                    <strong>{formatCurrency(sheetAvailableBalance(reportData.config))}</strong>
                   </div>
                   <div className="report-stat">
                     <span>Activities This Month</span>

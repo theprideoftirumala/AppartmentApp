@@ -135,8 +135,8 @@ They must re-consent Google Drive scopes on first login after this change. Maxim
             },
             {
                 heading: 'Available balance (29 Aug 2026)',
-                text: `The green Available balance cell on the Summary tab is ₹1,712.54. That is the final figure from the old workbook.
-Settings → Configuration → Available balance holds the same number. History months (Nov 2020–Aug 2026) are shown for viewing and PDF export. They do not add on top of this figure. New Sep 2026+ collections and expenses change the running total from ₹1,712.54.`,
+                text: `The green Available balance cell on the Summary tab is the official cash figure. The app copies it into Configuration AVAILABLE_BALANCE — it is not hardcoded in the app.
+Settings → Configuration → Available balance shows that same sheet value (read-only). History months (Nov 2020–Aug 2026) are shown for viewing and PDF export. They do not add on top of this figure. New Sep 2026+ collections and expenses change the running total from the Summary cell.`,
             },
             {
                 heading: 'Changing the monthly maintenance amount',
@@ -163,9 +163,9 @@ Each Google sign-in copies The Pride of Tirumala-APP into Drive/backups. Guest P
             },
             {
                 heading: 'Available balance in the Google Sheet',
-                text: `The official cash figure is the Summary tab Available balance: ₹1,712.54 on 29 Aug 2026.
+                text: `The official cash figure is the green Available balance cell on the Summary tab. The app copies it into Configuration.
 Monthly Summary "Net Balance" is that month's collection minus expenses only. It is not a second surplus/deficit to add on.
-AVAILABLE_BALANCE in Configuration is that same 29 Aug figure. DEFICIT_LAST_YEAR stays 0 so history is not counted twice.`,
+AVAILABLE_BALANCE in Configuration is that same Summary figure. DEFICIT_LAST_YEAR stays 0 so history is not counted twice.`,
             },
             {
                 heading: 'Read-only access for members',
@@ -216,7 +216,7 @@ The next due date is automatically scheduled based on the frequency (e.g., Month
             },
             {
                 heading: '2. Configuration Tab — Full Key Reference',
-                text: `STRUCTURE: Column A = Key name, Column B = Value, Column C = Description\nDo NOT edit Column A (key names). Only edit Column B values.\n\nKEY REFERENCE:\n\nAPARTMENT_NAME\n  Value example: "The Pride of Tirumala"\n  Used on: PDF reports, app header\n\nMONTHLY_MAINTENANCE\n  Value example: 3000\n  Used for: Amount Due when initializing a month. Change here to affect future months.\n\nCORPUS_FUND\n  Value example: 0 or 50000\n  Used for: One-time corpus. Added to the opening balance calculation.\n  Note: Read-only in the app. Edit directly here.\n\nAVAILABLE_BALANCE\n  Value example: 1712.54\n  Used for: The Summary tab Available balance on 29 Aug 2026. This is the final figure. History months do not add on top of it.\n\nDEFICIT_LAST_YEAR\n  Value: 0\n  Used for: Kept at zero so imported history is not double-counted.\n\nFISCAL_YEAR_START\n  Value example: 2020-11\n  Used for: First month in the app dropdowns (November 2020). Not September 2026.\n\nTREASURER_FLAT\n  Value example: 401\n  Used for: Displayed on PDF report footers\n\nPRESIDENT_FLAT\n  Value example: 102\n  Used for: Displayed on PDF report footers\n\nMAX_USERS / MAX_OWNERS\n  Values: 20 / 2 (enforced by the app's Access Control screen)`,
+                text: `STRUCTURE: Column A = Key name, Column B = Value, Column C = Description\nDo NOT edit Column A (key names). Only edit Column B values.\n\nKEY REFERENCE:\n\nAPARTMENT_NAME\n  Value example: "The Pride of Tirumala"\n  Used on: PDF reports, app header\n\nMONTHLY_MAINTENANCE\n  Value example: 3000\n  Used for: Amount Due when initializing a month. Change here to affect future months.\n\nCORPUS_FUND\n  Value example: 0 or 50000\n  Used for: One-time corpus. Added to the opening balance calculation.\n  Note: Read-only in the app. Edit directly here.\n\nAVAILABLE_BALANCE\n  Value: copied from the green Available balance cell on Summary (not a number typed in the app)\n  Used for: Opening cash figure. History months do not add on top of it.\n\nDEFICIT_LAST_YEAR\n  Value: 0\n  Used for: Kept at zero so imported history is not double-counted.\n\nFISCAL_YEAR_START\n  Value example: 2020-11\n  Used for: First month in the app dropdowns (November 2020). Not September 2026.\n\nTREASURER_FLAT\n  Value example: 401\n  Used for: Displayed on PDF report footers\n\nPRESIDENT_FLAT\n  Value example: 102\n  Used for: Displayed on PDF report footers\n\nMAX_USERS / MAX_OWNERS\n  Values: 20 / 2 (enforced by the app's Access Control screen)`,
             },
             {
                 heading: '3. Flats Tab — Flat Owner Details',
@@ -232,7 +232,7 @@ The next due date is automatically scheduled based on the frequency (e.g., Month
             },
             {
                 heading: '6. Monthly Summary Tab — Financial Overview',
-                text: `COLUMNS: Month | Collection (Rs.) | Misc Funds (Rs.) | Expenses (Rs.) | Net Balance (Rs.) | Cumulative (Rs.) | Collection % | Pending Flats | Status\n\nTHIS TAB IS CALCULATED BY THE APP — click "Sync Sheet" in Reports to update it.\n\nUNDERSTANDING EACH COLUMN:\n\nNet Balance = Collection + Misc Funds - Expenses for that month only\n  - This is not a second surplus/deficit to add to Available balance\n\nAvailable balance (29 Aug 2026) = ₹1,712.54 from the Summary tab\n  - History months are for viewing and export\n  - Sep 2026+ months change the running total from that figure\n\nCollection % = (Number of PAID flats / 10) * 100\n  - 100% = all 10 flats paid for the month\n  - 50% = 5 out of 10 flats paid\n\nPending Flats = List of flat numbers that have NOT paid (PENDING or PARTIAL status)\n\nHOW TO READ THE BIG PICTURE:\n1. Available balance on 29 Aug 2026 is ₹1,712.54 (Configuration AVAILABLE_BALANCE)\n2. History months (Nov-20 through Aug-26) are on Maintenance and Expenses for viewing and PDF export\n3. Compare Net Balance month by month to see collection versus spend\n\nHOW TO MANUALLY ANALYZE (without syncing):\n- Filter Maintenance to one month and sum Amount Paid\n- Filter Expenses to the same month and sum Amount\n- The difference is that month's net (not a surplus/deficit to add to ₹1,712.54)`
+                text: `COLUMNS: Month | Collection (Rs.) | Misc Funds (Rs.) | Expenses (Rs.) | Net Balance (Rs.) | Cumulative (Rs.) | Collection % | Pending Flats | Status\n\nTHIS TAB IS CALCULATED BY THE APP — click "Sync Sheet" in Reports to update it.\n\nUNDERSTANDING EACH COLUMN:\n\nNet Balance = Collection + Misc Funds - Expenses for that month only\n  - This is not a second surplus/deficit to add to Available balance\n\nAvailable balance = the green cell on the Summary tab (copied into Configuration)\n  - History months are for viewing and export\n  - Sep 2026+ months change the running total from that figure\n\nCollection % = (Number of PAID flats / 10) * 100\n  - 100% = all 10 flats paid for the month\n  - 50% = 5 out of 10 flats paid\n\nPending Flats = List of flat numbers that have NOT paid (PENDING or PARTIAL status)\n\nHOW TO READ THE BIG PICTURE:\n1. Available balance is the green Summary cell (Configuration AVAILABLE_BALANCE)\n2. History months (Nov-20 through Aug-26) are on Maintenance and Expenses for viewing and PDF export\n3. Compare Net Balance month by month to see collection versus spend\n\nHOW TO MANUALLY ANALYZE (without syncing):\n- Filter Maintenance to one month and sum Amount Paid\n- Filter Expenses to the same month and sum Amount\n- The difference is that month's net (not a surplus/deficit to add to Available balance)`
             },
             {
                 heading: '7. Access Control Tab — User Management',
@@ -252,7 +252,7 @@ The next due date is automatically scheduled based on the frequency (e.g., Month
             },
             {
                 heading: '11. How Calculations Work (No Formulas)',
-                text: `The Google Sheet has NO FORMULAS in the data area. All calculations are performed by the app JavaScript code.\n\nHOW BALANCE IS CALCULATED BY THE APP:\n  Current Balance = AVAILABLE_BALANCE (₹1,712.54 on 29 Aug 2026)\n                  + collections from Sep 2026 onward\n                  - expenses from Sep 2026 onward\n  History months are shown and exportable. They do not add on top of ₹1,712.54.\n\nHOW MONTHLY SUMMARY IS CREATED:\n  When you click "Sync Sheet" in Reports, the app:\n  1. Reads all Maintenance rows for the month\n  2. Reads all Expenses rows for the month\n  3. Calculates Collection, Misc Funds total, Expenses total, Net Balance\n  4. Writes one row to the Monthly Summary tab\n\nIF NUMBERS LOOK WRONG:\n  1. Check AVAILABLE_BALANCE in Configuration (should be 1712.54)\n  2. Verify all expenses have the correct Month label (e.g., Aug-26 not Sep-26)\n  3. Check if any row has Amount Paid > Amount Due (app allows this for advance payments)\n  4. Click "Sync Sheet" in Reports to recalculate Monthly Summary\n  5. Refresh the app (F5 or pull-to-refresh) to reload data from the sheet\n\nADDING YOUR OWN FORMULAS:\n  You CAN add formulas in EMPTY COLUMNS to the right of the data\n  Example: In Monthly Summary, add column J with =E2+F2 for a running total\n  DO NOT insert columns within the existing data range — it will break the app`,
+                text: `The Google Sheet has NO FORMULAS in the data area. All calculations are performed by the app JavaScript code.\n\nHOW BALANCE IS CALCULATED BY THE APP:\n  Current Balance = AVAILABLE_BALANCE (copied from the Summary tab green cell)\n                  + collections from Sep 2026 onward\n                  - expenses from Sep 2026 onward\n  History months are shown and exportable. They do not add on top of Available balance.\n\nHOW MONTHLY SUMMARY IS CREATED:\n  When you click "Sync Sheet" in Reports, the app:\n  1. Reads all Maintenance rows for the month\n  2. Reads all Expenses rows for the month\n  3. Calculates Collection, Misc Funds total, Expenses total, Net Balance\n  4. Writes one row to the Monthly Summary tab\n\nIF NUMBERS LOOK WRONG:\n  1. Check AVAILABLE_BALANCE in Configuration (must match the Summary tab green cell)\n  2. Verify all expenses have the correct Month label (e.g., Aug-26 not Sep-26)\n  3. Check if any row has Amount Paid > Amount Due (app allows this for advance payments)\n  4. Click "Sync Sheet" in Reports to recalculate Monthly Summary\n  5. Refresh the app (F5 or pull-to-refresh) to reload data from the sheet\n\nADDING YOUR OWN FORMULAS:\n  You CAN add formulas in EMPTY COLUMNS to the right of the data\n  Example: In Monthly Summary, add column J with =E2+F2 for a running total\n  DO NOT insert columns within the existing data range — it will break the app`,
             },
             {
                 heading: '12. Filtering, Sorting & Analyzing Data',
@@ -310,7 +310,7 @@ The next due date is automatically scheduled based on the frequency (e.g., Month
             },
             {
                 heading: 'The balance looks wrong — how is it calculated?',
-                text: `Current Balance = Available balance ₹1,712.54 (29 Aug 2026) + Sep 2026+ collections − Sep 2026+ expenses.\nHistory (Nov 2020–Aug 2026) is shown for viewing and PDF export. It is already inside that ₹1,712.54 figure.\n\nIf the balance seems off:\n1. Check AVAILABLE_BALANCE in Configuration (should be 1712.54)\n2. Check if new expenses have the correct Month (Sep-26 onward)\n3. Click Sync Sheet in Reports, then refresh the app\n4. Open the Google Sheet to verify the raw data`,
+                text: `Current Balance = Available balance from the Summary tab + Sep 2026+ collections − Sep 2026+ expenses.\nHistory (Nov 2020–Aug 2026) is shown for viewing and PDF export. It is already inside that Summary figure.\n\nIf the balance seems off:\n1. Check the green Available balance cell on Summary, then Settings → Backups → Refresh sheet layout\n2. Check if new expenses have the correct Month (Sep-26 onward)\n3. Click Sync Sheet in Reports, then refresh the app\n4. Open the Google Sheet to verify the raw data`,
             },
             {
                 heading: 'How do I change the monthly maintenance amount?',
@@ -326,7 +326,7 @@ The next due date is automatically scheduled based on the frequency (e.g., Month
             },
             {
                 heading: 'How to update the Available balance?',
-                text: `The Available balance is the green cell on the Summary tab (₹1,712.54 on 29 Aug 2026).\nTo change it after setup:\n1. Open the Google Sheet\n2. Go to the Configuration tab\n3. Find the row with Key = "AVAILABLE_BALANCE"\n4. Update the Value column\n5. The app will read the new value on next refresh\n\nSettings → Configuration also has this field.`,
+                text: `The Available balance is the green cell on the Summary tab. The app copies it into Configuration — do not type a fixed amount in the app source.\nTo refresh it:\n1. Confirm the green cell on the Summary tab\n2. Settings → Backups → Refresh sheet layout (founding owner)\n3. The app copies that cell into Configuration AVAILABLE_BALANCE\n4. Refresh the app\n\nSettings → Configuration shows the copied value as read-only.`,
             },
         ],
     },

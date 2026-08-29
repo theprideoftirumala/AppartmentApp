@@ -102,7 +102,7 @@ All configurable values are in `src/config/constants.js` and can be overridden a
 
 - Monthly maintenance: ₹3,000 (configurable)
 - Corpus fund: ₹0 (configurable)
-- Available balance: the green cell on the existing Summary tab (copied into Configuration). Surplus/deficit and late-fee rows are not used. Collected maintenance is the Summary grid. Live months start Sep 2026.
+- Available balance: the green cell on the existing Summary tab (copied into Configuration). Not a `DEFAULT_CONFIG` number. Surplus/deficit and late-fee rows are not used. Collected maintenance is the Summary grid. Live months start Sep 2026.
 - Published sheet ID: `public/sheet-config.json` points at The Pride of Tirumala-APP. Do not create a second society file.
 - Treasurer: Flat 401, President: Flat 102 (configurable)
 - Late fee, late-fee day, and emergency reserve are not app settings. Leftover rows can stay on the Configuration sheet for history.

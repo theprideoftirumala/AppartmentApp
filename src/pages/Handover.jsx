@@ -6,7 +6,6 @@
 import { useEffect, useState } from 'react';
 import { BookOpen } from 'lucide-react';
 import {
-  HANDOVER_AVAILABLE_BALANCE,
   HANDOVER_CONTACTS,
   HANDOVER_META,
   HANDOVER_MONTHS,
@@ -16,14 +15,15 @@ import {
   LATEST_RECURRING,
   handoverLifetimeTotals,
 } from '../data/handoverLedger';
-import { getEmergencyContacts, getHandoverSummary, getSocietyNotes } from '../services/googleSheets';
-import { formatCurrency } from '../utils/helpers';
+import { getConfiguration, getEmergencyContacts, getHandoverSummary, getSocietyNotes } from '../services/googleSheets';
+import { formatCurrency, sheetAvailableBalance } from '../utils/helpers';
 import Navbar from '../components/common/Navbar';
 
 export default function Handover() {
   const [months, setMonths] = useState(HANDOVER_MONTHS);
   const [notes, setNotes] = useState(HANDOVER_NOTES);
   const [contacts, setContacts] = useState(HANDOVER_CONTACTS);
+  const [availableBalance, setAvailableBalance] = useState(0);
 
   useEffect(() => {
     let mounted = true;
@@ -31,8 +31,10 @@ export default function Handover() {
       getHandoverSummary().catch(() => []),
       getSocietyNotes().catch(() => []),
       getEmergencyContacts().catch(() => []),
-    ]).then(([sheetMonths, sheetNotes, sheetContacts]) => {
+      getConfiguration().catch(() => ({})),
+    ]).then(([sheetMonths, sheetNotes, sheetContacts, config]) => {
       if (!mounted) return;
+      setAvailableBalance(sheetAvailableBalance(config));
       if (sheetMonths.length) setMonths(sheetMonths);
       if (sheetNotes.length) setNotes(sheetNotes);
       if (sheetContacts.length) {
@@ -67,8 +69,8 @@ export default function Handover() {
 
       <div className="widget-row">
         <div className="widget-card">
-          <span className="widget-label">Available balance (29 Aug 2026)</span>
-          <strong className="widget-value">{formatCurrency(HANDOVER_AVAILABLE_BALANCE)}</strong>
+          <span className="widget-label">Available balance (Summary tab)</span>
+          <strong className="widget-value">{formatCurrency(availableBalance)}</strong>
         </div>
         <div className="widget-card">
           <span className="widget-label">Sheet lifetime collection</span>
@@ -99,7 +101,7 @@ export default function Handover() {
           water ₹{LATEST_RECURRING.waterCharges}.
         </p>
         <p className="text-muted mt-2">
-          The Summary tab Available balance of {formatCurrency(HANDOVER_AVAILABLE_BALANCE)} is the final figure. The app does not add a separate surplus or deficit.
+          The Summary tab Available balance of {formatCurrency(availableBalance)} is the final figure. The app does not add a separate surplus or deficit.
         </p>
       </div>
 

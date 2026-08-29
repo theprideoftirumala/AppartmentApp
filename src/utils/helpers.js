@@ -50,6 +50,12 @@ export function sheetNumber(value) {
   return String(Number.isFinite(n) ? n : 0);
 }
 
+/** Available balance from the Summary tab (copied into Configuration). Not a hardcoded default. */
+export function sheetAvailableBalance(config) {
+  const n = Number(config?.AVAILABLE_BALANCE);
+  return Number.isFinite(n) ? n : 0;
+}
+
 /**
  * Normalize emails for ACL comparisons (case-insensitive, trimmed).
  */

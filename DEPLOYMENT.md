@@ -190,7 +190,7 @@ Do **not** create `TPT-MaintenanceTracker`. Use the existing Excel:
 4. Keep the name **The Pride of Tirumala-APP** (no `.xlsx`)
 5. Hard-refresh the live app and sign in as the founding owner
 6. Setup copies the file into `TPT-AppartmentApp/backups/`, then adds empty app tabs beside the five history tabs
-7. Settings → Backups → Refresh sheet layout copies Summary collections and Exp-Detailed lines (Nov 2020–Aug 2026) into Maintenance and Expenses. Surplus/deficit and late-fee rows are skipped. Available balance stays ₹1,712.54.
+7. Settings → Backups → Refresh sheet layout copies Summary collections and Exp-Detailed lines (Nov 2020–Aug 2026) into Maintenance and Expenses. Surplus/deficit and late-fee rows are skipped. Available balance is copied from the green Summary cell into Configuration.
 
 Optionally paste the Google Sheet ID into `public/sheet-config.json` after that connect.
 
@@ -218,8 +218,8 @@ Optionally paste the Google Sheet ID into `public/sheet-config.json` after that 
 | Blank page after deploy | Check `base` in `vite.config.js` matches your deployment path |
 | Setup says convert the Excel file | In Drive: Open with Google Sheets → File → Save as Google Sheets. Name it The Pride of Tirumala-APP |
 | Old TPT-MaintenanceTracker still opens | The app ignores that name. Bind The Pride of Tirumala-APP; hard-refresh or clear cache |
-| History months missing in the app | Settings → Backups → Refresh sheet layout, then hard-refresh (cache `tpt-v29`) |
-| Bound to APP-old or the .xlsx | Hard-refresh v1.8.8. Retry as founding owner. The app uses only The Pride of Tirumala-APP (Google Sheet) |
+| History months missing in the app | Settings → Backups → Refresh sheet layout, then hard-refresh (cache `tpt-v30`) |
+| Bound to APP-old or the .xlsx | Hard-refresh v1.8.9. Retry as founding owner. The app uses only The Pride of Tirumala-APP (Google Sheet) |
 | Collected amounts do not match Summary | Founding owner: Settings → Backups → Refresh sheet layout. The app updates Maintenance from the Summary grid |
 | Unable to parse range Configuration | The converted sheet still has only history tabs. Founding owner: Retry — the app adds Configuration and the other app tabs. Or Settings → Backups → Refresh sheet layout |
-| Balance is not ₹1,712.54 | Check Configuration AVAILABLE_BALANCE. Surplus/deficit and late-fee rows are ignored |
+| Balance does not match the Summary tab | Check the green Available balance cell, then Refresh sheet layout. Surplus/deficit and late-fee rows are ignored |

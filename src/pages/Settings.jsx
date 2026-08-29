@@ -368,8 +368,8 @@ export default function Settings() {
                   info: 'One-time corpus amount collected from flat owners. Edit directly in the Configuration sheet in Google Drive.'
                 },
                 {
-                  key: 'AVAILABLE_BALANCE', label: 'Available balance (29 Aug 2026) ₹', type: 'number',
-                  info: 'Copied from the green Available balance cell on the existing Summary tab. Late-fee and surplus/deficit rows are ignored.'
+                  key: 'AVAILABLE_BALANCE', label: 'Available balance (from Summary) ₹', type: 'number', readonly: true,
+                  info: 'Copied from the green Available balance cell on the Summary tab. Change that cell, then Settings → Backups → Refresh sheet layout.'
                 },
                 {
                   key: 'FISCAL_YEAR_START', label: 'Books start (YYYY-MM)', type: 'text',

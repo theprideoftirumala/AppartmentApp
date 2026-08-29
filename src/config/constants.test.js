@@ -12,7 +12,7 @@ describe('feature flags', () => {
     expect(FEATURES.SAMPLE_DATA).toBe(false);
     expect(DEFAULT_CONFIG.SAMPLE_DATA).toBe('N');
     expect(DEFAULT_CONFIG.DEFICIT_LAST_YEAR).toBe(0);
-    expect(DEFAULT_CONFIG.AVAILABLE_BALANCE).toBe(1712.54);
+    expect(DEFAULT_CONFIG).not.toHaveProperty('AVAILABLE_BALANCE');
     expect(DEFAULT_CONFIG.FISCAL_YEAR_START).toBe('2020-11');
     expect(LIVE_APP_START).toBe('2026-09');
     expect(MAINTENANCE_MIN_DATE).toBe('2020-11-01');

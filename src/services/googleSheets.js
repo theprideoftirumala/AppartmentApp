@@ -30,6 +30,7 @@ import {
   isValidSpreadsheetId,
   bindSpreadsheet,
   unbindSpreadsheet,
+  sheetAvailableBalance,
 } from '../utils/helpers';
 import { gapiCall } from '../utils/gapi';
 import { parseHandoverSummaryRows } from '../data/handoverLedger';
@@ -1448,8 +1449,7 @@ export async function getDashboardData() {
     const liveCollected = maintenance.filter((r) => isLiveAppMonth(r.month)).reduce((sum, r) => sum + r.amountPaid, 0);
     const liveMiscFunds = miscFunds.filter((f) => isLiveAppMonth(f.month)).reduce((sum, f) => sum + f.amount, 0);
     const liveExpenseAmount = expenses.filter((e) => isLiveAppMonth(e.month)).reduce((sum, e) => sum + e.amount, 0);
-    const availableSnapshot = Number(config.AVAILABLE_BALANCE);
-    const opening = Number.isFinite(availableSnapshot) ? availableSnapshot : 1712.54;
+    const opening = sheetAvailableBalance(config);
     const currentBalance = opening + liveCollected + liveMiscFunds - liveExpenseAmount + (Number(config.CORPUS_FUND) || 0);
 
     // Cache dashboard data

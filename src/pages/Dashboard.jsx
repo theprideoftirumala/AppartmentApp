@@ -15,7 +15,7 @@ import { useApp } from '../contexts/AppContext';
 import { getDashboardData, getAccessControl, parseApiError, seedSampleLiveData, ensureSheetStructure } from '../services/googleSheets';
 import { STORAGE_KEYS, isSampleDataEnabled } from '../config/constants';
 import { effectiveAppRole, isFoundingOwner } from '../config/accessPolicy';
-import { formatCurrency, getCurrentMonthLabel, getCollectionPercentage, daysUntil, getRelativeTime, groupExpensesByCategory, parseJsonSafe, normalizeEmail } from '../utils/helpers';
+import { formatCurrency, getCurrentMonthLabel, getCollectionPercentage, daysUntil, getRelativeTime, groupExpensesByCategory, parseJsonSafe, normalizeEmail, sheetAvailableBalance } from '../utils/helpers';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Navbar from '../components/common/Navbar';
 
@@ -342,8 +342,8 @@ export default function Dashboard() {
         </div>
         <div className="widget-card">
           <span className="widget-label">Available balance</span>
-          <strong className="widget-value">{formatCurrency(totals.currentBalance || config.AVAILABLE_BALANCE || 1712.54)}</strong>
-          <span className="widget-hint">Summary tab figure ₹1,712.54, then new collections minus new expenses</span>
+          <strong className="widget-value">{formatCurrency(Number.isFinite(totals.currentBalance) ? totals.currentBalance : sheetAvailableBalance(config))}</strong>
+          <span className="widget-hint">Green Available balance cell on Summary, then new collections minus new expenses</span>
         </div>
         <div className="widget-card">
           <span className="widget-label">Reminders due soon</span>
@@ -555,7 +555,7 @@ export default function Dashboard() {
       <div className="deficit-banner mt-6 animate-fade-in deficit-banner-info">
         <AlertCircle size={20} />
         <div>
-          <strong>Available balance on 29 Aug 2026: {formatCurrency(config.AVAILABLE_BALANCE || 1712.54)}</strong>
+          <strong>Available balance from the Summary tab: {formatCurrency(sheetAvailableBalance(config))}</strong>
           <p className="text-sm">
             That is the green Available balance cell on the Summary tab. Late fees and surplus/deficit rows from that sheet are not used. History from Summary and Exp-Detailed loads into Maintenance and Expenses so you can view and export it.
           </p>
