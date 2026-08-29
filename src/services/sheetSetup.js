@@ -8,7 +8,6 @@ import {
   SHEET_HEADERS,
   DEFAULT_CONFIG,
   FLATS,
-  STORAGE_KEYS,
   SHEET_FILE_NAME,
   CONFIG_DESCRIPTIONS,
   LEGACY_SHEET_TABS,
@@ -21,7 +20,7 @@ import {
   HANDOVER_PAYEES,
   handoverSummaryRows,
 } from '../data/handoverLedger';
-import { isValidSpreadsheetId, getCurrentMonthLabel } from '../utils/helpers';
+import { isValidSpreadsheetId, getCurrentMonthLabel, getActiveSpreadsheetIdFromStorage, getLiveSpreadsheetIdFromStorage } from '../utils/helpers';
 import {
   availableBalanceFromSummaryGrid,
   expenseRowsFromDetailedGrid,
@@ -31,6 +30,7 @@ import {
   maintenanceRowsFromSummaryGrid,
   mergeHistoryExpenses,
 } from '../utils/legacySheetImport';
+import { liveSummaryStaticAndFormulaGrid } from '../utils/liveSummaryLayout';
 import { gapiCall } from '../utils/gapi';
 import {
   maintenanceStillDueFormula,
@@ -45,8 +45,13 @@ async function withAuth(fn) {
 }
 
 function getSpreadsheetId() {
-  const id = localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID);
-  return isValidSpreadsheetId(id) ? id : null;
+  return getActiveSpreadsheetIdFromStorage();
+}
+
+function treatingAsLiveWorkbook(spreadsheetId, liveWorkbook) {
+  if (liveWorkbook) return true;
+  const liveId = getLiveSpreadsheetIdFromStorage();
+  return Boolean(liveId && spreadsheetId === liveId);
 }
 
 function configRows() {
@@ -446,17 +451,37 @@ export async function createSpreadsheet() {
   );
 }
 
+export async function writeLiveSummaryTab(spreadsheetId, openingBalance) {
+  await addSheetIfMissing(spreadsheetId, SHEET_NAMES.LIVE_SUMMARY);
+  const { values, formulas } = liveSummaryStaticAndFormulaGrid(openingBalance);
+  await window.gapi.client.sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `'${SHEET_NAMES.LIVE_SUMMARY}'!A1`,
+    valueInputOption: 'RAW',
+    resource: { values },
+  });
+  const formulaData = Object.entries(formulas).map(([cell, formula]) => ({
+    range: `'${SHEET_NAMES.LIVE_SUMMARY}'!${cell}`,
+    values: [[formula]],
+  }));
+  await writeFormulas(spreadsheetId, formulaData);
+}
+
 /**
  * Add app tabs to The Pride of Tirumala-APP. Never overwrites legacy history tabs
  * (Summary, Exp - Detailed, Borewell Exp, Motor repair oct, Notes) or existing rows.
+ * liveWorkbook: Sep 2026+ file — skip history import from Summary / Exp-Detailed.
  */
-export async function ensureSheetStructure(spreadsheetId = getSpreadsheetId()) {
+export async function ensureSheetStructure(spreadsheetId = getSpreadsheetId(), { liveWorkbook = false } = {}) {
   return withAuth(async () => {
     if (!isValidSpreadsheetId(spreadsheetId)) return;
+    const isLive = treatingAsLiveWorkbook(spreadsheetId, liveWorkbook);
 
     const legacy = new Set(LEGACY_SHEET_TABS);
     for (const title of Object.values(SHEET_NAMES)) {
       if (legacy.has(title)) continue;
+      if (title === SHEET_NAMES.LIVE_SUMMARY && !isLive) continue;
+      if (title === SHEET_NAMES.HANDOVER_SUMMARY && isLive) continue;
       await addSheetIfMissing(spreadsheetId, title);
       const headers = SHEET_HEADERS[title];
       if (!headers) continue;
@@ -464,11 +489,13 @@ export async function ensureSheetStructure(spreadsheetId = getSpreadsheetId()) {
         const values = [headers];
         if (title === SHEET_NAMES.GUIDE) values.push(...GUIDE_ROWS);
         if (title === SHEET_NAMES.CONFIGURATION) values.push(...configRows());
-        if (title === SHEET_NAMES.FLATS) values.push(...await flatsRowsFromLegacySummary(spreadsheetId));
-        if (title === SHEET_NAMES.HANDOVER_SUMMARY) values.push(...handoverSummaryRows());
-        if (title === SHEET_NAMES.PAYEES) values.push(...HANDOVER_PAYEES);
-        if (title === SHEET_NAMES.EMERGENCY_CONTACTS) values.push(...HANDOVER_CONTACTS);
-        if (title === SHEET_NAMES.SOCIETY_NOTES) values.push(...HANDOVER_NOTES);
+        if (title === SHEET_NAMES.FLATS) {
+          values.push(...(isLive ? emptyFlatRows() : await flatsRowsFromLegacySummary(spreadsheetId)));
+        }
+        if (title === SHEET_NAMES.HANDOVER_SUMMARY && !isLive) values.push(...handoverSummaryRows());
+        if (title === SHEET_NAMES.PAYEES && !isLive) values.push(...HANDOVER_PAYEES);
+        if (title === SHEET_NAMES.EMERGENCY_CONTACTS && !isLive) values.push(...HANDOVER_CONTACTS);
+        if (title === SHEET_NAMES.SOCIETY_NOTES && !isLive) values.push(...HANDOVER_NOTES);
         await window.gapi.client.sheets.spreadsheets.values.update({
           spreadsheetId,
           range: `'${title}'!A1`,
@@ -478,23 +505,29 @@ export async function ensureSheetStructure(spreadsheetId = getSpreadsheetId()) {
       }
     }
 
-    const expenseHistory = mergeHistoryExpenses(
-      await expenseRowsFromLegacyDetailed(spreadsheetId),
-      await expenseRowsFromLegacySummary(spreadsheetId),
-    );
-    await appendMissingHistoryRows(
-      spreadsheetId,
-      SHEET_NAMES.EXPENSES,
-      `'${SHEET_NAMES.EXPENSES}'!A2:K5000`,
-      expenseHistory,
-      (row) => `${row[1]}|${Number(row[5])}|${String(row[3] || '').trim().toLowerCase()}`,
-    );
-    await removeDuplicateImportedExpenses(spreadsheetId);
+    if (!isLive) {
+      const expenseHistory = mergeHistoryExpenses(
+        await expenseRowsFromLegacyDetailed(spreadsheetId),
+        await expenseRowsFromLegacySummary(spreadsheetId),
+      );
+      await appendMissingHistoryRows(
+        spreadsheetId,
+        SHEET_NAMES.EXPENSES,
+        `'${SHEET_NAMES.EXPENSES}'!A2:K5000`,
+        expenseHistory,
+        (row) => `${row[1]}|${Number(row[5])}|${String(row[3] || '').trim().toLowerCase()}`,
+      );
+      await removeDuplicateImportedExpenses(spreadsheetId);
+      await syncCollectionsFromSummary(spreadsheetId, { force: true });
+    }
 
-    await syncCollectionsFromSummary(spreadsheetId, { force: true });
     await upgradeWorkbookLayout(spreadsheetId);
     await ensureConfigKeys(spreadsheetId);
-    await migrateConfigValues(spreadsheetId, await availableBalanceFromLegacySummary(spreadsheetId));
+    const opening = isLive ? null : await availableBalanceFromLegacySummary(spreadsheetId);
+    await migrateConfigValues(spreadsheetId, opening);
+    if (isLive && await sheetIsEmpty(spreadsheetId, SHEET_NAMES.LIVE_SUMMARY)) {
+      await writeLiveSummaryTab(spreadsheetId, opening || 0);
+    }
   });
 }
 

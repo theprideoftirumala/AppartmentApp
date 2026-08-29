@@ -27,7 +27,7 @@ export const DISCOVERY_DOCS = [
 // ─── Apartment Configuration ────────────────────────────────────
 export const APP_NAME = 'The Pride of Tirumala';
 export const APP_SHORT_NAME = 'TPT Tracker';
-export const APP_VERSION = '1.8.11';
+export const APP_VERSION = '1.9.0';
 
 /**
  * Bump this when GOOGLE_SCOPES change so existing sessions re-consent.
@@ -101,6 +101,8 @@ export const DRIVE_BACKUPS_FOLDER = 'backups';
 export const DRIVE_ACTIVITY_FOLDER = 'activity-funds';
 /** Live society workbook in Drive. Do not create a second file. */
 export const SHEET_FILE_NAME = 'The Pride of Tirumala-APP';
+/** Sep 2026+ books. Founding owner may create this file. Never named TPT-MaintenanceTracker. */
+export const LIVE_SHEET_FILE_NAME = 'The Pride of Tirumala-LIVE';
 export const SOCIETY_SHEET_ALIASES = [
   'The Pride of Tirumala-APP',
   'The Pride of Tirumala-APP.xlsx',
@@ -137,6 +139,10 @@ export function isLiveSocietySheetName(name) {
   return normalizeSocietySheetName(raw) === normalizeSocietySheetName(SHEET_FILE_NAME);
 }
 
+export function isLiveWorkbookName(name) {
+  return String(name || '').trim() === LIVE_SHEET_FILE_NAME;
+}
+
 export function isGoogleSpreadsheetMime(mimeType) {
   return mimeType === GOOGLE_SHEET_MIME;
 }
@@ -159,6 +165,7 @@ export const SHEET_NAMES = {
   AUDIT_LOG: 'Audit Log',
   WATER_TANKER: 'Water Tanker Log',
   MONTHLY_SUMMARY: 'Monthly Summary',
+  LIVE_SUMMARY: 'Live Summary',
   WATCHMAN_DETAILS: 'Watchman Details',
   ACTIVITY_FUNDS: 'Activity Funds',
   MISC_FUNDS: 'Misc Funds',
@@ -441,4 +448,5 @@ export const STORAGE_KEYS = {
   BOUND_EMAIL: 'tpt_bound_email',
   OAUTH_SCOPE_VERSION: 'tpt_oauth_scope_version',
   LOGIN_BACKUP_DONE: 'tpt_login_backup_done',
+  LIVE_SPREADSHEET_ID: 'tpt_live_spreadsheet_id',
 };

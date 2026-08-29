@@ -15,7 +15,7 @@ import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AppProvider, useApp } from './contexts/AppContext';
 import { ThemeProvider } from './contexts/ThemeContext';
-import { getAccessControl, resolveSpreadsheetForUser, ensureFoundingOwnerEntry } from './services/googleSheets';
+import { getAccessControl, resolveSpreadsheetForUser, resolveLiveWorkbookForUser, ensureFoundingOwnerEntry } from './services/googleSheets';
 import { effectiveAppRole, isFoundingOwner } from './config/accessPolicy';
 import { normalizeEmail } from './utils/helpers';
 
@@ -39,7 +39,7 @@ import Settings from './pages/Settings';
 import Help from './pages/Help';
 import ActivityFunds from './pages/ActivityFunds';
 import Payees from './pages/Payees';
-import Handover from './pages/Handover';
+import OldReport from './pages/OldReport';
 
 function AccessBootstrap() {
   const { user, isGuest, setAccessDenied } = useAuth();
@@ -61,6 +61,7 @@ function AccessBootstrap() {
       }
 
       completeSetup();
+      await resolveLiveWorkbookForUser(user.email).catch(() => null);
       try {
         if (isFoundingOwner(user.email)) {
           await ensureFoundingOwnerEntry(user.email);
@@ -181,12 +182,16 @@ function AppRoutes() {
           }
         />
         <Route
-          path="/handover"
+          path="/old"
           element={
             <ProtectedRoute>
-              <Handover />
+              <OldReport />
             </ProtectedRoute>
           }
+        />
+        <Route
+          path="/handover"
+          element={<Navigate to="/old" replace />}
         />
         <Route
           path="/settings"

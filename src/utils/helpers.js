@@ -96,10 +96,35 @@ export function bindSpreadsheet(id, email) {
   }
 }
 
+export function bindLiveSpreadsheet(id) {
+  if (isValidSpreadsheetId(id)) {
+    localStorage.setItem(STORAGE_KEYS.LIVE_SPREADSHEET_ID, id);
+  }
+}
+
+export function getHistorySpreadsheetIdFromStorage() {
+  const id = localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID);
+  return isValidSpreadsheetId(id) ? id : null;
+}
+
+export function getLiveSpreadsheetIdFromStorage() {
+  const id = localStorage.getItem(STORAGE_KEYS.LIVE_SPREADSHEET_ID);
+  return isValidSpreadsheetId(id) ? id : null;
+}
+
+export function getActiveSpreadsheetIdFromStorage() {
+  return getLiveSpreadsheetIdFromStorage() || getHistorySpreadsheetIdFromStorage();
+}
+
+export function unbindLiveSpreadsheet() {
+  localStorage.removeItem(STORAGE_KEYS.LIVE_SPREADSHEET_ID);
+}
+
 /** Drop a stale/private spreadsheet id so the next login cannot reuse it. */
 export function unbindSpreadsheet() {
   localStorage.removeItem(STORAGE_KEYS.SPREADSHEET_ID);
   localStorage.removeItem(STORAGE_KEYS.BOUND_EMAIL);
+  unbindLiveSpreadsheet();
 }
 
 /**

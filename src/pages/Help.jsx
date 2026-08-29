@@ -28,12 +28,15 @@ All data is stored in a Google Sheet in your Google Drive — the sheet is the s
             },
             {
                 heading: 'Where is the data stored?',
-                text: `Your data lives in a Google Sheet named "The Pride of Tirumala-APP" in a Google Drive folder called "TPT-AppartmentApp".
-Open it anytime from Settings > Open Sheet. Start with the Guide tab — it explains every column in plain language.
-Use Pending Dues to see unpaid flats for any month. Monthly Summary shows collection, expenses, and net for each month (those tabs use formulas, so they stay correct if you edit Maintenance by hand).
-Collected maintenance is the Summary tab grid (flat × month). Opening the Dashboard or Maintenance as the founding owner copies those amounts into the Maintenance tab and refreshes Monthly Summary (the collection sheet). Surplus/deficit, carry-forward, and late-fee rows are ignored. The green Available balance cell is the final cash figure.
-Setup connects The Pride of Tirumala-APP already in Drive, copies a backup first, then adds empty app tabs beside the five history tabs. It does not create a new society file.
-Backups (copies of the sheet) are stored in the "backups" subfolder. A copy is also taken on each Google sign-in.`,
+                text: `History (Nov 2020–Aug 2026) lives in a Google Sheet named "The Pride of Tirumala-APP". From Sep 2026 the working cash book is a second file, "The Pride of Tirumala-LIVE", created only by the founding owner (Settings → Backups → Create live books). The app never creates TPT-MaintenanceTracker or a replacement APP file.
+
+Open the live sheet from Settings (Open live sheet). Open the old Summary (including surplus/deficit as typed there) at #/old or Settings → Open old sheet.
+
+Start with the Guide tab — it explains every column in plain language.
+Use Pending Dues to see unpaid flats for any month. On LIVE, Live Summary shows collection, expenses, monthly surplus/deficit, and running available balance as formulas from Maintenance and Expenses. Do not type those amounts on Live Summary.
+
+Setup connects The Pride of Tirumala-APP already in Drive, copies a backup first, then adds empty app tabs beside the five history tabs. It does not create a new APP file.
+Backups of APP and LIVE (if it exists) are stored in the "backups" subfolder. A copy is also taken on each Google sign-in.`,
             },
             {
                 heading: 'How to convert The Pride of Tirumala-APP.xlsx',
@@ -252,8 +255,25 @@ The next due date is automatically scheduled based on the frequency (e.g., Month
                 text: `When editing the Google Sheet DIRECTLY (bypassing the app), follow these rules strictly:\n\nDATE FIELDS (Payment Date, Date, Next Due, etc.):\n  Format: YYYY-MM-DD\n  Example: 2026-09-15  NOT "15-Sep-2026" or "15/09/2026"\n  Important: Must be on or after 2020-11-01 (history starts November 2020)\n\nMONTH LABELS (Month column in Maintenance, Expenses, etc.):\n  Format: MMM-YY\n  Example: Sep-26, Oct-26, Nov-26, Dec-26, Jan-27, Feb-27...\n  Important: Must match exactly — "Sep-26" NOT "September 2026" or "09-2026"\n\nAMOUNT FIELDS:\n  Format: Plain number, no currency symbol, no commas\n  Example: 3000  NOT "Rs.3000" or "3,000"\n\nSTATUS FIELDS (Maintenance):\n  Must be exactly: PAID / PENDING / PARTIAL / WAIVED (all uppercase)\n\nSTATUS FIELDS (Access Control):\n  Must be exactly: Active / Inactive (capital first letter)\n\nROLE FIELDS:\n  Must be exactly: Owner / Reader (capital first letter)\n\nBOOLEAN FIELDS (Bill/Receipt in Expenses):\n  Must be exactly: Y or N (uppercase single letter)\n\nID FIELDS:\n  Expenses: EXP-{timestamp} (e.g., EXP-1724123456789)\n  Reminders: REM-{timestamp}\n  Misc Funds: MISC-{timestamp}\n  Never reuse or duplicate IDs`,
             },
             {
-                heading: '11. How Calculations Work (No Formulas)',
-                text: `The Google Sheet has NO FORMULAS in the data area. All calculations are performed by the app JavaScript code.\n\nHOW BALANCE IS CALCULATED BY THE APP:\n  Current Balance = AVAILABLE_BALANCE (copied from the Summary tab green cell)\n                  + collections from Sep 2026 onward\n                  - expenses from Sep 2026 onward\n  History months are shown and exportable. They do not add on top of Available balance.\n\nHOW MONTHLY SUMMARY IS CREATED:\n  When you click "Sync Sheet" in Reports, the app:\n  1. Reads all Maintenance rows for the month\n  2. Reads all Expenses rows for the month\n  3. Calculates Collection, Misc Funds total, Expenses total, Net Balance\n  4. Writes one row to the Monthly Summary tab\n\nIF NUMBERS LOOK WRONG:\n  1. Check AVAILABLE_BALANCE in Configuration (must match the Summary tab green cell)\n  2. Verify all expenses have the correct Month label (e.g., Aug-26 not Sep-26)\n  3. Check if any row has Amount Paid > Amount Due (app allows this for advance payments)\n  4. Click "Sync Sheet" in Reports to recalculate Monthly Summary\n  5. Refresh the app (F5 or pull-to-refresh) to reload data from the sheet\n\nADDING YOUR OWN FORMULAS:\n  You CAN add formulas in EMPTY COLUMNS to the right of the data\n  Example: In Monthly Summary, add column J with =E2+F2 for a running total\n  DO NOT insert columns within the existing data range — it will break the app`,
+                heading: '11. How calculations work (sheet formulas + app)',
+                text: `History APP file: Maintenance column K (Still Due), Pending Dues, and Monthly Summary use formulas. The old Summary tab surplus/deficit rows stay as they were typed — they are not copied as extra collections. View them at #/old.
+
+LIVE file: Live Summary collection cells are SUMIFS from Maintenance. Expense rows (Cleaning, Generator, Lift, R&M, …) are SUMIFS from Expenses by category, including Sundry line items. Do not type a second Sundry total. Monthly surplus (deficit) = collection − expenses. Running available balance = opening (old Summary green cell at create) + each month surplus. Service charges is a layout row from the old Summary; those amounts are logged as Repairs & Maintenance so they count once on R&M.
+
+HOW THE APP BALANCE IS CALCULATED when LIVE is not connected:
+  Current Balance = AVAILABLE_BALANCE (copied from the APP Summary green cell)
+                  + collections from Sep 2026 onward
+                  - expenses from Sep 2026 onward
+
+IF NUMBERS LOOK WRONG:
+  1. Confirm you are looking at LIVE for Sep 2026+ and APP / #/old for history
+  2. Check AVAILABLE_BALANCE / Live Summary B2 opening
+  3. Verify expenses have the correct Month label (Sep-26 not Sep-2026)
+  4. Do not type amounts on Live Summary
+  5. Refresh the app
+
+ADDING MONTHS BY HAND:
+  On Live Summary, copy the last month column. Keep formula cells. Add matching Maintenance and Expenses rows.`,
             },
             {
                 heading: '12. Filtering, Sorting & Analyzing Data',
@@ -261,7 +281,7 @@ The next due date is automatically scheduled based on the frequency (e.g., Month
             },
             {
                 heading: '13. Backup, Recovery & Version History',
-                text: `APP BACKUP (Recommended):\n  Settings > Backups > Create Backup\n  This makes a COPY of the entire sheet saved in the "backups" subfolder in Google Drive\n  Backups are named: The Pride of Tirumala-APP_YYYYMMDD_HHMMSS\n  To restore: open the backup file, copy data back to the main sheet manually\n\nGOOGLE SHEETS VERSION HISTORY (Built-in):\n  File > Version history > See version history\n  Google automatically saves versions — you can restore to any past version\n  Click "Restore this version" to roll back to a previous state\n  This is your SAFETY NET if you accidentally delete data\n\nHOW TO RECOVER DELETED DATA:\n  1. Open Version History (File > Version history)\n  2. Browse to a version before the deletion\n  3. Find the deleted row(s)\n  4. Copy the data from the old version\n  5. Restore to current version\n  6. Paste the copied data back into the sheet\n\nIF THE APP LOSES THE SHEET:\n  The spreadsheet ID is stored in your browser's localStorage\n  If you clear browser data, run the app Setup again — it will search Google Drive and reconnect\n  No data is lost — the sheet is always in your Google Drive`,
+                text: `APP BACKUP (Recommended):\n  Settings > Backups > Create Backup\n  This copies The Pride of Tirumala-APP and, if connected, The Pride of Tirumala-LIVE into Drive / TPT-AppartmentApp / backups.\n  Names look like The Pride of Tirumala-APP_manual_YYYYMMDD_HHMMSS and The Pride of Tirumala-LIVE_login_...\n  A copy also runs on each Google sign-in (not Guest PIN). If Drive copy is blocked, the app clones tabs instead.\n  To restore: open the backup file, copy data back to the matching live/history sheet by hand.\n\nGOOGLE SHEETS VERSION HISTORY (Built-in):\n  File > Version history > See version history on that workbook\n\nIF THE APP LOSES THE SHEET:\n  Spreadsheet IDs are in the browser. Founding owner: Setup reconnects APP; Settings → Backups reconnects LIVE if the file already exists in Drive.`,
             },
         ],
     },
@@ -311,7 +331,7 @@ The next due date is automatically scheduled based on the frequency (e.g., Month
             },
             {
                 heading: 'The balance looks wrong — how is it calculated?',
-                text: `Current Balance = Available balance from the Summary tab + Sep 2026+ collections − Sep 2026+ expenses.\nHistory (Nov 2020–Aug 2026) is shown for viewing and PDF export. It is already inside that Summary figure.\n\nIf the balance seems off:\n1. Check the green Available balance cell on Summary, then Settings → Backups → Refresh sheet layout\n2. Check if new expenses have the correct Month (Sep-26 onward)\n3. Click Sync Sheet in Reports, then refresh the app\n4. Open the Google Sheet to verify the raw data`,
+                text: `After live books exist: Dashboard uses Live Summary running available balance (opening + monthly surplus/deficit formulas).\nBefore live books: Current Balance = Available balance from the APP Summary green cell + Sep 2026+ collections − Sep 2026+ expenses.\nOld surplus/deficit as typed on APP Summary is at #/old. Those rows are not imported as extra money.\n\nIf the balance seems off:\n1. Open Live Summary on The Pride of Tirumala-LIVE (do not type over formulas)\n2. Check Maintenance and Expenses month labels (Sep-26 onward)\n3. Settings → Backups → Refresh sheet layout, then refresh the app\n4. Compare #/old for history only`,
             },
             {
                 heading: 'How do I change the monthly maintenance amount?',
@@ -326,8 +346,12 @@ The next due date is automatically scheduled based on the frequency (e.g., Month
                 text: `Each browser stores the spreadsheet ID locally.\nFounding owner: sign in and Setup will reconnect the owned The Pride of Tirumala-APP (it will not create a second file if one exists).\nResidents: you must already be added in Access Control and have the sheet shared as Viewer. You will not see a create-sheet wizard.`,
             },
             {
+                heading: 'How do I pay the watchman or a vendor with GPay / PhonePe?',
+                text: `Open Payees. Owners can add a row (or add it on the Payees tab in the sheet). Paste the UPI ID the payee gave you — the app never invents one. Same UPI ID, or same name and phone, is blocked as a duplicate. Then tap GPay or PhonePe. Readers can pay if a UPI ID is already on the sheet.`,
+            },
+            {
                 heading: 'How to update the Available balance?',
-                text: `The Available balance is the green cell on the Summary tab. The app copies it into Configuration — do not type a fixed amount in the app source.\nTo refresh it:\n1. Confirm the green cell on the Summary tab\n2. Settings → Backups → Refresh sheet layout (founding owner)\n3. The app copies that cell into Configuration AVAILABLE_BALANCE\n4. Refresh the app\n\nSettings → Configuration shows the copied value as read-only.`,
+                text: `On the old APP file, Available balance is the green cell on the Summary tab (copied into Configuration). On LIVE, opening balance is that same green-cell value at create time (Live Summary B2); running available balance is a formula. Do not type a made-up number.\nTo refresh the APP copy:\n1. Confirm the green cell on the old Summary tab\n2. Settings → Backups → Refresh sheet layout (founding owner)\n3. Refresh the app`,
             },
         ],
     },

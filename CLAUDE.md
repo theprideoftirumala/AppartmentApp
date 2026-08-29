@@ -35,9 +35,12 @@ src/
 │   ├── googleSheets.js      # Society workbook CRUD
 │   ├── googleDrive.js       # Receipts, backups, activity folder
 │   ├── activityFunds.js     # One reusable sheet per optional activity
-│   ├── sheetSetup.js        # Extend The Pride of Tirumala-APP (never create a new society file)
+│   ├── sheetSetup.js        # Extend The Pride of Tirumala-APP (never create a new APP file)
+│   ├── liveSheetSetup.js    # Founding owner: create/connect The Pride of Tirumala-LIVE (Sep 2026+)
 │   └── pdfExport.js         # Monthly + activity PDFs
 ├── pages/ActivityFunds.jsx  # Start / view optional activity funds
+├── pages/OldReport.jsx      # #/old — read-only APP Summary + handover
+├── config/liveWorkbook.js   # Live Summary expense labels from the old Summary tab
 ├── data/handoverLedger.js   # Nov 2020–Aug 2026 totals (no owner names)
 ├── utils/gapi.js            # Promise.resolve wrapper for gapi thenables
 ├── utils/setupFlow.js       # Setup never offers create
@@ -76,13 +79,16 @@ The workbook is designed so a treasurer can understand every number without open
 
 Late fee and the old Misc Funds tab stay in the workbook for history. The app no longer collects them. Use **Activity Funds** for Ganesh, motor, or similar optional collections.
 
-Setup **never creates** a society workbook. It connects **The Pride of Tirumala-APP** already in Drive (convert the .xlsx with Open with Google Sheets if needed), copies a backup first, then adds empty app tabs beside the five history tabs. Sample live-tab data stays off.
+Setup **never creates** The Pride of Tirumala-APP. It connects that file already in Drive (convert the .xlsx with Open with Google Sheets if needed), copies a backup first, then adds empty app tabs beside the five history tabs. Sample live-tab data stays off.
+
+**Live books (Sep 2026+):** founding owner uses Settings → Backups → Create live books. That creates or reconnects **The Pride of Tirumala-LIVE** (never `TPT-MaintenanceTracker`, never a replacement APP file). It copies Configuration, Flats, Payees, Access Control, contacts, reminders, and watchman rows from APP. Opening available balance is the green Summary cell at create. History months are not copied. Live Summary formulas pull collections from Maintenance and expenses from Expenses (including Sundry line items; not a second Sundry total). Monthly surplus (deficit) and running available balance are formulas. Type amounts on Maintenance/Expenses (app or by hand), not on Live Summary. Old APP Summary (including surplus/deficit as typed) is read-only at `#/old`.
 
 ## Google Drive Structure
 
 ```
 TPT-AppartmentApp/
-├── The Pride of Tirumala-APP (Google Sheet; history tabs + app tabs)
+├── The Pride of Tirumala-APP (history tabs + app tabs; Nov 2020–Aug 2026)
+├── The Pride of Tirumala-LIVE (Sep 2026+; Live Summary formulas)
 ├── expenses-evidence/
 │   ├── 2026-09/
 │   └── ...
@@ -92,9 +98,10 @@ TPT-AppartmentApp/
 └── backups/
     └── The Pride of Tirumala-APP_pre-setup_YYYYMMDD_HHMMSS
     └── The Pride of Tirumala-APP_login_YYYYMMDD_HHMMSS
+    └── The Pride of Tirumala-LIVE_live-create_YYYYMMDD_HHMMSS
 ```
 
-A Drive copy is taken before first Setup and on every Google sign-in. Guest PIN sessions do not.
+A Drive copy is taken before first Setup, before creating LIVE, and on every Google sign-in (APP and LIVE if bound). Guest PIN sessions do not. Settings → Create Backup copies both files. If Drive `files.copy` is blocked, tabs are cloned via Sheets `copyTo`.
 
 ## Configuration
 
@@ -102,18 +109,19 @@ All configurable values are in `src/config/constants.js` and can be overridden a
 
 - Monthly maintenance: ₹3,000 (configurable)
 - Corpus fund: ₹0 (configurable)
-- Available balance: the green cell on the existing Summary tab (copied into Configuration). Not a `DEFAULT_CONFIG` number. Surplus/deficit and late-fee rows are not used. Collected maintenance is the Summary grid. Live months start Sep 2026.
-- Published sheet ID: `public/sheet-config.json` points at The Pride of Tirumala-APP. Do not create a second society file.
+- Available balance: the green cell on the existing Summary tab (copied into Configuration). Not a `DEFAULT_CONFIG` number. Surplus/deficit and late-fee rows on the old Summary are not imported as collections. Live months start Sep 2026 on The Pride of Tirumala-LIVE.
+- Published sheet ID: `public/sheet-config.json` points at The Pride of Tirumala-APP. Do not invent a liveSpreadsheetId. Do not create TPT-MaintenanceTracker.
 - Treasurer: Flat 401, President: Flat 102 (configurable)
 - Late fee, late-fee day, and emergency reserve are not app settings. Leftover rows can stay on the Configuration sheet for history.
 - Sample data: compile-time off (`FEATURES.SAMPLE_DATA`). History lives on the five legacy tabs and Handover Summary.
 
 ## Security Model
 
-**One society sheet, one founding owner.** Do not “fix” access by letting each Google login create a private copy — that made random accounts appear as Owner of their own file.
+**One history workbook (APP), optional live workbook (LIVE), one founding owner.** Do not “fix” access by letting each Google login create a private copy.
 
-- Founding owner: `th***@gmail.com` (full address only in `src/config/accessPolicy.js`). Always Owner. Cannot be removed.
-- The workbook is **The Pride of Tirumala-APP**. The app never mints `TPT-MaintenanceTracker` or any replacement file.
+- Founding owner: `th***@gmail.com` (full address only in `src/config/accessPolicy.js`). Always Owner. Cannot be removed. Only that account may create The Pride of Tirumala-LIVE (`canCreateLiveWorkbook`).
+- History workbook is **The Pride of Tirumala-APP**. The app never mints `TPT-MaintenanceTracker` or any replacement APP file.
+- After LIVE exists, the app reads/writes that file for Sep 2026+. `#/old` reads APP Summary. Adding a user shares **both** Drive files. Creating LIVE shares it with Active Access Control emails from APP (Viewer or Writer matching role).
 - Manage users in the app: Settings → Access Control. New users default to **Reader**. Drive share is Viewer (`reader`) unless the founding owner grants Owner (`writer`).
 - Members must not hit Setup/create. Unlisted or unshared accounts get Access Denied.
 - Discovery: founding owner searches owned `The Pride of Tirumala-APP`; members search `sharedWithMe` plus optional `public/sheet-config.json`. Private copies and the old `TPT-MaintenanceTracker` name are ignored. A failed lookup must not wipe a bound workbook.
@@ -123,7 +131,7 @@ All configurable values are in `src/config/constants.js` and can be overridden a
 - Max 20 users, max 2 owners. Audit logging on writes.
 - Short-lived access tokens (no refresh tokens stored)
 
-Reuse `accessPolicy.js` helpers (`isFoundingOwner`, `effectiveAppRole`, `normalizeRequestedRole`, `canCreateSocietySpreadsheet`) instead of ad-hoc email checks.
+Reuse `accessPolicy.js` helpers (`isFoundingOwner`, `effectiveAppRole`, `normalizeRequestedRole`, `canCreateSocietySpreadsheet`, `canCreateLiveWorkbook`) instead of ad-hoc email checks.
 
 ## Common Modifications
 

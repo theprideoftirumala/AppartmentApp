@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   Settings as SettingsIcon, Users, Shield, Database, Trash2,
   Plus, ExternalLink, Download, UserPlus, UserMinus, Save,
-  RefreshCw, AlertTriangle, Key, Eye, Lock, KeyRound, CheckCircle2, Copy, FlaskConical, Palette
+  RefreshCw, AlertTriangle, Key, Eye, Lock, KeyRound, CheckCircle2, FlaskConical, Palette
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -19,15 +19,16 @@ import {
   seedSampleLiveData,
   ensureSheetStructure,
 } from '../services/googleSheets';
+import { createOrConnectLiveWorkbook } from '../services/liveSheetSetup';
 import {
-  createBackup, listBackups,
-  getSpreadsheetUrl, getRootFolderUrl,
+  backupAllWorkbooks, listBackups,
+  getSpreadsheetUrl, getHistorySpreadsheetUrl, getLiveSpreadsheetUrl, getRootFolderUrl,
   shareSpreadsheet, shareFolder, removeSharing,
 } from '../services/googleDrive';
-import { DEFAULT_CONFIG, FEATURES, FLATS, STORAGE_KEYS, SHEET_FILE_NAME, isSampleDataEnabled } from '../config/constants';
+import { DEFAULT_CONFIG, FEATURES, FLATS, STORAGE_KEYS, SHEET_FILE_NAME, LIVE_SHEET_FILE_NAME, isSampleDataEnabled } from '../config/constants';
 import { clearAppCachesAndReload } from '../utils/appCache';
-import { DRIVE_ROLE_BY_APP_ROLE, FOUNDING_OWNER_EMAIL, canGrantOwner, canRemoveUser, isFoundingOwner } from '../config/accessPolicy';
-import { formatDate, formatCurrency, isValidEmail } from '../utils/helpers';
+import { DRIVE_ROLE_BY_APP_ROLE, FOUNDING_OWNER_EMAIL, canCreateLiveWorkbook, canGrantOwner, canRemoveUser, isFoundingOwner } from '../config/accessPolicy';
+import { formatDate, formatCurrency, isValidEmail, isValidSpreadsheetId, getHistorySpreadsheetIdFromStorage, getLiveSpreadsheetIdFromStorage } from '../utils/helpers';
 import { InfoBubble } from '../components/common/Tooltip';
 import { hashPin } from '../contexts/AuthContext';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -53,6 +54,7 @@ export default function Settings() {
   const [backingUp, setBackingUp] = useState(false);
   const [seedingSample, setSeedingSample] = useState(false);
   const [refreshingLayout, setRefreshingLayout] = useState(false);
+  const [creatingLive, setCreatingLive] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -171,14 +173,38 @@ export default function Settings() {
   const handleBackup = async () => {
     try {
       setBackingUp(true);
-      const result = await createBackup();
-      await addAuditLog(user.email, 'BACKUP', result.name);
-      showToast(`Backup created: ${result.name}`, 'success');
+      const created = await backupAllWorkbooks({ reason: 'manual' });
+      const names = created.map((file) => file.name).join(', ');
+      await addAuditLog(user.email, 'BACKUP', names || 'workbook copy');
+      showToast(created.length ? `Backup created: ${names}` : 'No connected workbook to copy', 'success');
       fetchData();
     } catch (err) {
       showToast(err?.message || 'Failed to create backup', 'error');
     } finally {
       setBackingUp(false);
+    }
+  };
+
+  const handleCreateLive = async () => {
+    if (!canCreateLiveWorkbook(user?.email)) {
+      showToast('Only the founding owner can create The Pride of Tirumala-LIVE.', 'error');
+      return;
+    }
+    try {
+      setCreatingLive(true);
+      const result = await createOrConnectLiveWorkbook();
+      await addAuditLog(user.email, result.created ? 'CREATE_LIVE' : 'CONNECT_LIVE', LIVE_SHEET_FILE_NAME);
+      showToast(
+        result.created
+          ? 'Live books created (Sep 2026+). Opening balance came from the old Summary green cell. History months stay on The Pride of Tirumala-APP.'
+          : 'Connected the existing The Pride of Tirumala-LIVE file.',
+        'success',
+      );
+      fetchData();
+    } catch (err) {
+      showToast(err.message || 'Could not create live books', 'error');
+    } finally {
+      setCreatingLive(false);
     }
   };
 
@@ -210,10 +236,17 @@ export default function Settings() {
   const handleRefreshLayout = async () => {
     try {
       setRefreshingLayout(true);
-      await ensureSheetStructure();
+      const historyId = getHistorySpreadsheetIdFromStorage();
+      const liveBound = getLiveSpreadsheetIdFromStorage();
+      if (isValidSpreadsheetId(historyId)) {
+        await ensureSheetStructure(historyId, { liveWorkbook: false });
+      }
+      if (isValidSpreadsheetId(liveBound)) {
+        await ensureSheetStructure(liveBound, { liveWorkbook: true });
+      }
       sessionStorage.setItem('tpt_sheet_layout_v14', '1');
-      await addAuditLog(user.email, 'UPGRADE_SHEET', 'Refreshed Guide, Pending Dues, and live formulas');
-      showToast('Sheet updated: Maintenance and Expenses now match Summary without duplicate lines.', 'success');
+      await addAuditLog(user.email, 'UPGRADE_SHEET', 'Refreshed Guide, tabs, and live formulas');
+      showToast('Sheet layout refreshed. History stays on the APP file. Live Summary stays on The Pride of Tirumala-LIVE.', 'success');
     } catch (err) {
       showToast(err.message || 'Could not update the sheet layout', 'error');
     } finally {
@@ -275,7 +308,11 @@ export default function Settings() {
   }
 
   const sheetUrl = getSpreadsheetUrl();
+  const historyUrl = getHistorySpreadsheetUrl();
+  const liveUrl = getLiveSpreadsheetUrl();
   const driveUrl = getRootFolderUrl();
+  const liveId = localStorage.getItem(STORAGE_KEYS.LIVE_SPREADSHEET_ID);
+  const historyId = localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID);
 
   return (
     <div className="main-content">
@@ -287,7 +324,17 @@ export default function Settings() {
           <p className="page-subtitle">Manage configuration, users, and backups</p>
         </div>
         <div className="flex gap-2">
-          {sheetUrl && (
+          {liveUrl && (
+            <a href={liveUrl} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm">
+              <ExternalLink size={14} /> Open live sheet
+            </a>
+          )}
+          {historyUrl && (
+            <a href={historyUrl} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm">
+              <ExternalLink size={14} /> Open old sheet
+            </a>
+          )}
+          {!liveUrl && sheetUrl && (
             <a href={sheetUrl} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm">
               <ExternalLink size={14} /> Open Sheet
             </a>
@@ -476,22 +523,16 @@ export default function Settings() {
               New users default to <strong>Reader</strong> (Google Sheet Viewer). Max {config.MAX_USERS || 20} users,
               max {config.MAX_OWNERS || 2} owners. Only the founding owner can grant Owner.
             </p>
-            {localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID) && (
+            {historyId && (
+              <p className="sheet-id-row text-muted text-sm mb-2">
+                <strong>{SHEET_FILE_NAME} ID:</strong>
+                <code className="sheet-id-code">{historyId}</code>
+              </p>
+            )}
+            {liveId && (
               <p className="sheet-id-row text-muted text-sm mb-4">
-                <strong>Sheet ID:</strong>
-                <code className="sheet-id-code">{localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID)}</code>
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID) || '');
-                      showToast('Spreadsheet ID copied', 'success');
-                    } catch { /* ignore */ }
-                  }}
-                >
-                  <Copy size={14} /> Copy
-                </button>
+                <strong>{LIVE_SHEET_FILE_NAME} ID:</strong>
+                <code className="sheet-id-code">{liveId}</code>
               </p>
             )}
 
@@ -568,9 +609,10 @@ export default function Settings() {
               )}
             </div>
             <p className="text-muted text-sm mb-4">
-              Copies of <strong>{SHEET_FILE_NAME}</strong> go into Drive / TPT-AppartmentApp / backups.
-              If Drive blocks a direct copy, the app clones the tabs instead. First backup can take a minute.
-              The app also copies the file before first Setup and once on each Google sign-in.
+              Copies of <strong>{SHEET_FILE_NAME}</strong> and, if it exists, <strong>{LIVE_SHEET_FILE_NAME}</strong>
+              go into Drive / TPT-AppartmentApp / backups. If Drive blocks a direct copy, the app clones the tabs instead.
+              First backup can take a minute. The app also copies both files before first Setup (APP) and once on each Google sign-in.
+              Guest PIN sessions do not back up.
             </p>
 
             {backups.length > 0 ? (
@@ -611,16 +653,34 @@ export default function Settings() {
           </div>
         )}
 
+        {activeTab === 'backups' && isFoundingOwner(user?.email) && (
+          <div className="card mt-4">
+            <h3 className="card-title mb-2">Live books from Sep 2026</h3>
+            <p className="text-muted text-sm mb-4">
+              Creates or reconnects <strong>{LIVE_SHEET_FILE_NAME}</strong>. It copies Configuration, Flats, Payees,
+              Access Control, contacts, reminders, and watchman rows from the APP file. Opening available balance
+              is the green cell on the old Summary tab at create time. History months stay on {SHEET_FILE_NAME}.
+              Live Summary uses formulas from Maintenance and Expenses so you can keep the sheet by hand.
+              This does not replace the APP file and is never named TPT-MaintenanceTracker.
+            </p>
+            <button
+              className="btn btn-primary"
+              onClick={handleCreateLive}
+              disabled={creatingLive}
+            >
+              {creatingLive ? <RefreshCw size={14} className="animate-spin" /> : <Database size={14} />}
+              {creatingLive ? 'Working…' : (liveId ? 'Reconnect live books' : 'Create live books')}
+            </button>
+          </div>
+        )}
+
         {activeTab === 'backups' && isOwner && (
           <div className="card mt-4">
             <h3 className="card-title mb-2">Refresh sheet layout</h3>
             <p className="text-muted text-sm mb-4">
-              Adds any missing app tabs to the existing <strong>{SHEET_FILE_NAME}</strong>
-              Google Sheet. Collected maintenance is read from the Summary grid (all 10 flats)
-              and written to Maintenance. Expenses come from Exp-Detailed plus Summary
-              category rows (not Sundry — those amounts are already on Exp-Detailed).
-              Matching totals are not added twice.
-              Surplus/deficit and late-fee rows are skipped. History tabs stay as they are.
+              {liveId
+                ? `Adds missing tabs on the active workbook (${LIVE_SHEET_FILE_NAME} when live books are connected). Does not copy Nov 2020–Aug 2026 history onto the live file.`
+                : `Adds any missing app tabs to the existing ${SHEET_FILE_NAME} Google Sheet. Collected maintenance is read from the Summary grid and written to Maintenance. Expenses come from Exp-Detailed plus Summary category rows (not Sundry). Surplus/deficit and late-fee rows are skipped. History tabs stay as they are.`}
             </p>
             <button
               className="btn btn-secondary"

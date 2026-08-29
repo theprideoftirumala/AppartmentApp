@@ -21,7 +21,7 @@ const navItems = [
   { to: '/reports', icon: FileBarChart, label: 'Reports' },
   { to: '/activities', icon: PartyPopper, label: 'Activity Funds' },
   { to: '/payees', icon: IndianRupee, label: 'Payees' },
-  { to: '/handover', icon: BookOpen, label: 'Handover' },
+  { to: '/old', icon: BookOpen, label: 'Old books' },
   { to: '/reminders', icon: Bell, label: 'Reminders' },
   { to: '/contacts', icon: Phone, label: 'Emergency' },
   { to: '/settings', icon: Settings, label: 'Settings' },

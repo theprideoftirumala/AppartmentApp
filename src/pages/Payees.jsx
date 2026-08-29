@@ -1,21 +1,33 @@
 /**
  * Pay watchman and vendors via GPay / PhonePe / any UPI app.
- * UPI IDs are stored on the Payees tab — none were in the old Excel.
+ * UPI IDs are stored on the Payees tab — never invented in the app.
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { IndianRupee, Phone, Smartphone } from 'lucide-react';
+import { IndianRupee, Phone, Plus, Smartphone } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
-import { getPayees, updatePayee } from '../services/googleSheets';
+import { addPayee, getPayees, updatePayee } from '../services/googleSheets';
 import { canPayUpi, gpayUrl, phonepeUrl, telUrl, upiPayUrl } from '../utils/upiPay';
 import { formatCurrency } from '../utils/helpers';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Navbar from '../components/common/Navbar';
 
+const EMPTY_PAYEE = {
+  key: '',
+  category: '',
+  name: '',
+  phone: '',
+  upiId: '',
+  defaultAmount: '',
+  notes: '',
+};
+
 export default function Payees() {
   const { showToast, isOwner } = useApp();
   const [payees, setPayees] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState(EMPTY_PAYEE);
 
   const refresh = useCallback(async () => {
     try {
@@ -42,6 +54,20 @@ export default function Payees() {
     }
   };
 
+  const handleAdd = async () => {
+    try {
+      setAdding(true);
+      await addPayee(draft);
+      showToast('Payee added. Paste the real UPI ID if you have it — the app will not invent one.', 'success');
+      setDraft(EMPTY_PAYEE);
+      refresh();
+    } catch (err) {
+      showToast(err.message || 'Could not add payee', 'error');
+    } finally {
+      setAdding(false);
+    }
+  };
+
   return (
     <div className="main-content">
       <Navbar />
@@ -50,10 +76,48 @@ export default function Payees() {
           <h1 className="page-title">Payees</h1>
           <p className="page-subtitle">
             Pay the watchman and vendors with GPay, PhonePe, or any UPI app.
-            Add the UPI ID here — the old I&amp;E Excel had phone numbers only.
+            Add rows here or on the Payees tab in the Google Sheet. Same UPI ID, or same name and phone, is blocked.
           </p>
         </div>
       </div>
+
+      {isOwner && (
+        <div className="card mb-4">
+          <h3 className="card-title"><Plus size={16} /> Add payee</h3>
+          <p className="text-muted text-sm mb-3">
+            Type the UPI ID exactly as the payee gave it (example name@okaxis). Leave UPI blank until you have it.
+          </p>
+          <div className="form-grid">
+            <label className="form-label">
+              Category
+              <input className="form-input" value={draft.category} onChange={(e) => setDraft((p) => ({ ...p, category: e.target.value }))} placeholder="Watchman, Lift, …" />
+            </label>
+            <label className="form-label">
+              Display name
+              <input className="form-input" value={draft.name} onChange={(e) => setDraft((p) => ({ ...p, name: e.target.value }))} />
+            </label>
+            <label className="form-label">
+              Phone
+              <input className="form-input" value={draft.phone} onChange={(e) => setDraft((p) => ({ ...p, phone: e.target.value }))} />
+            </label>
+            <label className="form-label">
+              UPI ID
+              <input className="form-input" value={draft.upiId} onChange={(e) => setDraft((p) => ({ ...p, upiId: e.target.value }))} placeholder="name@okaxis" />
+            </label>
+            <label className="form-label">
+              Default amount
+              <input className="form-input" type="number" value={draft.defaultAmount} onChange={(e) => setDraft((p) => ({ ...p, defaultAmount: e.target.value }))} />
+            </label>
+            <label className="form-label">
+              Notes
+              <input className="form-input" value={draft.notes} onChange={(e) => setDraft((p) => ({ ...p, notes: e.target.value }))} />
+            </label>
+            <button type="button" className="btn btn-primary" disabled={adding} onClick={handleAdd}>
+              {adding ? 'Saving…' : 'Add payee'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <LoadingSpinner text="Loading payees…" />
@@ -67,6 +131,9 @@ export default function Payees() {
               onSave={(next) => saveRow(index, next)}
             />
           ))}
+          {!payees.length && (
+            <p className="text-muted">No payees yet. Add one here or on the Payees tab in the sheet.</p>
+          )}
         </div>
       )}
     </div>

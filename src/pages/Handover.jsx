@@ -19,7 +19,7 @@ import { getConfiguration, getEmergencyContacts, getHandoverSummary, getSocietyN
 import { formatCurrency, sheetAvailableBalance } from '../utils/helpers';
 import Navbar from '../components/common/Navbar';
 
-export default function Handover() {
+export default function Handover({ embedded = false }) {
   const [months, setMonths] = useState(HANDOVER_MONTHS);
   const [notes, setNotes] = useState(HANDOVER_NOTES);
   const [contacts, setContacts] = useState(HANDOVER_CONTACTS);
@@ -56,13 +56,13 @@ export default function Handover() {
   const recent = months.slice(-12);
 
   return (
-    <div className="main-content">
-      <Navbar />
+    <div className={embedded ? 'mt-6' : 'main-content'}>
+      {!embedded && <Navbar />}
       <div className="page-header">
         <div>
           <h1 className="page-title">Handover summary</h1>
           <p className="page-subtitle">
-            From {HANDOVER_SOURCE}. History is also copied into Maintenance and Expenses so Reports can export it. Surplus/deficit and late-fee rows on Summary are not used.
+            From {HANDOVER_SOURCE}. History stays on The Pride of Tirumala-APP. Live months (Sep 2026+) are on The Pride of Tirumala-LIVE.
           </p>
         </div>
       </div>

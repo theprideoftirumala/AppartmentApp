@@ -12,7 +12,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useApp } from '../contexts/AppContext';
-import { getDashboardData, getAccessControl, parseApiError, seedSampleLiveData, ensureSheetStructure } from '../services/googleSheets';
+import { getDashboardData, getAccessControl, parseApiError, seedSampleLiveData, ensureSheetStructure, getLiveSummarySnapshot } from '../services/googleSheets';
 import { STORAGE_KEYS, isSampleDataEnabled } from '../config/constants';
 import { effectiveAppRole, isFoundingOwner } from '../config/accessPolicy';
 import { formatCurrency, getCurrentMonthLabel, getCollectionPercentage, daysUntil, getRelativeTime, groupExpensesByCategory, parseJsonSafe, normalizeEmail, sheetAvailableBalance } from '../utils/helpers';
@@ -30,6 +30,7 @@ export default function Dashboard() {
     sessionStorage.getItem('tpt_sheet_layout_v14') ? 'done' : null
   );
   const [upgradingSheet, setUpgradingSheet] = useState(false);
+  const [liveSnap, setLiveSnap] = useState(null);
   const navigate = useNavigate();
 
   const applySheetLayout = useCallback(async () => {
@@ -39,7 +40,7 @@ export default function Dashboard() {
       await ensureSheetStructure();
       sessionStorage.setItem('tpt_sheet_layout_v14', '1');
       setSheetUpgrade('done');
-      showToast('Google Sheet updated: Maintenance and collection totals now match the Summary tab.', 'success');
+      showToast('Google Sheet layout updated. If live books exist, Live Summary formulas stay on The Pride of Tirumala-LIVE.', 'success');
     } catch (err) {
       setSheetUpgrade('error');
       showToast(err.message || 'Could not update the Google Sheet layout', 'error');
@@ -75,6 +76,8 @@ export default function Dashboard() {
       setDashboardData(data);
       setConfig(data.config);
       setLastSync(new Date().toISOString());
+      const snap = await getLiveSummarySnapshot(getCurrentMonthLabel()).catch(() => null);
+      setLiveSnap(snap);
 
       // Determine user role from Access Control sheet
       const userEmail = user?.email;
@@ -278,10 +281,14 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="stat-card-value">
-            {formatCurrency(totals.currentBalance || 0)}
+            {formatCurrency(liveSnap?.running != null ? liveSnap.running : (totals.currentBalance || 0))}
           </div>
           <div className="stat-card-trend">
-            <span className="text-muted">From the sheet as of 29 Aug 2026, plus later app entries</span>
+            <span className="text-muted">
+              {liveSnap?.running != null
+                ? 'Running available balance from Live Summary (opening + monthly surplus/deficit)'
+                : 'From the sheet as of 29 Aug 2026, plus later app entries'}
+            </span>
           </div>
         </div>
 
@@ -340,10 +347,17 @@ export default function Dashboard() {
           <strong className="widget-value">{formatCurrency(stillDueThisMonth)}</strong>
           <span className="widget-hint">{pendingFlats.length} flat(s) pending</span>
         </div>
+        {liveSnap && liveSnap.surplus != null && (
+          <div className="widget-card">
+            <span className="widget-label">Surplus / deficit ({currentMonth})</span>
+            <strong className="widget-value">{formatCurrency(liveSnap.surplus)}</strong>
+            <span className="widget-hint">Live Summary formula: collection − expenses for this month</span>
+          </div>
+        )}
         <div className="widget-card">
           <span className="widget-label">Available balance</span>
-          <strong className="widget-value">{formatCurrency(Number.isFinite(totals.currentBalance) ? totals.currentBalance : sheetAvailableBalance(config))}</strong>
-          <span className="widget-hint">Green Available balance cell on Summary, then new collections minus new expenses</span>
+          <strong className="widget-value">{formatCurrency(liveSnap?.running != null ? liveSnap.running : (Number.isFinite(totals.currentBalance) ? totals.currentBalance : sheetAvailableBalance(config)))}</strong>
+          <span className="widget-hint">{liveSnap?.running != null ? 'Live Summary running balance (formulas). Edit Maintenance and Expenses, not Live Summary amounts.' : 'Green Available balance cell on Summary, then new collections minus new expenses'}</span>
         </div>
         <div className="widget-card">
           <span className="widget-label">Reminders due soon</span>

@@ -29,25 +29,27 @@ Track monthly maintenance collection (₹3,000/flat × 10 flats), log expenses w
 
 ## Society workbook (critical)
 
-There is **one society workbook** named `The Pride of Tirumala-APP` and **one founding owner**.
+There is **one history workbook** named `The Pride of Tirumala-APP` and **one founding owner**. From Sep 2026 the working cash book is a second file, `The Pride of Tirumala-LIVE`, created only by that owner.
 
-- File aliases: `The Pride of Tirumala-APP` and `The Pride of Tirumala-APP.xlsx`. Ignore `The Pride of Tirumala-APP-old` and `TPT-MaintenanceTracker`. Dashboard adds missing app tabs before syncing collections.
-- The app **never creates** `TPT-MaintenanceTracker` or any replacement society file
-- If Drive only has the `.xlsx`, the founding owner must convert it: Drive → Open with Google Sheets → File → Save as Google Sheets, keep the name `The Pride of Tirumala-APP`
+- File aliases for history: `The Pride of Tirumala-APP` and `The Pride of Tirumala-APP.xlsx`. Ignore `The Pride of Tirumala-APP-old` and `TPT-MaintenanceTracker`.
+- The app **never creates** `TPT-MaintenanceTracker` or any replacement APP file. LIVE is additive.
+- If Drive only has the `.xlsx`, convert: Drive → Open with Google Sheets → File → Save as Google Sheets, keep the name `The Pride of Tirumala-APP`
 - Setup **backs up first**, then adds empty app tabs beside the five history tabs
 - History tabs (never overwrite): Summary, Exp - Detailed, Borewell Exp, Motor repair oct, Notes
-- A Drive copy is taken before first Setup and on every Google sign-in (not Guest PIN)
-- Use the existing The Pride of Tirumala-APP Google Sheet. Do not create another society file.
-- Collected maintenance comes from the Summary tab grid (flat × month, including grouped columns). Founding-owner Dashboard/Maintenance load writes those amounts to Maintenance and refreshes Monthly Summary (the collection sheet). Owner names stay on the sheet only.
-- Available balance is the green Summary cell, copied into Configuration. It is not a `DEFAULT_CONFIG` number. Surplus/deficit and late-fee rows are ignored. Sep 2026+ is live only.
-- `public/sheet-config.json` holds the published spreadsheet ID.
+- A Drive copy is taken before first Setup, before creating LIVE, and on every Google sign-in (APP and LIVE if bound; not Guest PIN)
+- `#/old` is a read-only view of the APP Summary grid (including surplus/deficit as stored) plus handover totals
+- LIVE Live Summary: formulas from Maintenance and Expenses. Do not type collection/expense amounts there. Opening available balance is the APP Summary green cell at create. Monthly surplus (deficit) and running available balance are formulas.
+- Available balance on APP is the green Summary cell, copied into Configuration. It is not a `DEFAULT_CONFIG` number. Old surplus/deficit rows are not imported as collections.
+- `public/sheet-config.json` holds the published APP spreadsheet ID. Do not invent a LIVE id in source.
 - Sample live-tab data is compile-time off (`FEATURES.SAMPLE_DATA`)
+- Payees: add in the app or on the Payees tab. GPay/PhonePe use the stored UPI ID only. Duplicates (same UPI or same name+phone) are rejected. Expenses with the same date, description, and amount are rejected.
 
 ## Access model (critical)
 
 - Founding owner email: `th***@gmail.com` (full value only in `src/config/accessPolicy.js`)
-- Only that account may **connect and extend** the society spreadsheet
+- Only that account may **connect and extend** the APP spreadsheet and **create The Pride of Tirumala-LIVE**
 - Other Google accounts must **never** be auto-promoted to Owner and must **never** upload a second tracker
+- Creating LIVE shares it with Active Access Control emails from APP. Adding a user shares **both** files.
 - The founding owner adds users in **Settings → Access Control**. Default role is **Reader**
 - Readers are shared the existing sheet as Google Drive **Viewer** (`reader`). Owners (if granted) get **writer**
 - The founding owner cannot be removed or demoted
@@ -82,7 +84,10 @@ Policy helpers live in `src/config/accessPolicy.js` and must be reused rather th
 - `docs/architecture.png` — High-level architecture PNG
 - `src/contexts/AuthContext.jsx` — Auth state; Google sign-in triggers a Drive backup once per session
 - `src/pages/Setup.jsx` — Founding-owner connect wizard + Drive convert steps
-- `src/pages/Handover.jsx` — Reads Handover Summary / Society Notes / Contacts from the sheet
+- `src/pages/Handover.jsx` — Handover totals; also embedded on `#/old`
+- `src/pages/OldReport.jsx` — Read-only APP Summary grid
+- `src/services/liveSheetSetup.js` — Create/connect The Pride of Tirumala-LIVE
+- `src/config/liveWorkbook.js` — Old Summary expense labels for Live Summary
 - `vite.config.js` — Build config with PWA and chunk splitting
 
 ## Constraints

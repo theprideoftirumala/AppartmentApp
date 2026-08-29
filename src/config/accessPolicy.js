@@ -8,7 +8,7 @@
  *
  * Rules:
  *  1. One founding owner (FOUNDING_OWNER_EMAIL below)
- *  2. One society workbook (The Pride of Tirumala-APP), connected only by that owner
+ *  2. History workbook The Pride of Tirumala-APP (never replaced). Founding owner may also create The Pride of Tirumala-LIVE for Sep 2026+ books.
  *  3. New members default to Reader (view-only) until the founding owner promotes them
  *  4. The founding owner cannot be demoted or removed from Access Control
  *
@@ -68,6 +68,11 @@ export function effectiveAppRole(email, aclEntry) {
 }
 
 export function canCreateSocietySpreadsheet(email) {
+  return isFoundingOwner(email);
+}
+
+/** Founding owner may create The Pride of Tirumala-LIVE (Sep 2026+). Never a replacement for the APP file. */
+export function canCreateLiveWorkbook(email) {
   return isFoundingOwner(email);
 }
 

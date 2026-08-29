@@ -417,7 +417,8 @@ src/
 ├── services/
 │   ├── googleAuth.js          GIS token client, script loader, token refresh
 │   ├── googleSheets.js        All Google Sheets CRUD (the "backend")
-│   ├── googleDrive.js         Folder/file management, backups
+│   ├── googleDrive.js         Folder/file management, backups of APP and LIVE
+│   ├── liveSheetSetup.js      Founding owner creates The Pride of Tirumala-LIVE
 │   └── pdfExport.js           Monthly report PDF generation (jsPDF)
 ├── components/common/
 │   ├── AccessDenied.jsx       Full-page wall for blocked users
@@ -436,6 +437,8 @@ src/
 │   ├── EmergencyContacts.jsx  WhatsApp-enabled contact directory
 │   ├── Settings.jsx           Config + Access Control + Guest PIN
 │   ├── Help.jsx               Owner-only guide + Google Sheets deep-dive
+│   ├── Payees.jsx             GPay / PhonePe; add payees; no invented UPI
+│   ├── OldReport.jsx          #/old read-only APP Summary + handover
 │   ├── Setup.jsx              Connect The Pride of Tirumala-APP (never create)
 │   └── Login.jsx              Google OAuth + Guest PIN entry
 ├── styles/

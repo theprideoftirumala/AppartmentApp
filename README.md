@@ -16,9 +16,10 @@ A **Progressive Web App (PWA)** for managing apartment maintenance finances, bui
 - **🔔 Reminders** — Recurring reminders for lift maintenance, water tankers, AMC renewals
 - **📞 Emergency Contacts** — Click-to-call contact directory with categories
 - **👥 Access Control** — Email whitelist with Owner/Reader roles (max 20 users, 2 owners)
-- **💾 Backups** — Drive copy before first Setup and on each Google sign-in (not Guest PIN)
+- **💾 Backups** — Drive copy of APP (and LIVE if connected) before Setup, before creating live books, on each Google sign-in, and from Settings → Create Backup
+- **📒 Old books** — `#/old` shows the APP Summary tab (including surplus/deficit as stored) plus handover totals
 - **📱 PWA** — Installable on iOS, Android, and desktop
-- **🔐 Secure** — Google OAuth 2.0, audit logging, role-based access
+- **🔐 Secure** — Google OAuth 2.0, audit logging, role-based access; only the founding owner may create LIVE
 
 ## 🏗️ Architecture
 
@@ -69,9 +70,11 @@ All settings are configurable from the app's Settings page or directly from the 
 
 ## 📊 Google Sheet Structure
 
-The Google Sheet **The Pride of Tirumala-APP** is the source of truth. The app never creates a second society file.
+There are two society files. The app never creates `TPT-MaintenanceTracker`.
 
-**First use:** upload `The Pride of Tirumala-APP.xlsx` to Drive → Open with Google Sheets → File → Save as Google Sheets. Keep the name **The Pride of Tirumala-APP**. Setup copies a backup, then adds empty app tabs beside the five history tabs (Summary, Exp - Detailed, Borewell Exp, Motor repair oct, Notes). Those history tabs are never overwritten.
+**The Pride of Tirumala-APP** (history, Nov 2020–Aug 2026) — Setup connects this file; it never creates a second APP. Convert the `.xlsx` once: Open with Google Sheets → Save as Google Sheets. Keep the name **The Pride of Tirumala-APP**. History tabs (Summary, Exp - Detailed, Borewell Exp, Motor repair oct, Notes) are never overwritten. Open the old Summary at `#/old`.
+
+**The Pride of Tirumala-LIVE** (from Sep 2026) — founding owner: Settings → Backups → Create live books. Copies Flats, Payees, Access Control, and related tabs from APP. Opening balance is the green Summary cell at create. **Live Summary** uses formulas (collections from Maintenance, expenses from Expenses, monthly surplus/deficit, running available balance). Type amounts on Maintenance and Expenses in the app or by hand — not on Live Summary. Same expense or same payee (UPI or name+phone) is blocked.
 
 Add a row on Maintenance or Expenses and refresh the app — the sheet is what the website shows.
 
@@ -113,6 +116,7 @@ src/
 │   ├── googleAuth.js         # OAuth 2.0
 │   ├── googleSheets.js       # CRUD operations
 │   ├── googleDrive.js        # File/folder management
+│   ├── liveSheetSetup.js     # Create/connect The Pride of Tirumala-LIVE
 │   └── pdfExport.js          # PDF report generation
 ├── contexts/                 # React context providers
 ├── components/common/        # Reusable UI components

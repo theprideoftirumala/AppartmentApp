@@ -8,6 +8,7 @@ import { SHEET_NAMES, SHEET_HEADERS, DEFAULT_CONFIG, CONFIG_DESCRIPTIONS, FLATS,
 import { isLiveAppMonth } from '../utils/legacySheetImport';
 import { isMissingSheetRangeError } from '../utils/sheetRangeError';
 import { duplicateExpenseMessage, firstDuplicateExpense } from '../utils/expenseDuplicate';
+import { firstDuplicatePayee } from '../utils/payeeDuplicate';
 import {
   FOUNDING_OWNER_EMAIL,
   canGrantOwner,
@@ -19,7 +20,7 @@ import {
   normalizeRequestedRole,
 } from '../config/accessPolicy';
 import { ensureValidToken, getCurrentUser } from './googleAuth';
-import { findSocietySpreadsheet, getSpreadsheetFileMeta, isPrivateCopyOwnedByUser } from './googleDrive';
+import { findSocietySpreadsheet, findLiveWorkbook, getSpreadsheetFileMeta, isPrivateCopyOwnedByUser } from './googleDrive';
 import {
   sanitizeForSheet,
   truncateForSheet,
@@ -31,6 +32,10 @@ import {
   bindSpreadsheet,
   unbindSpreadsheet,
   sheetAvailableBalance,
+  getActiveSpreadsheetIdFromStorage,
+  getHistorySpreadsheetIdFromStorage,
+  getLiveSpreadsheetIdFromStorage,
+  bindLiveSpreadsheet,
 } from '../utils/helpers';
 import { gapiCall } from '../utils/gapi';
 import { parseHandoverSummaryRows } from '../data/handoverLedger';
@@ -60,8 +65,15 @@ export {
  * Get the spreadsheet ID from localStorage
  */
 function getSpreadsheetId() {
-  const id = localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID);
-  return isValidSpreadsheetId(id) ? id : null;
+  return getActiveSpreadsheetIdFromStorage();
+}
+
+export function getHistorySpreadsheetId() {
+  return getHistorySpreadsheetIdFromStorage();
+}
+
+export function getLiveSpreadsheetId() {
+  return getLiveSpreadsheetIdFromStorage();
 }
 
 /**
@@ -245,6 +257,21 @@ export async function resolveSpreadsheetForUser(email) {
       return found.id;
     }
 
+    return null;
+  });
+}
+
+export async function resolveLiveWorkbookForUser(email) {
+  return withAuth(async () => {
+    const currentLive = getLiveSpreadsheetIdFromStorage();
+    if (isValidSpreadsheetId(currentLive) && await canReadSpreadsheet(currentLive)) {
+      return currentLive;
+    }
+    const found = await findLiveWorkbook(email);
+    if (found?.id && await canReadSpreadsheet(found.id)) {
+      bindLiveSpreadsheet(found.id);
+      return found.id;
+    }
     return null;
   });
 }
@@ -1805,7 +1832,7 @@ export async function getAuditLogForMonth(monthLabel) {
 
 export async function getHandoverSummary() {
   return withAuth(async () => {
-    const spreadsheetId = getSpreadsheetId();
+    const spreadsheetId = getHistorySpreadsheetId() || getSpreadsheetId();
     if (!spreadsheetId) return [];
     const response = await window.gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId,
@@ -1817,7 +1844,7 @@ export async function getHandoverSummary() {
 
 export async function getSocietyNotes() {
   return withAuth(async () => {
-    const spreadsheetId = getSpreadsheetId();
+    const spreadsheetId = getHistorySpreadsheetId() || getSpreadsheetId();
     if (!spreadsheetId) return [];
     const response = await window.gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId,
@@ -1849,10 +1876,50 @@ export async function getPayees() {
   });
 }
 
+export async function addPayee(payee) {
+  return withWriteAuth(async () => {
+    const spreadsheetId = getSpreadsheetId();
+    if (!spreadsheetId) throw new Error('Spreadsheet is not connected.');
+    const existing = await getPayees();
+    const duplicate = firstDuplicatePayee(payee, existing);
+    if (duplicate) {
+      throw new Error('That payee already exists (same UPI ID or same name and phone).');
+    }
+    if (!sheetText(payee.name, 80) && !sheetText(payee.upiId, 80)) {
+      throw new Error('Enter a display name or a UPI ID from the payee — do not invent one.');
+    }
+    const key = sheetText(payee.key || `payee-${Date.now()}`, 40);
+    await window.gapi.client.sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: `'${SHEET_NAMES.PAYEES}'!A:G`,
+      valueInputOption: 'RAW',
+      insertDataOption: 'INSERT_ROWS',
+      resource: {
+        values: [[
+          key,
+          sheetText(payee.category, 40),
+          sheetText(payee.name, 80),
+          sheetText(payee.phone, 20),
+          sheetText(payee.upiId, 80),
+          payee.defaultAmount === '' || payee.defaultAmount == null ? '' : sheetNumber(payee.defaultAmount),
+          sheetText(payee.notes, 200),
+        ]],
+      },
+    });
+    return key;
+  });
+}
+
 export async function updatePayee(index, payee) {
   return withWriteAuth(async () => {
     const spreadsheetId = getSpreadsheetId();
     if (!spreadsheetId) throw new Error('Spreadsheet is not connected.');
+    const existing = await getPayees();
+    const others = existing.filter((_, i) => i !== index);
+    const duplicate = firstDuplicatePayee(payee, others);
+    if (duplicate) {
+      throw new Error('That payee already exists (same UPI ID or same name and phone).');
+    }
     await window.gapi.client.sheets.spreadsheets.values.update({
       spreadsheetId,
       range: `'${SHEET_NAMES.PAYEES}'!A${index + 2}:G${index + 2}`,
@@ -1869,5 +1936,51 @@ export async function updatePayee(index, payee) {
         ]],
       },
     });
+  });
+}
+
+export async function getHistorySummaryGrid() {
+  return withAuth(async () => {
+    const spreadsheetId = getHistorySpreadsheetId();
+    if (!spreadsheetId) return [];
+    const response = await window.gapi.client.sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: "'Summary'!A1:BZ50",
+      valueRenderOption: 'FORMATTED_VALUE',
+    }).catch(() => ({ result: { values: [] } }));
+    return response.result.values || [];
+  });
+}
+
+export async function getLiveSummarySnapshot(monthLabel) {
+  return withAuth(async () => {
+    const spreadsheetId = getLiveSpreadsheetId();
+    if (!spreadsheetId) return null;
+    const response = await window.gapi.client.sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `'${SHEET_NAMES.LIVE_SUMMARY}'!A1:N33`,
+      valueRenderOption: 'UNFORMATTED_VALUE',
+    }).catch(() => ({ result: { values: [] } }));
+    const rows = response.result.values || [];
+    const headers = rows[4] || [];
+    const col = headers.findIndex((cell) => String(cell || '').trim() === String(monthLabel || '').trim());
+    if (col < 0) {
+      return {
+        opening: Number(rows[1]?.[1]) || 0,
+        month: monthLabel,
+        collection: null,
+        expenses: null,
+        surplus: null,
+        running: null,
+      };
+    }
+    return {
+      opening: Number(rows[1]?.[1]) || 0,
+      month: monthLabel,
+      collection: Number(rows[15]?.[col]) || 0,
+      expenses: Number(rows[30]?.[col]) || 0,
+      surplus: Number(rows[31]?.[col]) || 0,
+      running: Number(rows[32]?.[col]) || 0,
+    };
   });
 }
