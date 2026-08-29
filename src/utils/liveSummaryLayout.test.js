@@ -4,6 +4,7 @@ import { LIVE_SUMMARY_EXPENSE_ROWS } from '../config/liveWorkbook';
 import {
   columnLetter,
   liveMonthHeaders,
+  liveSummaryCollectionFormula,
   liveSummaryNeedsFormulaRepair,
   liveSummaryStaticAndFormulaGrid,
   LIVE_SUMMARY_FORMULA_VERSION,
@@ -61,11 +62,13 @@ describe('liveSummaryStaticAndFormulaGrid', () => {
     const { values, formulas } = liveSummaryStaticAndFormulaGrid(1732.54, ['Sep-26', 'Oct-26']);
     expect(values[1][1]).toBe(1732.54);
     expect(values[4][2]).toBe('Sep-26');
-    expect(formulas.C6).toMatch(/SUMIFS\(Maintenance!D:D/);
+    expect(formulas.C6).toMatch(/SUMPRODUCT/);
+    expect(formulas.C6).toContain('TO_TEXT');
     expect(formulas.C6).toContain('"Sep-26"');
     expect(formulas.C6).not.toMatch(/C\$5/);
     expect(formulas.D6).toContain('"Oct-26"');
     expect(formulas.D6).not.toMatch(/C\$5/);
+    expect(formulas.C6).toBe(liveSummaryCollectionFormula('Sep-26', 6));
     expect(values[3][0]).toBe(LIVE_SUMMARY_FORMULA_VERSION);
     expect(formulas.C32).toMatch(/C16/);
     expect(formulas.C33).toMatch(/\$B\$2/);
@@ -106,9 +109,15 @@ describe('liveSummaryNeedsFormulaRepair', () => {
     ], LIVE_SUMMARY_FORMULA_VERSION)).toBe(true);
   });
 
-  it('leaves text-month SUMIFS alone when the version stamp is present', () => {
+  it('repairs text-month SUMIFS that still fail when month or flat types differ', () => {
     expect(liveSummaryNeedsFormulaRepair([
       '=IFERROR(SUMIFS(Maintenance!D:D,Maintenance!A:A,"Aug-26",Maintenance!B:B,$A6),0)',
+    ], LIVE_SUMMARY_FORMULA_VERSION)).toBe(true);
+  });
+
+  it('leaves TO_TEXT SUMPRODUCT formulas alone when the version stamp is present', () => {
+    expect(liveSummaryNeedsFormulaRepair([
+      liveSummaryCollectionFormula('Aug-26', 6),
     ], LIVE_SUMMARY_FORMULA_VERSION)).toBe(false);
   });
 

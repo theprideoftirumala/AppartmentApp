@@ -531,7 +531,7 @@ export async function writeLiveSummaryTab(spreadsheetId, openingBalance, months)
   return monthList;
 }
 
-/** Rebuild Live Summary months and rewrite formulas when they still point at C$5 or lack the version stamp. */
+/** Rebuild Live Summary months and rewrite formulas when they are stale or lack the version stamp. */
 export async function syncLiveSummaryMonths(spreadsheetId, { forceFormulas = false } = {}) {
   await addSheetIfMissing(spreadsheetId, SHEET_NAMES.LIVE_SUMMARY);
   const state = await readLiveSummaryState(spreadsheetId);

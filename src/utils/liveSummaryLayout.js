@@ -40,8 +40,8 @@ export function liveMonthHeaders(startYm = LIVE_APP_START, count = 1) {
   return out.filter((label) => monthLabelToYearMonth(label) >= LIVE_APP_START);
 }
 
-/** Bump when Live Summary SUMIFS shape changes so existing files are rewritten. */
-export const LIVE_SUMMARY_FORMULA_VERSION = 'tpt-live-v2';
+/** Bump when Live Summary lookup formulas change so existing files are rewritten. */
+export const LIVE_SUMMARY_FORMULA_VERSION = 'tpt-live-v3';
 
 export const LIVE_SUMMARY_LAYOUT = {
   titleRow: 1,
@@ -93,8 +93,7 @@ export function liveSummaryStaticAndFormulaGrid(openingBalance, months = liveMon
     months.forEach((monthLabel, m) => {
       const col = columnLetter(layout.firstMonthCol + m);
       row.push('');
-      const monthLit = sheetTextLiteral(monthLabel);
-      formulas[`${col}${r}`] = `=IFERROR(SUMIFS(Maintenance!D:D,Maintenance!A:A,${monthLit},Maintenance!B:B,$A${r}),0)`;
+      formulas[`${col}${r}`] = liveSummaryCollectionFormula(monthLabel, r);
     });
     formulas[`B${r}`] = `=IFERROR(VLOOKUP(A${r},Flats!A:B,2,FALSE),"")`;
     rows[r - 1] = row;
@@ -118,10 +117,8 @@ export function liveSummaryStaticAndFormulaGrid(openingBalance, months = liveMon
       const col = columnLetter(layout.firstMonthCol + m);
       row.push('');
       const lookup = item.sumCategory === undefined ? item.category : item.sumCategory;
-      const cat = String(lookup || '').replace(/"/g, '""');
-      const monthLit = sheetTextLiteral(months[m]);
-      formulas[`${col}${r}`] = cat
-        ? `=IFERROR(SUMIFS(Expenses!F:F,Expenses!C:C,${monthLit},Expenses!E:E,"${cat}"),0)`
+      formulas[`${col}${r}`] = lookup
+        ? liveSummaryExpenseFormula(months[m], lookup)
         : '=0';
     });
     rows[r - 1] = row;
@@ -170,6 +167,23 @@ export function liveSummaryStaticAndFormulaGrid(openingBalance, months = liveMon
 
 function sheetTextLiteral(value) {
   return `"${String(value || '').replace(/"/g, '""')}"`;
+}
+
+/** Month as typed text or as a Sheets date that displays Aug-26. Flat as text or number. */
+export function liveSummaryMonthMatch(rangeA1, monthLabel) {
+  const monthLit = sheetTextLiteral(monthLabel);
+  return `((TO_TEXT(${rangeA1})=${monthLit})+(IFERROR(TEXT(${rangeA1},"MMM-YY"),"")=${monthLit}))>0`;
+}
+
+export function liveSummaryCollectionFormula(monthLabel, flatRow) {
+  const monthOk = liveSummaryMonthMatch('Maintenance!A$2:A$5000', monthLabel);
+  return `=IFERROR(SUMPRODUCT((${monthOk})*(TO_TEXT(Maintenance!B$2:B$5000)=TO_TEXT($A${flatRow}))*(N(Maintenance!D$2:D$5000))),0)`;
+}
+
+export function liveSummaryExpenseFormula(monthLabel, category) {
+  const monthOk = liveSummaryMonthMatch('Expenses!C$2:C$5000', monthLabel);
+  const catLit = sheetTextLiteral(category);
+  return `=IFERROR(SUMPRODUCT((${monthOk})*(TO_TEXT(Expenses!E$2:E$5000)=${catLit})*(N(Expenses!F$2:F$5000))),0)`;
 }
 
 /** Turn a header cell (text, or an Excel date serial) into Aug-26 style. */
@@ -265,8 +279,9 @@ export function liveSummaryNeedsFormulaRepair(sampleFormulas = [], versionCell =
   const list = (sampleFormulas || []).map((cell) => String(cell || '')).filter(Boolean);
   if (!list.length) return true;
   if (list.some((formula) => liveSummaryFormulaUsesHeaderCell(formula))) return true;
-  const sumifs = list.filter((formula) => /SUMIFS/i.test(formula));
-  return sumifs.some((formula) => !/"[A-Za-z]{3}-\d{2}"/.test(formula));
+  if (list.some((formula) => /SUMIFS/i.test(formula) && !/TO_TEXT/i.test(formula))) return true;
+  const lookups = list.filter((formula) => /SUMPRODUCT|SUMIFS/i.test(formula));
+  return lookups.some((formula) => !/TO_TEXT/i.test(formula) || !/"[A-Za-z]{3}-\d{2}"/.test(formula));
 }
 
 export function parseLiveSummarySnapshot(rows, monthLabel) {

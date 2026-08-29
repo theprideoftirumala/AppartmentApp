@@ -218,15 +218,16 @@ Optionally paste the Google Sheet ID into `public/sheet-config.json` after that 
 | Blank page after deploy | Check `base` in `vite.config.js` matches your deployment path |
 | Setup says convert the Excel file | In Drive: Open with Google Sheets → File → Save as Google Sheets. Name it The Pride of Tirumala-APP |
 | Old TPT-MaintenanceTracker still opens | The app ignores that name. Bind The Pride of Tirumala-APP; hard-refresh or clear cache |
-| History months missing in the app | Settings → Backups → Refresh sheet layout, then hard-refresh (cache `tpt-v37`) |
+| History months missing in the app | Settings → Backups → Refresh sheet layout, then hard-refresh (cache `tpt-v38`) |
 | Payees: `.catch is not a function` | Hard-refresh v1.9.3. Google thenables must be wrapped with `gapiCall` |
 | Dashboard ignores sheet edits | After LIVE exists, edit The Pride of Tirumala-LIVE, then Dashboard refresh. A correction banner appears if formulas disagree |
 | Bound to APP-old or the .xlsx | Hard-refresh v1.9.3. Retry as founding owner. The app uses only The Pride of Tirumala-APP (Google Sheet) for history |
 | Failed to create backup | Hard-refresh v1.9.3. Create Backup copies APP and LIVE (if connected); clones tabs if Drive copy is blocked. Wait up to a minute. |
 | Need Aug 2026+ books like the old Summary | Founding owner: Settings → Backups → Create live books (`The Pride of Tirumala-LIVE`). Live Summary starts at Aug-26; add later months from Maintenance. Old Summary stays at `#/old` |
 | Live Summary still has a year of empty months | Hard-refresh v1.9.3 (`tpt-v36`), then Settings → Backups → Refresh sheet layout. Unused columns are dropped; Aug-26 is kept. |
-| Dashboard Collection is ₹0 while Maintenance is paid | Hard-refresh until the sidebar shows v1.9.4. Open Dashboard or Settings → Refresh sheet layout so Live Summary formulas stop using `C$5`. Then refresh again. |
-| Live Summary Sep-26 all zeros / formula has C$5 | v1.9.4 rewrites those formulas to `"Sep-26"`. Confirm cell A4 is `tpt-live-v2`. |
+| Dashboard Collection is ₹0 while Maintenance is paid | Hard-refresh until the sidebar shows v1.9.5. Open Dashboard or Settings → Refresh sheet layout so Live Summary uses `TO_TEXT` lookups. Then refresh again. |
+| Live Summary Sep-26 all zeros / formula has C$5 | v1.9.4 rewrites those formulas to `"Sep-26"`. Confirm cell A4 is `tpt-live-v2` or newer. |
+| Live Summary formulas say `"Aug-26"` but every cell is still 0 | v1.9.5 rewrites to `SUMPRODUCT` + `TO_TEXT` so a date month or numeric flat still matches. Confirm A4 is `tpt-live-v3`. Sidebar **v1.9.5**. |
 | False “Sheets API is not enabled” | Hard-refresh v1.9.3. That message is only for the real not-enabled error. Retry; a 403/429 is not a disabled API. |
 | Expenses listed twice | Refresh sheet layout. Exp-Detailed lines win. Summary Sundry totals are removed from Expenses |
 | Collected amounts do not match Summary | Founding owner: Settings → Backups → Refresh sheet layout. The app updates Maintenance from the Summary grid |

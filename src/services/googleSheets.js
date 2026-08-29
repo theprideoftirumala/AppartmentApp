@@ -549,7 +549,7 @@ export async function initializeMonthMaintenance(month, amount) {
       throw new Error(`${month} already has ${existing.length} maintenance rows. Refresh instead of initializing again.`);
     }
     const rows = FLATS.map(flat => [
-      sheetText(month, 12), flat, sheetNumber(amount), '0', '', '', '', 'PENDING', '0', '',
+      sheetText(month, 12), sheetText(flat, 8), sheetNumber(amount), '0', '', '', '', 'PENDING', '0', '',
     ]);
 
     await gapiCall(window.gapi.client.sheets.spreadsheets.values.append({
