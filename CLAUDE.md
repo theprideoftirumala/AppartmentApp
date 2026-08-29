@@ -60,7 +60,7 @@ The workbook is designed so a treasurer can understand every number without open
 3. **Flats** — Owner details for 10 flats (101-502)
 4. **Maintenance** — Per-flat collected amounts, copied from the existing Summary grid (column A flats × month columns). Opening Dashboard/Maintenance as founding owner updates this tab. Column K (Still Due) is a formula: due − paid.
 5. **Pending Dues** — Type a month in the yellow cell to see who still owes (formulas; do not type in the table)
-6. **Expenses** — Expense entries from Nov 2020 (Exp - Detailed line items, then Summary category/Sundry totals that are not already covered) plus new app rows
+6. **Expenses** — Expense entries from Nov 2020 (Exp - Detailed line items, then Summary category totals that are not already covered) plus new app rows. Summary Sundry is not copied — those amounts are already on Exp-Detailed.
 7. **Misc Funds** — Extra collections (festival, levy, donation)
 8. **Emergency Contacts** — Categorized contact directory
 9. **Reminders** — Recurring task reminders

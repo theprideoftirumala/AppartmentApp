@@ -190,7 +190,7 @@ Do **not** create `TPT-MaintenanceTracker`. Use the existing Excel:
 4. Keep the name **The Pride of Tirumala-APP** (no `.xlsx`)
 5. Hard-refresh the live app and sign in as the founding owner
 6. Setup copies the file into `TPT-AppartmentApp/backups/`, then adds empty app tabs beside the five history tabs
-7. Settings → Backups → Refresh sheet layout copies Summary collections into Maintenance, and Exp-Detailed plus Summary expense categories (including Sundry) into Expenses. Matching totals are not added twice. Surplus/deficit and late-fee rows are skipped. Available balance is copied from the green Summary cell into Configuration.
+7. Settings → Backups → Refresh sheet layout copies Summary collections into Maintenance, and Exp-Detailed plus Summary expense categories into Expenses. Summary Sundry totals are not copied (already on Exp-Detailed). Matching totals are not added twice. Surplus/deficit and late-fee rows are skipped. Available balance is copied from the green Summary cell into Configuration.
 
 Optionally paste the Google Sheet ID into `public/sheet-config.json` after that connect.
 
@@ -218,10 +218,10 @@ Optionally paste the Google Sheet ID into `public/sheet-config.json` after that 
 | Blank page after deploy | Check `base` in `vite.config.js` matches your deployment path |
 | Setup says convert the Excel file | In Drive: Open with Google Sheets → File → Save as Google Sheets. Name it The Pride of Tirumala-APP |
 | Old TPT-MaintenanceTracker still opens | The app ignores that name. Bind The Pride of Tirumala-APP; hard-refresh or clear cache |
-| History months missing in the app | Settings → Backups → Refresh sheet layout, then hard-refresh (cache `tpt-v31`) |
-| Bound to APP-old or the .xlsx | Hard-refresh v1.8.10. Retry as founding owner. The app uses only The Pride of Tirumala-APP (Google Sheet) |
-| Failed to create backup | Hard-refresh v1.8.10. Create Backup clones the tabs if Drive copy is blocked. Wait up to a minute. |
-| Expenses listed twice | Refresh sheet layout. Exp-Detailed lines win; Summary category/Sundry totals are added only when missing |
+| History months missing in the app | Settings → Backups → Refresh sheet layout, then hard-refresh (cache `tpt-v32`) |
+| Bound to APP-old or the .xlsx | Hard-refresh v1.8.11. Retry as founding owner. The app uses only The Pride of Tirumala-APP (Google Sheet) |
+| Failed to create backup | Hard-refresh v1.8.11. Create Backup clones the tabs if Drive copy is blocked. Wait up to a minute. |
+| Expenses listed twice | Refresh sheet layout. Exp-Detailed lines win. Summary Sundry totals are removed from Expenses |
 | Collected amounts do not match Summary | Founding owner: Settings → Backups → Refresh sheet layout. The app updates Maintenance from the Summary grid |
 | Unable to parse range Configuration | The converted sheet still has only history tabs. Founding owner: Retry — the app adds Configuration and the other app tabs. Or Settings → Backups → Refresh sheet layout |
 | Balance does not match the Summary tab | Check the green Available balance cell, then Refresh sheet layout. Surplus/deficit and late-fee rows are ignored |

@@ -136,11 +136,10 @@ function firstLabel(row) {
 }
 
 function isSkipExpenseLabel(text) {
-  return /carry\s*forward|surplus|deficit|^totals?\b|contribution|available\s*balance|late\s*fee|^expenses?$|^income$|^collection/i.test(text);
+  return /carry\s*forward|surplus|deficit|^totals?\b|contribution|available\s*balance|late\s*fee|^expenses?$|^income$|^collection|sundry/i.test(text);
 }
 
 const SUMMARY_CATEGORY_RULES = [
-  [/sundry/i, 'Sundry'],
   [/watchman|salary/i, 'Watchman Salary'],
   [/generator|diesel|desiel/i, 'Generator Fuel'],
   [/electric/i, 'Common Electricity'],
@@ -245,7 +244,8 @@ export function expenseRowsFromDetailedGrid(grid) {
 }
 
 /**
- * Monthly category totals from the Summary expense block, including Sundry.
+ * Monthly category totals from the Summary expense block.
+ * Sundry stays on Summary only — those amounts are already line items on Exp-Detailed / Expenses.
  * Skips flats, contribution, total, surplus/deficit. Live months stay off.
  */
 export function expenseRowsFromSummaryGrid(grid) {
@@ -312,8 +312,8 @@ function amountsClose(a, b) {
 }
 
 /**
- * Keep Exp-Detailed line items. Add a Summary category (including Sundry)
- * only when that month/category is not already covered by detailed lines.
+ * Keep Exp-Detailed line items. Add a Summary category only when that
+ * month/category is not already covered. Summary Sundry totals are never added.
  */
 export function mergeHistoryExpenses(detailedRows, summaryRows) {
   const detailed = detailedRows || [];
@@ -353,6 +353,16 @@ export function isImportedExpenseRow(row) {
   return /^EXP-(HIST|SUM)-/i.test(id) || /From (Exp - Detailed|Summary)/i.test(source);
 }
 
+export function isSummarySundryImport(row) {
+  const id = String(row?.[0] || '');
+  const source = String(row?.[10] || '');
+  const fromSummary = /From Summary/i.test(source) || /^EXP-SUM-/i.test(id);
+  if (!fromSummary) return false;
+  const category = String(row?.[4] || '');
+  const description = String(row?.[3] || '');
+  return /sundry/i.test(category) || /sundry/i.test(description);
+}
+
 /** Indexes of imported rows that duplicate another imported line or a Summary rollup. */
 export function leftoverDuplicateImportIndexes(rows) {
   const list = rows || [];
@@ -361,6 +371,10 @@ export function leftoverDuplicateImportIndexes(rows) {
   const detailed = [];
   const summary = [];
   list.forEach((row, index) => {
+    if (isSummarySundryImport(row)) {
+      drop.add(index);
+      return;
+    }
     if (!isImportedExpenseRow(row)) return;
     const key = importedExpenseFingerprint(row);
     if (seen.has(key)) {

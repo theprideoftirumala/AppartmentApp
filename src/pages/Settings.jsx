@@ -618,7 +618,8 @@ export default function Settings() {
               Adds any missing app tabs to the existing <strong>{SHEET_FILE_NAME}</strong>
               Google Sheet. Collected maintenance is read from the Summary grid (all 10 flats)
               and written to Maintenance. Expenses come from Exp-Detailed plus Summary
-              category rows (including Sundry). Matching totals are not added twice.
+              category rows (not Sundry — those amounts are already on Exp-Detailed).
+              Matching totals are not added twice.
               Surplus/deficit and late-fee rows are skipped. History tabs stay as they are.
             </p>
             <button
