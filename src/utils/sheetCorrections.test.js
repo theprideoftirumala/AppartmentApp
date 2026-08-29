@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { amountsDiffer, dashboardCorrectionMessages } from './sheetCorrections';
+import { amountsDiffer, dashboardCorrectionMessages, preferEnteredWhenSheetDisagrees } from './sheetCorrections';
+
+describe('preferEnteredWhenSheetDisagrees', () => {
+  it('shows Maintenance/Expenses when Live Summary formulas are still 0', () => {
+    expect(preferEnteredWhenSheetDisagrees(0, 30000)).toBe(30000);
+    expect(preferEnteredWhenSheetDisagrees(30000, 30000)).toBe(30000);
+    expect(preferEnteredWhenSheetDisagrees(null, 30000)).toBe(30000);
+  });
+});
 
 describe('amountsDiffer', () => {
   it('ignores rounding under five paise', () => {

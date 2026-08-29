@@ -84,10 +84,11 @@ export function liveSummaryStaticAndFormulaGrid(openingBalance, months = liveMon
   FLATS.forEach((flat, i) => {
     const r = layout.firstFlatRow + i;
     const row = [flat, ''];
-    months.forEach((_, m) => {
+    months.forEach((monthLabel, m) => {
       const col = columnLetter(layout.firstMonthCol + m);
       row.push('');
-      formulas[`${col}${r}`] = `=IFERROR(SUMIFS(Maintenance!D:D,Maintenance!A:A,${col}$${layout.headerRow},Maintenance!B:B,$A${r}),0)`;
+      const monthLit = sheetTextLiteral(monthLabel);
+      formulas[`${col}${r}`] = `=IFERROR(SUMIFS(Maintenance!D:D,Maintenance!A:A,${monthLit},Maintenance!B:B,$A${r}),0)`;
     });
     formulas[`B${r}`] = `=IFERROR(VLOOKUP(A${r},Flats!A:B,2,FALSE),"")`;
     rows[r - 1] = row;
@@ -112,8 +113,9 @@ export function liveSummaryStaticAndFormulaGrid(openingBalance, months = liveMon
       row.push('');
       const lookup = item.sumCategory === undefined ? item.category : item.sumCategory;
       const cat = String(lookup || '').replace(/"/g, '""');
+      const monthLit = sheetTextLiteral(months[m]);
       formulas[`${col}${r}`] = cat
-        ? `=IFERROR(SUMIFS(Expenses!F:F,Expenses!C:C,${col}$${layout.headerRow},Expenses!E:E,"${cat}"),0)`
+        ? `=IFERROR(SUMIFS(Expenses!F:F,Expenses!C:C,${monthLit},Expenses!E:E,"${cat}"),0)`
         : '=0';
     });
     rows[r - 1] = row;
@@ -160,8 +162,28 @@ export function liveSummaryStaticAndFormulaGrid(openingBalance, months = liveMon
   return { values, formulas, lastCol, months };
 }
 
+function sheetTextLiteral(value) {
+  return `"${String(value || '').replace(/"/g, '""')}"`;
+}
+
+/** Turn a header cell (text, or an Excel date serial) into Aug-26 style. */
+export function coerceMonthLabel(value) {
+  if (value == null || value === '') return '';
+  const text = String(value).trim();
+  const fromText = monthLabelToYearMonth(text);
+  if (fromText) return yearMonthToLabel(fromText);
+  if (typeof value === 'number' || /^\d+(\.\d+)?$/.test(text)) {
+    const serial = Number(value);
+    if (Number.isFinite(serial) && serial > 20000 && serial < 80000) {
+      const utc = new Date(Date.UTC(1899, 11, 30) + Math.floor(serial) * 86400000);
+      return yearMonthToLabel(`${utc.getUTCFullYear()}-${String(utc.getUTCMonth() + 1).padStart(2, '0')}`);
+    }
+  }
+  return '';
+}
+
 export function sortMonthLabels(labels = []) {
-  return [...new Set((labels || []).map((label) => String(label || '').trim()).filter((label) => monthLabelToYearMonth(label)))]
+  return [...new Set((labels || []).map((label) => coerceMonthLabel(label)).filter(Boolean))]
     .sort((a, b) => monthLabelToYearMonth(a).localeCompare(monthLabelToYearMonth(b)));
 }
 
@@ -171,11 +193,9 @@ export function yearMonthToLabel(yearMonth) {
   return `${MONTH_NAMES[Number(match[2]) - 1]}-${match[1].slice(-2)}`;
 }
 
-export function nextSequentialMonthLabel(labels = []) {
-  const sorted = sortMonthLabels(labels);
-  if (!sorted.length) return FIRST_LIVE_MONTH_LABEL;
-  const lastYm = monthLabelToYearMonth(sorted[sorted.length - 1]);
-  const match = lastYm.match(/^(\d{4})-(\d{2})$/);
+export function incrementMonthLabel(label) {
+  const ym = monthLabelToYearMonth(coerceMonthLabel(label) || label);
+  const match = ym.match(/^(\d{4})-(\d{2})$/);
   if (!match) return FIRST_LIVE_MONTH_LABEL;
   let year = Number(match[1]);
   let month = Number(match[2]) + 1;
@@ -186,13 +206,26 @@ export function nextSequentialMonthLabel(labels = []) {
   return yearMonthToLabel(`${year}-${String(month).padStart(2, '0')}`);
 }
 
+/** First missing live month, starting at Aug-26. Does not skip a gap. */
+export function nextSequentialMonthLabel(labels = []) {
+  const have = new Set(sortMonthLabels(labels));
+  if (!have.has(FIRST_LIVE_MONTH_LABEL)) return FIRST_LIVE_MONTH_LABEL;
+  let cursor = FIRST_LIVE_MONTH_LABEL;
+  while (have.has(cursor)) {
+    cursor = incrementMonthLabel(cursor);
+  }
+  return cursor;
+}
+
 export function workingMonthLabels(existing = []) {
   return sortMonthLabels([FIRST_LIVE_MONTH_LABEL, ...existing]);
 }
 
 /** Always Aug-26, plus live months that already have Maintenance or Expenses rows. Drops empty placeholder columns. */
 export function plannedLiveMonths(dataMonths = []) {
-  const liveData = (dataMonths || []).filter((label) => monthLabelToYearMonth(label) >= LIVE_APP_START);
+  const liveData = (dataMonths || [])
+    .map((label) => coerceMonthLabel(label))
+    .filter((label) => monthLabelToYearMonth(label) >= LIVE_APP_START);
   return workingMonthLabels(liveData);
 }
 
@@ -210,8 +243,8 @@ export function pickDefaultWorkingMonth(months, preferred) {
 }
 
 export function liveSummaryColumnForMonth(headersRow, monthLabel) {
-  const headers = headersRow || [];
-  const index = headers.findIndex((cell) => String(cell || '').trim() === String(monthLabel || '').trim());
+  const want = coerceMonthLabel(monthLabel) || String(monthLabel || '').trim();
+  const index = (headersRow || []).findIndex((cell) => coerceMonthLabel(cell) === want);
   return index >= 0 ? index : -1;
 }
 

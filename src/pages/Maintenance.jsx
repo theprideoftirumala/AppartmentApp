@@ -129,7 +129,8 @@ export default function Maintenance() {
         <div>
           <h1 className="page-title">Maintenance Collection</h1>
           <p className="page-subtitle">
-            Working months only. After live books exist, add the next month in order (Aug-26, then Sep-26, …).
+            Months on the sheet: {monthOptions.join(', ') || '—'}.
+            {liveBound ? ` Next to add is ${nextMonthLabel} (the first month after Aug-26 that is not already here).` : ''}
           </p>
         </div>
         <div className="flex gap-2 items-center flex-wrap">
@@ -145,7 +146,7 @@ export default function Maintenance() {
           </select>
           {isOwner !== false && liveBound && (
             <button className="btn btn-secondary btn-sm" onClick={handleAddNextMonth} disabled={saving}>
-              <Plus size={16} /> Add {nextMonthLabel}
+              <Plus size={16} /> Add next month ({nextMonthLabel})
             </button>
           )}
           {isOwner !== false && (

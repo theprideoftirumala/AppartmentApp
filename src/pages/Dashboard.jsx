@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useApp } from '../contexts/AppContext';
 import { getDashboardData, getAccessControl, parseApiError, seedSampleLiveData, ensureSheetStructure } from '../services/googleSheets';
+import { preferEnteredWhenSheetDisagrees } from '../utils/sheetCorrections';
 import { STORAGE_KEYS, isSampleDataEnabled } from '../config/constants';
 import { effectiveAppRole, isFoundingOwner } from '../config/accessPolicy';
 import { formatCurrency, getCurrentMonthLabel, getCollectionPercentage, daysUntil, getRelativeTime, groupExpensesByCategory, parseJsonSafe, normalizeEmail, sheetAvailableBalance } from '../utils/helpers';
@@ -173,8 +174,8 @@ export default function Dashboard() {
   const currentMonthExpenses = (data?.expenses || []).filter(e => e.month === currentMonth);
   const currentMonthExpenseTotal = currentMonthExpenses.reduce((s, e) => s + e.amount, 0);
   const currentMonthCollection = currentMonthMaintenance.reduce((s, m) => s + m.amountPaid, 0);
-  const sheetCollection = liveSnap?.collection != null ? liveSnap.collection : currentMonthCollection;
-  const sheetExpenses = liveSnap?.expenses != null ? liveSnap.expenses : currentMonthExpenseTotal;
+  const sheetCollection = preferEnteredWhenSheetDisagrees(liveSnap?.collection, currentMonthCollection);
+  const sheetExpenses = preferEnteredWhenSheetDisagrees(liveSnap?.expenses, currentMonthExpenseTotal);
 
   // Upcoming reminders
   const upcomingReminders = (data?.reminders || [])
@@ -299,13 +300,12 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="stat-card-value">
-            {formatCurrency(liveSnap?.running != null ? liveSnap.running : (totals.currentBalance || 0))}
+            {formatCurrency(preferEnteredWhenSheetDisagrees(liveSnap?.running, totals.currentBalance || 0))}
           </div>
           <div className="stat-card-trend">
             <span className="text-muted">
-              {liveSnap?.running != null
-                ? 'Running available balance from Live Summary (opening + monthly surplus/deficit)'
-                : 'From the sheet as of 29 Aug 2026, plus later app entries'}
+              Opening (Live Summary B2) plus live Maintenance collections minus live Expenses.
+              If Live Summary formulas still show a different running total, the typed tabs win until those formulas recalculate.
             </span>
           </div>
         </div>

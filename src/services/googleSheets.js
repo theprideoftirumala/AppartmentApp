@@ -40,7 +40,8 @@ import {
   getFiscalMonthOptions,
 } from '../utils/helpers';
 import { gapiCall, gapiCallSafe } from '../utils/gapi';
-import { parseLiveSummarySnapshot, sortMonthLabels } from '../utils/liveSummaryLayout';
+import { isGoogleApiNotEnabledMessage } from '../utils/googleApiError';
+import { coerceMonthLabel, parseLiveSummarySnapshot, sortMonthLabels } from '../utils/liveSummaryLayout';
 import { dashboardCorrectionMessages } from '../utils/sheetCorrections';
 import { parseHandoverSummaryRows } from '../data/handoverLedger';
 import {
@@ -151,12 +152,11 @@ export function parseApiError(error) {
       return 'Google sign-in is blocked for this account. Add this email as a Test User in Google Cloud Console > OAuth consent screen, or publish and verify the app.';
     }
 
-    // Common API enablement failures
-    if (msg.includes('Google Drive API has not been used') || msg.includes('drive.googleapis.com')) {
+    if (isGoogleApiNotEnabledMessage(msg, 'Google Drive')) {
       return 'Google Drive API is not enabled for this project. Enable it in Google Cloud Console: https://console.cloud.google.com/apis/library/drive.googleapis.com, wait 5-10 minutes, then try again.';
     }
 
-    if (msg.includes('Google Sheets API has not been used') || msg.includes('sheets.googleapis.com')) {
+    if (isGoogleApiNotEnabledMessage(msg, 'Google Sheets')) {
       return 'Google Sheets API is not enabled for this project. Enable it in Google Cloud Console: https://console.cloud.google.com/apis/library/sheets.googleapis.com, wait 5-10 minutes, then try again.';
     }
 
@@ -440,7 +440,12 @@ export async function getMaintenanceRecords(month = null) {
   return withAuth(async () => {
     const spreadsheetId = getSpreadsheetId();
     const user = getCurrentUser();
-    if (isFoundingOwner(user?.email) && isValidSpreadsheetId(spreadsheetId)) {
+    const liveId = getLiveSpreadsheetId();
+    if (
+      isFoundingOwner(user?.email)
+      && isValidSpreadsheetId(spreadsheetId)
+      && spreadsheetId !== liveId
+    ) {
       try {
         await syncCollectionsFromSummary(spreadsheetId);
       } catch (err) {
@@ -448,14 +453,14 @@ export async function getMaintenanceRecords(month = null) {
         await ensureSheetStructure(spreadsheetId);
       }
     }
-    const response = await window.gapi.client.sheets.spreadsheets.values.get({
+    const response = await gapiCall(window.gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId,
       range: `'${SHEET_NAMES.MAINTENANCE}'!A2:J5000`,
-    });
+    }));
 
     const rows = response.result.values || [];
     let records = rows.map(row => ({
-      month: row[0] || '',
+      month: coerceMonthLabel(row[0]) || String(row[0] || '').trim(),
       flat: row[1] || '',
       amountDue: Number(row[2]) || 0,
       amountPaid: Number(row[3]) || 0,
@@ -469,7 +474,8 @@ export async function getMaintenanceRecords(month = null) {
     }));
 
     if (month) {
-      records = records.filter(r => r.month === month);
+      const want = coerceMonthLabel(month) || month;
+      records = records.filter(r => r.month === want);
     }
 
     return records;
@@ -1339,8 +1345,9 @@ export async function getDashboardData() {
     await resolveLiveWorkbookForUser(user?.email).catch(() => null);
     const spreadsheetId = getSpreadsheetId() || historyId;
 
-    if (isFoundingOwner(user?.email)) {
-      await ensureSheetStructure(spreadsheetId);
+    const liveIdForSync = getLiveSpreadsheetId();
+    if (isValidSpreadsheetId(liveIdForSync) && liveIdForSync === spreadsheetId) {
+      await syncLiveSummaryMonths(spreadsheetId).catch(() => null);
     }
 
     const coreRanges = [
@@ -1407,7 +1414,7 @@ export async function getDashboardData() {
     // Parse maintenance
     const maintenanceRows = ranges[1]?.values || [];
     const maintenance = maintenanceRows.map(row => ({
-      month: row[0] || '',
+      month: coerceMonthLabel(row[0]) || String(row[0] || '').trim(),
       flat: row[1] || '',
       amountDue: Number(row[2]) || 0,
       amountPaid: Number(row[3]) || 0,
@@ -1427,7 +1434,7 @@ export async function getDashboardData() {
     const expenses = expenseRows.map(row => ({
       id: row[0] || '',
       date: row[1] || '',
-      month: row[2] || '',
+      month: coerceMonthLabel(row[2]) || String(row[2] || '').trim(),
       description: row[3] || '',
       category: row[4] || '',
       amount: Number(row[5]) || 0,

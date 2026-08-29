@@ -218,7 +218,7 @@ Optionally paste the Google Sheet ID into `public/sheet-config.json` after that 
 | Blank page after deploy | Check `base` in `vite.config.js` matches your deployment path |
 | Setup says convert the Excel file | In Drive: Open with Google Sheets → File → Save as Google Sheets. Name it The Pride of Tirumala-APP |
 | Old TPT-MaintenanceTracker still opens | The app ignores that name. Bind The Pride of Tirumala-APP; hard-refresh or clear cache |
-| History months missing in the app | Settings → Backups → Refresh sheet layout, then hard-refresh (cache `tpt-v35`) |
+| History months missing in the app | Settings → Backups → Refresh sheet layout, then hard-refresh (cache `tpt-v36`) |
 | Payees: `.catch is not a function` | Hard-refresh v1.9.2. Google thenables must be wrapped with `gapiCall` |
 | Dashboard ignores sheet edits | After LIVE exists, edit The Pride of Tirumala-LIVE, then Dashboard refresh. A correction banner appears if formulas disagree |
 | Bound to APP-old or the .xlsx | Hard-refresh v1.9.2. Retry as founding owner. The app uses only The Pride of Tirumala-APP (Google Sheet) for history |

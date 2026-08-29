@@ -512,6 +512,11 @@ export async function writeLiveSummaryTab(spreadsheetId, openingBalance, months)
     values: [[formula]],
   }));
   await writeFormulas(spreadsheetId, formulaData);
+  const headerText = monthList.map((label, index) => ({
+    range: `'${SHEET_NAMES.LIVE_SUMMARY}'!${columnLetter(2 + index)}5`,
+    values: [[`'${label}`]],
+  }));
+  await writeFormulas(spreadsheetId, headerText);
   return monthList;
 }
 

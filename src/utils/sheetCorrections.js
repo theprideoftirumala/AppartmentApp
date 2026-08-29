@@ -4,6 +4,13 @@
  * by hand — they do not invent amounts.
  */
 
+/** When a formula cell disagrees with what was typed on Maintenance/Expenses, show the typed amount. */
+export function preferEnteredWhenSheetDisagrees(sheetValue, enteredValue) {
+  if (sheetValue == null || !Number.isFinite(Number(sheetValue))) return enteredValue;
+  if (amountsDiffer(sheetValue, enteredValue)) return enteredValue;
+  return Number(sheetValue);
+}
+
 export function amountsDiffer(left, right, epsilon = 0.05) {
   if (left == null || right == null) return false;
   const a = Number(left);

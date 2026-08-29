@@ -7,6 +7,8 @@ import {
   liveSummaryStaticAndFormulaGrid,
   nextSequentialMonthLabel,
   parseLiveSummarySnapshot,
+  coerceMonthLabel,
+  incrementMonthLabel,
   pickDefaultWorkingMonth,
   plannedLiveMonths,
   workingMonthLabels,
@@ -26,12 +28,21 @@ describe('nextSequentialMonthLabel', () => {
   it('starts at Aug-26 and appends the next calendar month', () => {
     expect(nextSequentialMonthLabel([])).toBe('Aug-26');
     expect(nextSequentialMonthLabel(['Aug-26'])).toBe('Sep-26');
-    expect(nextSequentialMonthLabel(['Dec-26'])).toBe('Jan-27');
+    expect(nextSequentialMonthLabel(['Dec-26'])).toBe('Aug-26');
+    expect(nextSequentialMonthLabel(['Aug-26', 'Dec-26'])).toBe('Sep-26');
+    expect(incrementMonthLabel('Dec-26')).toBe('Jan-27');
+    expect(nextSequentialMonthLabel(['Aug-26', 'Oct-26'])).toBe('Sep-26');
     expect(workingMonthLabels(['Sep-26'])).toEqual(['Aug-26', 'Sep-26']);
     expect(plannedLiveMonths(['Jul-26', 'Sep-26', 'Sep-26'])).toEqual(['Aug-26', 'Sep-26']);
     expect(plannedLiveMonths([])).toEqual(['Aug-26']);
     expect(pickDefaultWorkingMonth(['Aug-26', 'Sep-26'], 'Sep-26')).toBe('Sep-26');
     expect(pickDefaultWorkingMonth(['Aug-26'], 'Oct-26')).toBe('Aug-26');
+  });
+
+  it('reads Aug-26 from text or from an Excel date serial', () => {
+    expect(coerceMonthLabel('Aug-26')).toBe('Aug-26');
+    const serial = Math.round((Date.UTC(2026, 7, 1) - Date.UTC(1899, 11, 30)) / 86400000);
+    expect(coerceMonthLabel(serial)).toBe('Aug-26');
   });
 });
 
@@ -49,6 +60,8 @@ describe('liveSummaryStaticAndFormulaGrid', () => {
     expect(values[1][1]).toBe(1732.54);
     expect(values[4][2]).toBe('Sep-26');
     expect(formulas.C6).toMatch(/SUMIFS\(Maintenance!D:D/);
+    expect(formulas.C6).toContain('"Sep-26"');
+    expect(formulas.C6).not.toMatch(/C\$5/);
     expect(formulas.C32).toMatch(/C16/);
     expect(formulas.C33).toMatch(/\$B\$2/);
     expect(formulas.D33).toMatch(/C33/);
