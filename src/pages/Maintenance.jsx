@@ -9,14 +9,15 @@ import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
 import {
   appendNextLiveMonth,
-  getMaintenanceRecords, upsertMaintenancePayment, initializeMonthMaintenance,
+  getMaintenanceRecords, upsertMaintenancePayments, initializeMonthMaintenance,
   getFlats, getConfiguration, getLiveSpreadsheetId,
   addAuditLog, parseApiError,
 } from '../services/googleSheets';
 import { formatCurrency, getCurrentMonthLabel } from '../utils/helpers';
+import { paidPaymentDefaults, unpaidFlats, uniqueFlats } from '../utils/maintenancePayment';
 import { useWorkingMonths } from '../hooks/useWorkingMonths';
 import { nextSequentialMonthLabel, pickDefaultWorkingMonth } from '../utils/liveSummaryLayout';
-import { PAYMENT_MODES, MAINTENANCE_STATUS, MAINTENANCE_MIN_DATE } from '../config/constants';
+import { FLATS, PAYMENT_MODES, MAINTENANCE_STATUS, MAINTENANCE_MIN_DATE } from '../config/constants';
 import Modal from '../components/common/Modal';
 import StatusBadge from '../components/common/StatusBadge';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -32,6 +33,8 @@ export default function Maintenance() {
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthLabel());
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
+  const [presetFlats, setPresetFlats] = useState(null);
+  const [checkedFlats, setCheckedFlats] = useState([]);
   const [saving, setSaving] = useState(false);
   const { months: monthOptions, refresh: refreshMonths } = useWorkingMonths();
   const liveBound = Boolean(getLiveSpreadsheetId());
@@ -59,6 +62,10 @@ export default function Maintenance() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    setCheckedFlats([]);
+  }, [selectedMonth]);
 
   useEffect(() => {
     if (!monthOptions.length) return;
@@ -96,14 +103,30 @@ export default function Maintenance() {
     }
   };
 
+  const closePaymentModal = () => {
+    setShowPaymentModal(false);
+    setEditingRecord(null);
+    setPresetFlats(null);
+  };
+
   const handleSavePayment = async (formData) => {
     try {
       setSaving(true);
-      await upsertMaintenancePayment(selectedMonth, formData.flat, { ...formData, lateFee: 0 });
-      await addAuditLog(user.email, 'PAYMENT', `Recorded payment for flat ${formData.flat} — ${selectedMonth}: ₹${formData.amountPaid}`);
-      showToast(`Payment recorded for flat ${formData.flat}`, 'success');
-      setShowPaymentModal(false);
-      setEditingRecord(null);
+      const flatsToSave = uniqueFlats(formData.flats);
+      await upsertMaintenancePayments(selectedMonth, flatsToSave, formData);
+      await addAuditLog(
+        user.email,
+        'PAYMENT',
+        `Recorded ${formData.status || 'PAID'} for ${flatsToSave.join(', ')} — ${selectedMonth}: ₹${formData.amountPaid}`,
+      );
+      showToast(
+        flatsToSave.length === 1
+          ? `Payment recorded for flat ${flatsToSave[0]}`
+          : `Payment recorded for ${flatsToSave.length} flats`,
+        'success',
+      );
+      closePaymentModal();
+      setCheckedFlats([]);
       fetchData();
     } catch (err) {
       showToast(parseApiError(err) || 'Failed to save payment', 'error');
@@ -112,14 +135,24 @@ export default function Maintenance() {
     }
   };
 
-  const openPaymentModal = (record = null) => {
+  const openPaymentModal = (record = null, flatsForModal = null) => {
     setEditingRecord(record);
+    setPresetFlats(flatsForModal);
     setShowPaymentModal(true);
+  };
+
+  const toggleChecked = (flat) => {
+    const key = String(flat);
+    setCheckedFlats((current) => (
+      current.includes(key) ? current.filter((item) => item !== key) : [...current, key]
+    ));
   };
 
   const paidCount = records.filter(r => r.status === 'PAID').length;
   const totalDue = records.reduce((s, r) => s + r.amountDue, 0);
   const totalPaid = records.reduce((s, r) => s + r.amountPaid, 0);
+  const sortedRecords = [...records].sort((a, b) => String(a.flat).localeCompare(String(b.flat)));
+  const allChecked = sortedRecords.length > 0 && sortedRecords.every((row) => checkedFlats.includes(String(row.flat)));
 
   return (
     <div className="main-content">
@@ -149,6 +182,15 @@ export default function Maintenance() {
               <Plus size={16} /> Add next month ({nextMonthLabel})
             </button>
           )}
+          {isOwner !== false && records.length > 0 && (
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => openPaymentModal(null, checkedFlats.length ? checkedFlats : unpaidFlats(records))}
+              disabled={saving}
+            >
+              {checkedFlats.length ? `Mark ${checkedFlats.length} paid` : 'Mark unpaid paid'}
+            </button>
+          )}
           {isOwner !== false && (
             <button className="btn btn-primary btn-sm" onClick={() => openPaymentModal()}>
               <Plus size={16} /> Record Payment
@@ -172,7 +214,6 @@ export default function Maintenance() {
         </div>
       ) : (
         <>
-          {/* Summary Strip */}
           <div className="maintenance-summary animate-fade-in">
             <div className="maintenance-stat">
               <span className="maintenance-stat-label">Collected</span>
@@ -188,11 +229,20 @@ export default function Maintenance() {
             </div>
           </div>
 
-          {/* Maintenance Table */}
           <div className="table-container mt-4 animate-fade-in-up">
             <table>
               <thead>
                 <tr>
+                  {isOwner !== false && (
+                    <th>
+                      <input
+                        type="checkbox"
+                        aria-label="Select all flats"
+                        checked={allChecked}
+                        onChange={() => setCheckedFlats(allChecked ? [] : sortedRecords.map((row) => String(row.flat)))}
+                      />
+                    </th>
+                  )}
                   <th>Flat</th>
                   <th>Owner</th>
                   <th>Due</th>
@@ -205,12 +255,21 @@ export default function Maintenance() {
                 </tr>
               </thead>
               <tbody>
-                {records
-                  .sort((a, b) => a.flat.localeCompare(b.flat))
-                  .map(record => {
-                    const flatInfo = flats.find(f => f.flat === record.flat);
+                {sortedRecords.map(record => {
+                    const flatInfo = flats.find(f => String(f.flat) === String(record.flat));
+                    const flatKey = String(record.flat);
                     return (
-                      <tr key={record.flat}>
+                      <tr key={flatKey}>
+                        {isOwner !== false && (
+                          <td>
+                            <input
+                              type="checkbox"
+                              aria-label={`Select flat ${flatKey}`}
+                              checked={checkedFlats.includes(flatKey)}
+                              onChange={() => toggleChecked(flatKey)}
+                            />
+                          </td>
+                        )}
                         <td className="font-semibold">{record.flat}</td>
                         <td>{flatInfo?.ownerName || `Flat ${record.flat}`}</td>
                         <td>{formatCurrency(record.amountDue)}</td>
@@ -227,7 +286,7 @@ export default function Maintenance() {
                           {isOwner !== false && (
                             <button
                               className="btn btn-ghost btn-sm"
-                              onClick={() => openPaymentModal(record)}
+                              onClick={() => openPaymentModal(record, [flatKey])}
                             >
                               {record.status === 'PAID' ? 'Edit' : 'Pay'}
                             </button>
@@ -243,12 +302,13 @@ export default function Maintenance() {
         </>
       )}
 
-      {/* Payment Modal */}
       <PaymentModal
         isOpen={showPaymentModal}
-        onClose={() => { setShowPaymentModal(false); setEditingRecord(null); }}
+        onClose={closePaymentModal}
         onSave={handleSavePayment}
         record={editingRecord}
+        presetFlats={presetFlats}
+        records={records}
         config={config}
         flats={flats}
         month={selectedMonth}
@@ -259,51 +319,43 @@ export default function Maintenance() {
   );
 }
 
-function PaymentModal({ isOpen, onClose, onSave, record, config, flats, month, saving }) {
-  const today = new Date().toISOString().split('T')[0];
+function PaymentModal({ isOpen, onClose, onSave, record, presetFlats, records, config, flats, month, saving }) {
   const [formData, setFormData] = useState({
-    flat: '',
-    amountDue: 0,
-    amountPaid: 0,
-    paymentDate: today,
-    paymentMode: 'UPI',
-    upiRef: '',
-    status: 'PAID',
-    lateFee: 0,
-    remarks: '',
+    ...paidPaymentDefaults(config),
+    flats: [],
   });
   const [dateError, setDateError] = useState('');
 
   useEffect(() => {
-    if (record) {
+    const today = new Date().toISOString().split('T')[0];
+    const defaults = paidPaymentDefaults(config, today);
+    const startingFlats = uniqueFlats(
+      presetFlats?.length ? presetFlats : record ? [record.flat] : unpaidFlats(records),
+    );
+    if (record && startingFlats.length === 1) {
       setFormData({
-        flat: record.flat,
-        amountDue: record.amountDue || config?.MONTHLY_MAINTENANCE || 3000,
-        amountPaid: record.amountPaid || config?.MONTHLY_MAINTENANCE || 3000,
+        ...defaults,
+        flats: startingFlats,
+        amountDue: record.amountDue || defaults.amountDue,
+        amountPaid: record.amountPaid > 0 ? record.amountPaid : defaults.amountPaid,
         paymentDate: record.paymentDate || today,
-        paymentMode: record.paymentMode || 'UPI',
+        paymentMode: record.paymentMode || defaults.paymentMode,
         upiRef: record.upiRef || '',
-        status: record.status || 'PAID',
-        lateFee: record.lateFee || 0,
+        status: 'PAID',
         remarks: record.remarks || '',
       });
     } else {
-      setFormData(prev => ({
-        ...prev,
-        flat: '',
-        amountDue: config?.MONTHLY_MAINTENANCE || 3000,
-        amountPaid: config?.MONTHLY_MAINTENANCE || 3000,
-        paymentDate: today,
-        status: 'PAID',
-      }));
+      setFormData({
+        ...defaults,
+        flats: startingFlats,
+      });
     }
     setDateError('');
-  }, [record, config, isOpen]);
+  }, [record, presetFlats, records, config, isOpen]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.flat) return;
-    // History on this sheet starts November 2020
+    if (!formData.flats.length) return;
     if (formData.paymentDate && formData.paymentDate < MAINTENANCE_MIN_DATE) {
       setDateError(`Payment date cannot be before ${MAINTENANCE_MIN_DATE}. History on this sheet starts November 2020.`);
       return;
@@ -317,22 +369,54 @@ function PaymentModal({ isOpen, onClose, onSave, record, config, flats, month, s
     if (key === 'paymentDate') setDateError('');
   };
 
+  const toggleFlat = (flat) => {
+    const key = String(flat);
+    setFormData((prev) => ({
+      ...prev,
+      flats: prev.flats.includes(key)
+        ? prev.flats.filter((item) => item !== key)
+        : [...prev.flats, key],
+    }));
+  };
+
+  const flatChoices = flats.length ? flats.map((row) => String(row.flat)) : FLATS;
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={record ? `Edit Payment — Flat ${record.flat}` : 'Record Payment'}>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={formData.flats.length > 1 ? `Record paid — ${formData.flats.length} flats · ${month}` : record ? `Edit Payment — Flat ${record.flat}` : `Record Payment — ${month}`}
+    >
       <form onSubmit={handleSubmit} className="form-grid">
-        {!record && (
-          <div className="form-group">
-            <label className="form-label">Flat</label>
-            <select className="form-select" value={formData.flat} onChange={e => update('flat', e.target.value)} required>
-              <option value="">Select Flat</option>
-              {flats.map(f => (
-                <option key={f.flat} value={f.flat}>
-                  {f.flat} — {f.ownerName || 'Unknown'}
-                </option>
-              ))}
-            </select>
+        <div className="form-group">
+          <label className="form-label">Flats (defaults to unpaid, status PAID)</label>
+          <div className="flat-check-actions">
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => update('flats', uniqueFlats(flatChoices))}>
+              Select all
+            </button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => update('flats', unpaidFlats(records))}>
+              Unpaid only
+            </button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => update('flats', [])}>
+              Clear
+            </button>
           </div>
-        )}
+          <div className="flat-check-list">
+            {flatChoices.map((flat) => {
+              const info = flats.find((row) => String(row.flat) === String(flat));
+              return (
+                <label key={flat} className="flat-check-item">
+                  <input
+                    type="checkbox"
+                    checked={formData.flats.includes(String(flat))}
+                    onChange={() => toggleFlat(flat)}
+                  />
+                  <span>{flat}{info?.ownerName ? ` — ${info.ownerName}` : ''}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
 
         <div className="form-row">
           <div className="form-group">
@@ -367,7 +451,7 @@ function PaymentModal({ isOpen, onClose, onSave, record, config, flats, month, s
 
         <div className="form-group">
           <label className="form-label">UPI Reference / Transaction ID</label>
-          <input type="text" className="form-input" value={formData.upiRef} onChange={e => update('upiRef', e.target.value)} placeholder="Optional" />
+          <input type="text" className="form-input" value={formData.upiRef} onChange={e => update('upiRef', e.target.value)} placeholder="Optional — same note for every selected flat" />
         </div>
 
         <div className="form-group">
@@ -384,13 +468,11 @@ function PaymentModal({ isOpen, onClose, onSave, record, config, flats, month, s
 
         <div className="form-actions">
           <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-          <button type="submit" className="btn btn-primary" disabled={saving}>
-            {saving ? 'Saving...' : 'Save Payment'}
+          <button type="submit" className="btn btn-primary" disabled={saving || !formData.flats.length}>
+            {saving ? 'Saving...' : formData.flats.length > 1 ? `Save ${formData.flats.length} paid` : 'Save Payment'}
           </button>
         </div>
       </form>
     </Modal>
   );
 }
-
-

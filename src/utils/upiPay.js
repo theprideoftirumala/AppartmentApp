@@ -31,6 +31,21 @@ export function canPayPayee(payee) {
   return payeePayTarget(payee).via !== 'none';
 }
 
+/**
+ * UPI pa= must be a VPA (name@handle), not a bare mobile.
+ * Phone-only payees use number@ybl — PhonePe's own mobile handle, not a bank we invent.
+ * GPay can pay that same address (UPI is interoperable). A pasted UPI ID still wins.
+ */
+export function resolvedPayVpa(payee) {
+  const target = payeePayTarget(payee);
+  if (target.via === 'phone') return `${target.vpa}@ybl`;
+  return target.vpa;
+}
+
+export function isAndroidUa(ua = typeof navigator !== 'undefined' ? navigator.userAgent : '') {
+  return /Android/i.test(String(ua || ''));
+}
+
 function payParams({ vpa, name, amount, note }) {
   const params = new URLSearchParams();
   if (vpa) params.set('pa', String(vpa).trim());
@@ -53,19 +68,24 @@ function linkPayee(payee, vpa) {
 }
 
 export function upiPayUrl(payee) {
-  const { vpa } = payeePayTarget(payee);
-  return `upi://pay?${payParams(linkPayee(payee, vpa))}`;
+  return `upi://pay?${payParams(linkPayee(payee, resolvedPayVpa(payee)))}`;
 }
 
 export function gpayUrl(payee) {
-  const { vpa } = payeePayTarget(payee);
-  return `tez://upi/pay?${payParams(linkPayee(payee, vpa))}`;
+  return `gpay://upi/pay?${payParams(linkPayee(payee, resolvedPayVpa(payee)))}`;
+}
+
+export function gpayIntentUrl(payee) {
+  const query = payParams(linkPayee(payee, resolvedPayVpa(payee)));
+  return `intent://upi/pay?${query}#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end`;
+}
+
+export function gpayHref(payee, ua) {
+  return isAndroidUa(ua) ? gpayIntentUrl(payee) : gpayUrl(payee);
 }
 
 export function phonepeUrl(payee) {
-  const target = payeePayTarget(payee);
-  const vpa = target.via === 'phone' ? `${target.vpa}@ybl` : target.vpa;
-  return `phonepe://pay?${payParams(linkPayee(payee, vpa))}`;
+  return `phonepe://pay?${payParams(linkPayee(payee, resolvedPayVpa(payee)))}`;
 }
 
 export function telUrl(phone) {

@@ -47,6 +47,8 @@ src/
 ├── utils/googleApiError.js # Real API-not-enabled wording only (not every sheets.googleapis.com URL)
 ├── hooks/useWorkingMonths.js # Live Summary headers + data months; sequential add
 ├── utils/setupFlow.js       # Setup never offers create
+├── utils/maintenancePayment.js # Paid defaults, multi-flat keys, no late fee
+├── utils/upiPay.js          # GPay/PhonePe VPA (number@ybl) + Android GPay Intent
 ├── utils/legacySheetImport.js # Summary collections + expense categories / Exp-Detailed (no duplicate totals)
 ├── utils/voiceExpense.js    # On-device speech parse
 ├── utils/receiptOcr.js      # On-device Tesseract parse
@@ -86,7 +88,7 @@ Setup **never creates** The Pride of Tirumala-APP. It connects that file already
 
 **Dashboard** reads the active workbook (LIVE if bound, otherwise APP). Edit Maintenance/Expenses on that file, then refresh. Cards show those typed amounts when Live Summary formulas still disagree (banner lists the mismatch). Do not type amounts on Live Summary. Live Summary lookups use `SUM(ARRAYFORMULA(...))` so `TEXT`/`TO_TEXT` run per row (Google Sheets does not expand those inside `SUMPRODUCT`). Never `C$5`. Missing `tpt-live-v4` in A4 forces a rewrite. Add next month fills the first gap after Aug-26. Still Due (K) and Monthly Summary are rewritten in the same pass.
 
-**Live books (Aug 2026+):** founding owner uses Settings → Backups → Create live books. That creates or reconnects **The Pride of Tirumala-LIVE** (never `TPT-MaintenanceTracker`, never a replacement APP file). It copies Configuration, Flats, Payees, Access Control, contacts, reminders, and watchman rows from APP. Opening available balance is the green Summary cell at create (already includes August as of that cell — do not re-enter August collections/expenses on LIVE if they are in that cell). History months are not copied. Live Summary starts with **Aug-26 only**; add the next month from Maintenance (sequential append). Formulas pull collections from Maintenance and expenses from Expenses (including Sundry line items; not a second Sundry total). Type amounts on Maintenance/Expenses (app or by hand), not on Live Summary. Payees: GPay/PhonePe use a 10-digit phone; UPI ID is optional. Old APP Summary (including surplus/deficit as typed) is read-only at `#/old`.
+**Live books (Aug 2026+):** founding owner uses Settings → Backups → Create live books. That creates or reconnects **The Pride of Tirumala-LIVE** (never `TPT-MaintenanceTracker`, never a replacement APP file). It copies Configuration, Flats, Payees, Access Control, contacts, reminders, and watchman rows from APP. Opening available balance is the green Summary cell at create (already includes August as of that cell — do not re-enter August collections/expenses on LIVE if they are in that cell). History months are not copied. Live Summary starts with **Aug-26 only**; add the next month from Maintenance (sequential append). Formulas pull collections from Maintenance and expenses from Expenses (including Sundry line items; not a second Sundry total). Type amounts on Maintenance/Expenses (app or by hand), not on Live Summary. Payees: GPay/PhonePe pay `number@ybl` from a 10-digit phone (Android GPay uses an Intent); UPI ID is optional. Maintenance Record Payment defaults to PAID and can save several flats at once. The app does not collect a late fee. Old APP Summary (including surplus/deficit as typed) is read-only at `#/old`.
 
 ## Google Drive Structure
 

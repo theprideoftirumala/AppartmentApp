@@ -3,9 +3,12 @@ import {
   canPayPayee,
   canPayPhone,
   canPayUpi,
+  gpayHref,
+  gpayIntentUrl,
   gpayUrl,
   indianMobileDigits,
   phonepeUrl,
+  resolvedPayVpa,
   telUrl,
   upiPayUrl,
 } from './upiPay';
@@ -24,10 +27,15 @@ describe('upi pay links', () => {
     expect(canPayPhone('9844580856')).toBe(true);
     expect(canPayPayee({ phone: '9844580856' })).toBe(true);
     const payee = { phone: '9844580856', name: 'Nandesh Watchman', amount: 8500, note: 'Aug salary' };
-    expect(gpayUrl(payee)).toContain('tez://upi/pay?');
-    expect(gpayUrl(payee)).toContain('pa=9844580856');
+    expect(resolvedPayVpa(payee)).toBe('9844580856@ybl');
+    expect(gpayUrl(payee)).toContain('gpay://upi/pay?');
+    expect(gpayUrl(payee)).toContain('pa=9844580856%40ybl');
+    expect(gpayIntentUrl(payee)).toContain('package=com.google.android.apps.nbu.paisa.user');
+    expect(gpayHref(payee, 'Mozilla/5.0 (Linux; Android 14)')).toContain('intent://upi/pay?');
+    expect(gpayHref(payee, 'Mozilla/5.0 (iPhone)')).toContain('gpay://upi/pay?');
     expect(phonepeUrl(payee)).toContain('phonepe://pay?');
     expect(phonepeUrl(payee)).toContain('pa=9844580856%40ybl');
+    expect(upiPayUrl(payee)).toContain('pa=9844580856%40ybl');
     expect(upiPayUrl(payee)).toContain('am=8500');
   });
 

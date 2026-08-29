@@ -42,6 +42,7 @@ import {
 import { gapiCall, gapiCallSafe } from '../utils/gapi';
 import { isGoogleApiNotEnabledMessage } from '../utils/googleApiError';
 import { coerceMonthLabel, parseLiveSummarySnapshot, sortMonthLabels } from '../utils/liveSummaryLayout';
+import { maintenancePaymentRow, sameMaintenanceKey, uniqueFlats } from '../utils/maintenancePayment';
 import { dashboardCorrectionMessages } from '../utils/sheetCorrections';
 import { parseHandoverSummaryRows } from '../data/handoverLedger';
 import {
@@ -483,59 +484,53 @@ export async function getMaintenanceRecords(month = null) {
 }
 
 /**
- * Add or update a maintenance payment
+ * Add or update maintenance payments. Status defaults to PAID. Late fee is always 0.
  */
-export async function upsertMaintenancePayment(month, flat, data) {
+export async function upsertMaintenancePayments(month, flats, data) {
   return withWriteAuth(async () => {
+    const list = uniqueFlats(flats);
+    if (!list.length) throw new Error('Select at least one flat.');
     const spreadsheetId = getSpreadsheetId();
-
-    // Check if record exists
-    const existing = await getMaintenanceRecords();
-    const existingIndex = existing.findIndex(r => r.month === month && r.flat === flat);
-
-    const row = [
-      sheetText(month, 12),
-      sheetText(flat, 8),
-      sheetNumber(data.amountDue),
-      sheetNumber(data.amountPaid),
-      sheetText(data.paymentDate, 12),
-      sheetText(data.paymentMode, 40),
-      sheetText(data.upiRef, 80),
-      sheetText(data.status || 'PENDING', 16),
-      sheetNumber(data.lateFee),
-      sheetText(data.remarks, 300),
-    ];
-
-    if (existingIndex >= 0) {
-      // Count all rows to find the actual row position
-      const response = await window.gapi.client.sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: `'${SHEET_NAMES.MAINTENANCE}'!A2:B5000`,
-      });
-      const allRows = response.result.values || [];
-      const rowIdx = allRows.findIndex(r => r[0] === month && r[1] === flat);
-      if (rowIdx >= 0) {
-        await window.gapi.client.sheets.spreadsheets.values.update({
-          spreadsheetId,
-          range: `'${SHEET_NAMES.MAINTENANCE}'!A${rowIdx + 2}:J${rowIdx + 2}`,
-          valueInputOption: 'RAW',
-          resource: { values: [row] },
-        });
-        await applyMaintenanceStillDueFormulas(spreadsheetId);
-        return;
-      }
-    }
-
-    // Append new record
-    await window.gapi.client.sheets.spreadsheets.values.append({
+    const response = await gapiCall(window.gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: `'${SHEET_NAMES.MAINTENANCE}'!A:J`,
-      valueInputOption: 'RAW',
-      insertDataOption: 'INSERT_ROWS',
-      resource: { values: [row] },
+      range: `'${SHEET_NAMES.MAINTENANCE}'!A2:B5000`,
+    }));
+    const allRows = response.result.values || [];
+    const updates = [];
+    const appends = [];
+    list.forEach((flat) => {
+      const row = maintenancePaymentRow(month, flat, data);
+      const rowIdx = allRows.findIndex((cells) => sameMaintenanceKey(cells[0], cells[1], month, flat));
+      if (rowIdx >= 0) {
+        updates.push({
+          range: `'${SHEET_NAMES.MAINTENANCE}'!A${rowIdx + 2}:J${rowIdx + 2}`,
+          values: [row],
+        });
+      } else {
+        appends.push(row);
+      }
     });
+    if (updates.length) {
+      await gapiCall(window.gapi.client.sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId,
+        resource: { valueInputOption: 'RAW', data: updates },
+      }));
+    }
+    if (appends.length) {
+      await gapiCall(window.gapi.client.sheets.spreadsheets.values.append({
+        spreadsheetId,
+        range: `'${SHEET_NAMES.MAINTENANCE}'!A:J`,
+        valueInputOption: 'RAW',
+        insertDataOption: 'INSERT_ROWS',
+        resource: { values: appends },
+      }));
+    }
     await applyMaintenanceStillDueFormulas(spreadsheetId);
   });
+}
+
+export async function upsertMaintenancePayment(month, flat, data) {
+  return upsertMaintenancePayments(month, [flat], data);
 }
 
 /**

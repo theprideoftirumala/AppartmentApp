@@ -7,7 +7,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { IndianRupee, Phone, Plus, Smartphone } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { addPayee, getPayees, updatePayee } from '../services/googleSheets';
-import { canPayPayee, gpayUrl, phonepeUrl, telUrl, upiPayUrl } from '../utils/upiPay';
+import { canPayPayee, gpayHref, phonepeUrl, telUrl, upiPayUrl } from '../utils/upiPay';
 import { formatCurrency } from '../utils/helpers';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Navbar from '../components/common/Navbar';
@@ -58,7 +58,7 @@ export default function Payees() {
     try {
       setAdding(true);
       await addPayee(draft);
-      showToast('Payee added. GPay and PhonePe use the phone number unless a UPI ID is pasted.', 'success');
+      showToast('Payee added. GPay and PhonePe pay number@ybl unless a UPI ID is pasted.', 'success');
       setDraft(EMPTY_PAYEE);
       refresh();
     } catch (err) {
@@ -76,7 +76,7 @@ export default function Payees() {
           <h1 className="page-title">Payees</h1>
           <p className="page-subtitle">
             Pay the watchman and vendors with GPay, PhonePe, or any UPI app using a 10-digit phone.
-            A UPI ID is optional and overrides the phone if pasted. Same phone or same UPI ID is blocked.
+            Both apps pay number@ybl unless a UPI ID is pasted. Same phone or same UPI ID is blocked.
           </p>
         </div>
       </div>
@@ -186,7 +186,7 @@ function PayeeCard({ payee, isOwner, onSave }) {
         )}
         {ready ? (
           <>
-            <a className="btn btn-primary" href={gpayUrl(draft)}>
+            <a className="btn btn-primary" href={gpayHref(draft)}>
               <IndianRupee size={16} /> GPay
             </a>
             <a className="btn btn-secondary" href={phonepeUrl(draft)}>

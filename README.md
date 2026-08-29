@@ -22,6 +22,11 @@ A **Progressive Web App (PWA)** for managing apartment maintenance finances, bui
 - **🔐 Secure** — Google OAuth 2.0, audit logging, role-based access; only the founding owner may create LIVE
 - **💸 Payees** — GPay / PhonePe from a 10-digit phone (optional UPI ID)
 
+## What's new in 1.9.7
+
+- GPay now opens a real UPI address (`number@ybl` when only a phone is stored) using `gpay://` / the Android GPay Intent. A bare phone in `tez://` was why PhonePe worked and GPay did not.
+- Maintenance Record Payment defaults to **PAID**, can tick several flats at once, and no longer shows a late-fee field. Sidebar must show **v1.9.7** (cache `tpt-v40`).
+
 ## What's new in 1.9.6
 
 - Live Summary formulas use `SUM(ARRAYFORMULA(...))` so Google Sheets actually expands month/flat matching. `SUMPRODUCT` + `IFERROR` was returning 0 for every cell. Cell A4 must read `tpt-live-v4`.

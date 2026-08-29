@@ -73,8 +73,8 @@ This sets each flat's Amount Due to the configured monthly maintenance (₹3,000
             {
                 heading: '2. Record Payments as they come in',
                 text: `Each time a flat owner pays, go to Maintenance → Record Payment.
-Select the flat, enter the amount paid, payment date, and mode (UPI/Cash/Transfer).
-The status changes to PAID / PARTIAL based on the amount.`,
+Tick one or more flats. Status defaults to PAID and Amount Paid defaults to the monthly due.
+Use Mark unpaid paid (or tick rows and Mark N paid) to save several flats in one go. The app does not collect a late fee.`,
             },
             {
                 heading: '3. Log All Expenses',
@@ -228,7 +228,7 @@ The next due date is automatically scheduled based on the frequency (e.g., Month
             },
             {
                 heading: '4. Maintenance Tab — Payment Records',
-                text: `COLUMNS: Month | Flat | Amount Due | Amount Paid | Payment Date | Payment Mode | UPI Ref | Status | Late Fee | Remarks\n\nUNDERSTANDING THE DATA:\n- Each row represents ONE flat's payment for ONE month\n- For 10 flats, one month = 10 rows\n- Month format: "Sep-26", "Oct-26", etc. (must match exactly)\n- Amount Due: the maintenance amount (e.g., 3000)\n- Amount Paid: what was actually collected from this flat\n- Payment Date: format YYYY-MM-DD (e.g., 2026-09-05)\n- Payment Mode: UPI / Cash / Bank Transfer / Cheque / Online\n- Status: PAID / PENDING / PARTIAL / WAIVED\n\nHOW TO ANALYZE:\n- Filter Column A (Month) to see all payments for a specific month\n- Filter Column H (Status) = PENDING to find who hasn't paid\n- Sum Column D (Amount Paid) to get total collection for a month\n- Sum Column C (Amount Due) to get expected collection\n\nHOW TO MANUALLY ADD A PAYMENT:\n1. Find the row: filter Month + Flat\n2. Update cells: D (Amount Paid), E (Payment Date), F (Payment Mode), G (UPI Ref), H (Status)\n3. Do NOT change Column A (Month) or B (Flat)\n4. Press Enter after each cell\n5. Refresh the app — it will show the updated payment\n\nCOMMON STATUS VALUES:\n- PAID: Full amount collected\n- PENDING: Nothing collected yet\n- PARTIAL: Some amount collected (Amount Paid < Amount Due)\n- WAIVED: Flat owner exempted for this month`,
+                text: `COLUMNS: Month | Flat | Amount Due | Amount Paid | Payment Date | Payment Mode | UPI Ref | Status | Late Fee (history only) | Remarks\n\nUNDERSTANDING THE DATA:\n- Each row represents ONE flat's payment for ONE month\n- For 10 flats, one month = 10 rows\n- Month format: "Sep-26", "Oct-26", etc. (must match exactly)\n- Amount Due: the maintenance amount (e.g., 3000)\n- Amount Paid: what was actually collected from this flat\n- Payment Date: format YYYY-MM-DD (e.g., 2026-09-05)\n- Payment Mode: UPI / Cash / Bank Transfer / Cheque / Online\n- Status: PAID / PENDING / PARTIAL / WAIVED\n- Late Fee: leftover column for old rows. The app always writes 0 and does not show a late-fee field.\n\nHOW TO ANALYZE:\n- Filter Column A (Month) to see all payments for a specific month\n- Filter Column H (Status) = PENDING to find who hasn't paid\n- Sum Column D (Amount Paid) to get total collection for a month\n- Sum Column C (Amount Due) to get expected collection\n\nHOW TO MANUALLY ADD A PAYMENT:\n1. Find the row: filter Month + Flat\n2. Update cells: D (Amount Paid), E (Payment Date), F (Payment Mode), G (UPI Ref), H (Status)\n3. Do NOT change Column A (Month) or B (Flat)\n4. Press Enter after each cell\n5. Refresh the app — it will show the updated payment\n\nCOMMON STATUS VALUES:\n- PAID: Full amount collected\n- PENDING: Nothing collected yet\n- PARTIAL: Some amount collected (Amount Paid < Amount Due)\n- WAIVED: Flat owner exempted for this month`,
             },
             {
                 heading: '5. Expenses Tab — All Expense Transactions',
@@ -351,7 +351,7 @@ ADDING MONTHS:
             },
             {
                 heading: 'How do I pay the watchman or a vendor with GPay / PhonePe?',
-                text: `Open Payees. Owners can add a row (or add it on the Payees tab in the sheet). Enter a 10-digit phone. GPay uses that number; PhonePe uses number@ybl (PhonePe's own mobile handle). A UPI ID is optional and overrides the phone if the payee gave you one — the app never invents a bank UPI ID. Same phone or same UPI ID is blocked as a duplicate. Readers can pay if a phone or UPI ID is already on the sheet.`,
+                text: `Open Payees. Owners can add a row (or add it on the Payees tab in the sheet). Enter a 10-digit phone. GPay and PhonePe both pay number@ybl (PhonePe's own mobile handle — UPI is interoperable). On Android, GPay opens with an Intent to the GPay app (not the old tez:// link). A UPI ID is optional and overrides the phone if the payee gave you one — the app never invents a bank UPI ID. Same phone or same UPI ID is blocked as a duplicate. Readers can pay if a phone or UPI ID is already on the sheet.`,
             },
             {
                 heading: 'How to update the Available balance?',

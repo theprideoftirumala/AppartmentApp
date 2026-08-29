@@ -218,7 +218,7 @@ Optionally paste the Google Sheet ID into `public/sheet-config.json` after that 
 | Blank page after deploy | Check `base` in `vite.config.js` matches your deployment path |
 | Setup says convert the Excel file | In Drive: Open with Google Sheets → File → Save as Google Sheets. Name it The Pride of Tirumala-APP |
 | Old TPT-MaintenanceTracker still opens | The app ignores that name. Bind The Pride of Tirumala-APP; hard-refresh or clear cache |
-| History months missing in the app | Settings → Backups → Refresh sheet layout, then hard-refresh (cache `tpt-v39`) |
+| History months missing in the app | Settings → Backups → Refresh sheet layout, then hard-refresh (cache `tpt-v40`) |
 | Payees: `.catch is not a function` | Hard-refresh v1.9.3. Google thenables must be wrapped with `gapiCall` |
 | Dashboard ignores sheet edits | After LIVE exists, edit The Pride of Tirumala-LIVE, then Dashboard refresh. A correction banner appears if formulas disagree |
 | Bound to APP-old or the .xlsx | Hard-refresh v1.9.3. Retry as founding owner. The app uses only The Pride of Tirumala-APP (Google Sheet) for history |
@@ -233,3 +233,4 @@ Optionally paste the Google Sheet ID into `public/sheet-config.json` after that 
 | Collected amounts do not match Summary | Founding owner: Settings → Backups → Refresh sheet layout. The app updates Maintenance from the Summary grid |
 | Unable to parse range Configuration | The converted sheet still has only history tabs. Founding owner: Retry — the app adds Configuration and the other app tabs. Or Settings → Backups → Refresh sheet layout |
 | Balance does not match the Summary tab | Check the green Available balance cell, then Refresh sheet layout. Surplus/deficit and late-fee rows are ignored |
+| GPay does nothing while PhonePe opens | Hard-refresh v1.9.7. GPay now uses `number@ybl` and an Android Intent to the GPay app, not a bare phone on `tez://`. |

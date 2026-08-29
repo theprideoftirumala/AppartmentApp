@@ -42,7 +42,8 @@ There is **one history workbook** named `The Pride of Tirumala-APP` and **one fo
 - Available balance on APP is the green Summary cell, copied into Configuration. It is not a `DEFAULT_CONFIG` number. Old surplus/deficit rows are not imported as collections.
 - `public/sheet-config.json` holds the published APP spreadsheet ID. Do not invent a LIVE id in source.
 - Sample live-tab data is compile-time off (`FEATURES.SAMPLE_DATA`)
-- Payees: add in the app or on the Payees tab. GPay/PhonePe use a 10-digit phone (PhonePe `number@ybl`). UPI ID is optional and overrides the phone. Duplicates (same phone or same UPI) are rejected. Expenses with the same date, description, and amount are rejected.
+- Payees: add in the app or on the Payees tab. GPay and PhonePe pay `number@ybl` from a 10-digit phone (Android GPay uses an Intent to the GPay app). UPI ID is optional and overrides the phone. Duplicates (same phone or same UPI) are rejected. Expenses with the same date, description, and amount are rejected.
+- Maintenance: Record Payment defaults to PAID. Several flats can be marked paid in one save. Late fee is not collected (column can stay for history; the app writes 0).
 
 ## Access model (critical)
 
