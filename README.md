@@ -22,6 +22,11 @@ A **Progressive Web App (PWA)** for managing apartment maintenance finances, bui
 - **🔐 Secure** — Google OAuth 2.0, audit logging, role-based access; only the founding owner may create LIVE
 - **💸 Payees** — GPay / PhonePe from a 10-digit phone (optional UPI ID)
 
+## What's new in 1.9.6
+
+- Live Summary formulas use `SUM(ARRAYFORMULA(...))` so Google Sheets actually expands month/flat matching. `SUMPRODUCT` + `IFERROR` was returning 0 for every cell. Cell A4 must read `tpt-live-v4`.
+- Open Dashboard or Settings → Refresh sheet layout once, then hard-refresh. Sidebar must show **v1.9.6** (cache `tpt-v39`).
+
 ## What's new in 1.9.5
 
 - Live Summary collection and expense formulas now match Maintenance/Expenses when Sheets stored the month as a date or the flat as a number. Cell A4 must read `tpt-live-v3`.
