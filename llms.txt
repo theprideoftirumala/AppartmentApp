@@ -38,7 +38,7 @@ There is **one society workbook** named `The Pride of Tirumala-APP` and **one fo
 - History tabs (never overwrite): Summary, Exp - Detailed, Borewell Exp, Motor repair oct, Notes
 - A Drive copy is taken before first Setup and on every Google sign-in (not Guest PIN)
 - Use the existing The Pride of Tirumala-APP Google Sheet. Do not create another society file.
-- Collected maintenance comes from the Summary tab grid (flat × month). Refresh sheet layout updates Maintenance amounts to match. Owner names stay on the sheet only.
+- Collected maintenance comes from the Summary tab grid (flat × month, including grouped columns). Founding-owner Dashboard/Maintenance load writes those amounts to Maintenance and refreshes Monthly Summary (the collection sheet). Owner names stay on the sheet only.
 - Available balance is the green Summary cell, copied into Configuration. Surplus/deficit and late-fee rows are ignored. Sep 2026+ is live only.
 - `public/sheet-config.json` holds the published spreadsheet ID.
 - Sample live-tab data is compile-time off (`FEATURES.SAMPLE_DATA`)
@@ -71,7 +71,7 @@ Policy helpers live in `src/config/accessPolicy.js` and must be reused rather th
 - `src/services/googleAuth.js` — OAuth 2.0 authentication (re-consent when scopes bump)
 - `src/services/googleSheets.js` — All CRUD operations (the "backend")
 - `src/services/googleDrive.js` — Discovery of The Pride of Tirumala-APP, backups, sharing
-- `src/services/sheetSetup.js` — `ensureSheetStructure` adds missing app tabs; `createSpreadsheet` throws
+- `src/services/sheetSetup.js` — `ensureSheetStructure` adds missing app tabs; `syncCollectionsFromSummary` updates Maintenance + Monthly Summary from Summary; `createSpreadsheet` throws
 - `src/services/sheetFormulas.js` — Still Due and Monthly Summary formulas (app UI does not use surplus/deficit)
 - `src/services/pdfExport.js` — Monthly + activity PDFs
 - `src/services/activityFunds.js` — Optional named funds; one Drive spreadsheet per activity

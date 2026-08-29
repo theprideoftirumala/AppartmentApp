@@ -41,6 +41,7 @@ import {
   applyMonthlySummaryFormulas,
   applyMaintenanceStillDueFormulas,
   upgradeWorkbookLayout,
+  syncCollectionsFromSummary,
 } from './sheetSetup';
 
 export {
@@ -49,6 +50,7 @@ export {
   archiveAndCreateFresh,
   seedSampleLiveData,
   applyMonthlySummaryFormulas,
+  syncCollectionsFromSummary,
   applyMaintenanceStillDueFormulas,
   upgradeWorkbookLayout,
 };
@@ -398,6 +400,10 @@ export async function updateFlat(flatNumber, data) {
 export async function getMaintenanceRecords(month = null) {
   return withAuth(async () => {
     const spreadsheetId = getSpreadsheetId();
+    const user = getCurrentUser();
+    if (isFoundingOwner(user?.email) && isValidSpreadsheetId(spreadsheetId)) {
+      await syncCollectionsFromSummary(spreadsheetId);
+    }
     const response = await window.gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId,
       range: `'${SHEET_NAMES.MAINTENANCE}'!A2:J5000`,
@@ -1285,6 +1291,10 @@ export async function getDashboardData() {
       const err = new Error('SHEET_NOT_ACCESSIBLE');
       err.code = 'SHEET_NOT_ACCESSIBLE';
       throw err;
+    }
+
+    if (isFoundingOwner(user?.email)) {
+      await syncCollectionsFromSummary(spreadsheetId, { force: true });
     }
 
     const coreRanges = [

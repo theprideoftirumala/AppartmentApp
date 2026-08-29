@@ -98,6 +98,13 @@ export function categoryFromMemo(memo) {
   return found ? found[1] : 'Sundry';
 }
 
+export function parsePaidAmount(raw) {
+  if (raw === '' || raw == null) return 0;
+  if (typeof raw === 'number' && Number.isFinite(raw)) return raw;
+  const amount = Number(String(raw).replace(/[,₹\s]/g, ''));
+  return Number.isFinite(amount) ? amount : 0;
+}
+
 export function findFlatNumber(row) {
   for (const cell of (row || []).slice(0, 4)) {
     const flat = String(cell ?? '').trim().replace(/\.0$/, '');
@@ -141,10 +148,8 @@ export function maintenanceRowsFromSummaryGrid(grid) {
     const flat = findFlatNumber(row);
     if (!flat) continue;
     for (const month of months) {
-      const raw = row[month.index];
-      if (raw === '' || raw == null) continue;
-      const paid = Number(raw);
-      if (!Number.isFinite(paid) || paid === 0) continue;
+      const paid = parsePaidAmount(row[month.index]);
+      if (paid === 0) continue;
       out.push([
         month.label,
         flat,

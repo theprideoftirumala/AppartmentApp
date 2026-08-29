@@ -39,7 +39,7 @@ export default function Dashboard() {
       await ensureSheetStructure();
       sessionStorage.setItem('tpt_sheet_layout_v14', '1');
       setSheetUpgrade('done');
-      showToast('Google Sheet updated: history from Summary and Exp-Detailed is ready to view and export.', 'success');
+      showToast('Google Sheet updated: Maintenance and collection totals now match the Summary tab.', 'success');
     } catch (err) {
       setSheetUpgrade('error');
       showToast(err.message || 'Could not update the Google Sheet layout', 'error');

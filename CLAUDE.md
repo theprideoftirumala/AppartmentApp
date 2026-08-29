@@ -58,7 +58,7 @@ The workbook is designed so a treasurer can understand every number without open
 1. **Guide** — Plain-language explanation of every tab, column, and edit rule
 2. **Configuration** — Key / Value / Description for all app settings
 3. **Flats** — Owner details for 10 flats (101-502)
-4. **Maintenance** — Monthly payment records per flat from Nov 2020. Collected amounts come from the existing Summary grid (flat × month). Refresh sheet layout updates those amounts. Column K (Still Due) is a formula: due − paid.
+4. **Maintenance** — Per-flat collected amounts, copied from the existing Summary grid (column A flats × month columns). Opening Dashboard/Maintenance as founding owner updates this tab. Column K (Still Due) is a formula: due − paid.
 5. **Pending Dues** — Type a month in the yellow cell to see who still owes (formulas; do not type in the table)
 6. **Expenses** — Expense entries from Nov 2020 (copied from Exp - Detailed) plus new app rows
 7. **Misc Funds** — Extra collections (festival, levy, donation)
@@ -67,7 +67,7 @@ The workbook is designed so a treasurer can understand every number without open
 10. **Access Control** — Email whitelist with roles (Owner/Reader)
 11. **Audit Log** — All write operations logged
 12. **Water Tanker Log** — Dedicated tanker tracking
-13. **Monthly Summary** — Live formulas: collection, misc, expenses, net, cumulative, %, pending flats. The app does not use Summary surplus/deficit or late-fee rows.
+13. **Monthly Summary** — Collection sheet: live formulas from Maintenance (Summary grid) and Expenses. Surplus/deficit and late-fee rows on Summary are not used.
 14. **Watchman Details** — Staff record
 15. **Handover Summary** — Nov 2020–Aug 2026 monthly totals from the old I&E Excel (no owner names)
 16. **Payees** — Watchman and vendor phones / UPI for GPay and PhonePe

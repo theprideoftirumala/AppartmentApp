@@ -74,7 +74,9 @@ async function maintenanceRowsFromLegacySummary(spreadsheetId) {
   try {
     const response = await window.gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: "'Summary'!A10:CA23",
+      range: "'Summary'!A10:BZ24",
+      valueRenderOption: 'UNFORMATTED_VALUE',
+      majorDimension: 'ROWS',
     });
     return maintenanceRowsFromSummaryGrid(response.result.values || []);
   } catch {
@@ -438,20 +440,32 @@ export async function ensureSheetStructure(spreadsheetId = getSpreadsheetId()) {
       (row) => `${row[1]}|${Number(row[5])}|${String(row[3] || '').trim().toLowerCase()}`,
     );
 
-    const maintenanceHistory = await maintenanceRowsFromLegacySummary(spreadsheetId);
-    await upsertMaintenanceFromSummary(spreadsheetId, maintenanceHistory);
-
-    const maintenanceMonths = await window.gapi.client.sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: `'${SHEET_NAMES.MAINTENANCE}'!A2:A5000`,
-    }).catch(() => ({ result: { values: [] } }));
-    const extraMonths = [...new Set((maintenanceMonths.result.values || []).map((row) => row[0]).filter(Boolean))];
-
+    await syncCollectionsFromSummary(spreadsheetId, { force: true });
     await upgradeWorkbookLayout(spreadsheetId);
-    await applyMonthlySummaryFormulas(spreadsheetId, extraMonths);
     await ensureConfigKeys(spreadsheetId);
     await migrateConfigValues(spreadsheetId, await availableBalanceFromLegacySummary(spreadsheetId));
   });
+}
+
+/**
+ * Copy collected amounts from the existing Summary grid into Maintenance,
+ * then refresh Monthly Summary (the collection sheet) formulas.
+ */
+let lastCollectionSyncAt = 0;
+
+export async function syncCollectionsFromSummary(spreadsheetId = getSpreadsheetId(), { force = false } = {}) {
+  if (!isValidSpreadsheetId(spreadsheetId)) return { months: 0, rows: 0 };
+  if (!force && lastCollectionSyncAt && Date.now() - lastCollectionSyncAt < 20000) {
+    return { months: 0, rows: 0, skipped: true };
+  }
+  const history = await maintenanceRowsFromLegacySummary(spreadsheetId);
+  await upsertMaintenanceFromSummary(spreadsheetId, history);
+  const months = [...new Set(history.map((row) => row[0]).filter(Boolean))];
+  await applyMaintenanceStillDueFormulas(spreadsheetId);
+  await applyMonthlySummaryFormulas(spreadsheetId, months);
+  await migrateConfigValues(spreadsheetId, await availableBalanceFromLegacySummary(spreadsheetId));
+  lastCollectionSyncAt = Date.now();
+  return { months: months.length, rows: history.length };
 }
 
 async function ensureConfigKeys(spreadsheetId) {

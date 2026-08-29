@@ -213,7 +213,7 @@ export default function Settings() {
       await ensureSheetStructure();
       sessionStorage.setItem('tpt_sheet_layout_v14', '1');
       await addAuditLog(user.email, 'UPGRADE_SHEET', 'Refreshed Guide, Pending Dues, and live formulas');
-      showToast('Sheet updated: Pending Dues tab, Still Due formulas, and Monthly Summary formulas.', 'success');
+      showToast('Sheet updated: Maintenance and Monthly Summary now match the Summary collection grid.', 'success');
     } catch (err) {
       showToast(err.message || 'Could not update the sheet layout', 'error');
     } finally {

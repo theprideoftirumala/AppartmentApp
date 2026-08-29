@@ -78,7 +78,7 @@ Add a row on Maintenance or Expenses and refresh the app — the sheet is what t
 1. **Guide** — How to read and edit the workbook
 2. **Configuration** — App settings (key / value / description)
 3. **Flats** — Owner details for all 10 flats (names copied from Summary on first connect)
-4. **Maintenance** — Collected amounts from the existing Summary grid (Nov 2020–Aug 2026)
+4. **Maintenance** — Per-flat collections copied from the existing Summary grid
 5. **Pending Dues** — Type a month in the yellow cell
 6. **Expenses** — Expense entries from Nov 2020 (history copied from Exp - Detailed)
 7. **Payees** — Vendor phones / UPI (GPay and PhonePe)
@@ -87,7 +87,7 @@ Add a row on Maintenance or Expenses and refresh the app — the sheet is what t
 10. **Access Control** — User email whitelist
 11. **Audit Log** — All write operations
 12. **Water Tanker Log** — Tanker delivery tracking
-13. **Monthly Summary** — Collection, expenses, and net per month (surplus/deficit rows from Summary are not used)
+13. **Monthly Summary** — Collection totals by month (formulas from Maintenance). Surplus/deficit rows from Summary are not used.
 14. **Watchman Details** — Staff record
 15. **Handover Summary** — Nov 2020–Aug 2026 monthly totals
 16. **Society Notes** — Wifi id, borewell, motor-repair notes

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   availableBalanceFromSummaryGrid,
   categoryFromMemo,
+  parsePaidAmount,
   dateToMonthLabel,
   expenseRowsFromDetailedGrid,
   findFlatNumber,
@@ -89,6 +90,16 @@ describe('history import', () => {
       ['Mar-26', '502', 3000, 3000, '', '', '', 'PAID', 0, 'From Summary tab'],
     ]);
     expect(JSON.stringify(rows)).not.toMatch(/Someone|Nanaji|Rama/i);
+  });
+
+  it('reads formatted collection cells from Summary', () => {
+    expect(parsePaidAmount('3,000')).toBe(3000);
+    expect(parsePaidAmount(3000)).toBe(3000);
+    const rows = maintenanceRowsFromSummaryGrid([
+      ['Flat number', 'Name of the owner', "May '26"],
+      ['101', 'Someone', '3,000'],
+    ]);
+    expect(rows[0][3]).toBe(3000);
   });
 
   it('reads the Summary Available balance cell', () => {

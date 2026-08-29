@@ -31,7 +31,7 @@ All data is stored in a Google Sheet in your Google Drive — the sheet is the s
                 text: `Your data lives in a Google Sheet named "The Pride of Tirumala-APP" in a Google Drive folder called "TPT-AppartmentApp".
 Open it anytime from Settings > Open Sheet. Start with the Guide tab — it explains every column in plain language.
 Use Pending Dues to see unpaid flats for any month. Monthly Summary shows collection, expenses, and net for each month (those tabs use formulas, so they stay correct if you edit Maintenance by hand).
-History from Summary and Exp-Detailed (Nov 2020–Aug 2026) is loaded into Maintenance and Expenses so you can view and export it. The Summary Available balance ₹1,712.54 on 29 Aug 2026 is the final figure. Surplus/deficit and late-fee rows are ignored. The app does not start in Sep 2026.
+Collected maintenance is the Summary tab grid (flat × month). Opening the Dashboard or Maintenance as the founding owner copies those amounts into the Maintenance tab and refreshes Monthly Summary (the collection sheet). Surplus/deficit, carry-forward, and late-fee rows are ignored. The green Available balance cell is the final cash figure.
 Setup connects The Pride of Tirumala-APP already in Drive, copies a backup first, then adds empty app tabs beside the five history tabs. It does not create a new society file.
 Backups (copies of the sheet) are stored in the "backups" subfolder. A copy is also taken on each Google sign-in.`,
             },
