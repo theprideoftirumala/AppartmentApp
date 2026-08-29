@@ -1341,8 +1341,8 @@ export async function getDashboardData() {
     const spreadsheetId = getSpreadsheetId() || historyId;
 
     const liveIdForSync = getLiveSpreadsheetId();
-    if (isValidSpreadsheetId(liveIdForSync) && liveIdForSync === spreadsheetId) {
-      await syncLiveSummaryMonths(spreadsheetId).catch(() => null);
+    if (isValidSpreadsheetId(liveIdForSync)) {
+      await syncLiveSummaryMonths(liveIdForSync);
     }
 
     const coreRanges = [

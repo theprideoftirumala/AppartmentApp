@@ -28,7 +28,7 @@ export default function Dashboard() {
   const [accessError, setAccessError] = useState(null);
   const [seedingSample, setSeedingSample] = useState(false);
   const [sheetUpgrade, setSheetUpgrade] = useState(
-    sessionStorage.getItem('tpt_sheet_layout_v14') ? 'done' : null
+    sessionStorage.getItem('tpt_sheet_layout_v15') ? 'done' : null
   );
   const [upgradingSheet, setUpgradingSheet] = useState(false);
   const [liveSnap, setLiveSnap] = useState(null);
@@ -39,7 +39,7 @@ export default function Dashboard() {
     setSheetUpgrade('pending');
     try {
       await ensureSheetStructure();
-      sessionStorage.setItem('tpt_sheet_layout_v14', '1');
+      sessionStorage.setItem('tpt_sheet_layout_v15', '1');
       setSheetUpgrade('done');
       showToast('Google Sheet layout updated. If live books exist, Live Summary formulas stay on The Pride of Tirumala-LIVE.', 'success');
     } catch (err) {
@@ -88,7 +88,7 @@ export default function Dashboard() {
           const role = effectiveAppRole(userEmail, userAccess);
           if (role) {
             setUserRole(role);
-            if (role === 'Owner' && !sessionStorage.getItem('tpt_sheet_layout_v14')) {
+            if (role === 'Owner' && !sessionStorage.getItem('tpt_sheet_layout_v15')) {
               await applySheetLayout();
             }
           } else {

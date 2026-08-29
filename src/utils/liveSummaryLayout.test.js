@@ -62,16 +62,13 @@ describe('liveSummaryStaticAndFormulaGrid', () => {
     const { values, formulas } = liveSummaryStaticAndFormulaGrid(1732.54, ['Sep-26', 'Oct-26']);
     expect(values[1][1]).toBe(1732.54);
     expect(values[4][2]).toBe('Sep-26');
-    expect(formulas.C6).toMatch(/ARRAYFORMULA/);
-    expect(formulas.C6).toContain('TO_TEXT');
-    expect(formulas.C6).toContain('VALUE');
+    expect(formulas.C6).toMatch(/SUMIFS\(Maintenance!D:D/);
+    expect(formulas.C6).toContain('TO_TEXT($A6)');
     expect(formulas.C6).toContain('"Sep-26"');
     expect(formulas.C6).not.toMatch(/C\$5/);
     expect(formulas.D6).toContain('"Oct-26"');
     expect(formulas.D6).not.toMatch(/C\$5/);
     expect(formulas.C6).toBe(liveSummaryCollectionFormula('Sep-26', 6));
-    expect(liveSummaryCollectionFormula('Aug-26', 6)).toContain('=2026');
-    expect(liveSummaryCollectionFormula('Aug-26', 6)).toContain('=8');
     expect(values[3][0]).toBe(LIVE_SUMMARY_FORMULA_VERSION);
     expect(formulas.C32).toMatch(/C16/);
     expect(formulas.C33).toMatch(/\$B\$2/);
@@ -118,13 +115,13 @@ describe('liveSummaryNeedsFormulaRepair', () => {
     ], LIVE_SUMMARY_FORMULA_VERSION)).toBe(true);
   });
 
-  it('repairs SUMPRODUCT formulas that Google Sheets cannot expand', () => {
+  it('repairs SUMIFS that compare a numeric flat to text 101', () => {
     expect(liveSummaryNeedsFormulaRepair([
-      '=IFERROR(SUMPRODUCT((((TO_TEXT(Maintenance!A$2:A$5000)="Aug-26")+(IFERROR(TEXT(Maintenance!A$2:A$5000,"MMM-YY"),"")="Aug-26"))>0)*(TO_TEXT(Maintenance!B$2:B$5000)=TO_TEXT($A6))*(N(Maintenance!D$2:D$5000))),0)',
+      '=IFERROR(SUMIFS(Maintenance!D:D,Maintenance!A:A,"Aug-26",Maintenance!B:B,$A6),0)',
     ], LIVE_SUMMARY_FORMULA_VERSION)).toBe(true);
   });
 
-  it('leaves ARRAYFORMULA lookups alone when the version stamp is present', () => {
+  it('leaves TO_TEXT SUMIFS alone when the version stamp is present', () => {
     expect(liveSummaryNeedsFormulaRepair([
       liveSummaryCollectionFormula('Aug-26', 6),
     ], LIVE_SUMMARY_FORMULA_VERSION)).toBe(false);

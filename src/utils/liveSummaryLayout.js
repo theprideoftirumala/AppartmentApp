@@ -41,7 +41,7 @@ export function liveMonthHeaders(startYm = LIVE_APP_START, count = 1) {
 }
 
 /** Bump when Live Summary lookup formulas change so existing files are rewritten. */
-export const LIVE_SUMMARY_FORMULA_VERSION = 'tpt-live-v4';
+export const LIVE_SUMMARY_FORMULA_VERSION = 'tpt-live-v5';
 
 export const LIVE_SUMMARY_LAYOUT = {
   titleRow: 1,
@@ -170,36 +170,18 @@ function sheetTextLiteral(value) {
 }
 
 /**
- * Google Sheets will not expand TEXT/TO_TEXT inside SUMPRODUCT. ARRAYFORMULA
- * gives those functions row context. DATEVALUE("Aug-26") is not used — Sheets
- * can read that as day 26, not August 2026.
+ * After Maintenance A/B are stored as text, SUMIFS can match "Aug-26" and TO_TEXT(flat).
+ * Do not stack a second SUMIFS on VALUE(flat) — that can double-count.
  */
-export function liveSummaryMonthMatch(rangeA1, monthLabel) {
-  const monthLit = sheetTextLiteral(monthLabel);
-  const yearMonth = monthLabelToYearMonth(monthLabel);
-  const textMatch = `(TRIM(TO_TEXT(${rangeA1}))=${monthLit})`;
-  const formatMatch = `(IFERROR(TEXT(${rangeA1},"MMM-YY"),"")=${monthLit})`;
-  if (!yearMonth) return `(${textMatch}+${formatMatch})>0`;
-  const year = Number(yearMonth.slice(0, 4));
-  const month = Number(yearMonth.slice(5, 7));
-  const serialMatch = `(ISNUMBER(${rangeA1})*(IFERROR(YEAR(${rangeA1}),0)=${year})*(IFERROR(MONTH(${rangeA1}),0)=${month}))`;
-  return `(${textMatch}+${formatMatch}+${serialMatch})>0`;
-}
-
-export function liveSummaryFlatMatch(rangeA1, flatRow) {
-  return `(IFERROR(VALUE(TRIM(TO_TEXT(${rangeA1}))),-1)=IFERROR(VALUE(TRIM(TO_TEXT($A${flatRow}))),-2))`;
-}
-
 export function liveSummaryCollectionFormula(monthLabel, flatRow) {
-  const monthOk = liveSummaryMonthMatch('Maintenance!A$2:A$1000', monthLabel);
-  const flatOk = liveSummaryFlatMatch('Maintenance!B$2:B$1000', flatRow);
-  return `=IFERROR(SUM(ARRAYFORMULA(N(${monthOk})*N(${flatOk})*N(Maintenance!D$2:D$1000))),0)`;
+  const monthLit = sheetTextLiteral(monthLabel);
+  return `=IFERROR(SUMIFS(Maintenance!D:D,Maintenance!A:A,${monthLit},Maintenance!B:B,TO_TEXT($A${flatRow})),0)`;
 }
 
 export function liveSummaryExpenseFormula(monthLabel, category) {
-  const monthOk = liveSummaryMonthMatch('Expenses!C$2:C$1000', monthLabel);
+  const monthLit = sheetTextLiteral(monthLabel);
   const catLit = sheetTextLiteral(category);
-  return `=IFERROR(SUM(ARRAYFORMULA(N(${monthOk})*N(TRIM(TO_TEXT(Expenses!E$2:E$1000))=${catLit})*N(Expenses!F$2:F$1000))),0)`;
+  return `=IFERROR(SUMIFS(Expenses!F:F,Expenses!C:C,${monthLit},Expenses!E:E,${catLit}),0)`;
 }
 
 /** Turn a header cell (text, or an Excel date serial) into Aug-26 style. */
@@ -295,9 +277,8 @@ export function liveSummaryNeedsFormulaRepair(sampleFormulas = [], versionCell =
   const list = (sampleFormulas || []).map((cell) => String(cell || '')).filter(Boolean);
   if (!list.length) return true;
   if (list.some((formula) => liveSummaryFormulaUsesHeaderCell(formula))) return true;
-  if (list.some((formula) => /SUMPRODUCT|SUMIFS/i.test(formula) && !/ARRAYFORMULA/i.test(formula))) return true;
-  const lookups = list.filter((formula) => /ARRAYFORMULA|SUMPRODUCT|SUMIFS/i.test(formula));
-  return lookups.some((formula) => !/ARRAYFORMULA/i.test(formula) || !/"[A-Za-z]{3}-\d{2}"/.test(formula));
+  const collections = list.filter((formula) => /Maintenance!/i.test(formula));
+  return collections.some((formula) => !/TO_TEXT/i.test(formula) || !/"[A-Za-z]{3}-\d{2}"/.test(formula));
 }
 
 export function parseLiveSummarySnapshot(rows, monthLabel) {

@@ -244,9 +244,9 @@ export default function Settings() {
       if (isValidSpreadsheetId(liveBound)) {
         await ensureSheetStructure(liveBound, { liveWorkbook: true });
       }
-      sessionStorage.setItem('tpt_sheet_layout_v14', '1');
+      sessionStorage.setItem('tpt_sheet_layout_v15', '1');
       await addAuditLog(user.email, 'UPGRADE_SHEET', 'Refreshed Guide, tabs, and live formulas');
-      showToast('Sheet layout refreshed. History stays on the APP file. Live Summary stays on The Pride of Tirumala-LIVE.', 'success');
+      showToast('Sheet layout refreshed. Live Summary was rebuilt on The Pride of Tirumala-LIVE (same file). History stays on APP.', 'success');
     } catch (err) {
       showToast(err.message || 'Could not update the sheet layout', 'error');
     } finally {

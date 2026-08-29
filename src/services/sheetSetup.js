@@ -31,6 +31,7 @@ import {
   mergeHistoryExpenses,
 } from '../utils/legacySheetImport';
 import {
+  coerceMonthLabel,
   liveMonthHeaders,
   liveSummaryNeedsFormulaRepair,
   liveSummaryStaticAndFormulaGrid,
@@ -245,13 +246,110 @@ async function writeValues(spreadsheetId, data) {
 /** Write formula cells. Must use USER_ENTERED so Sheets evaluates them. */
 async function writeFormulas(spreadsheetId, data) {
   if (!data.length) return;
-  await gapiCall(window.gapi.client.sheets.spreadsheets.values.batchUpdate({
+  const chunkSize = 40;
+  for (let i = 0; i < data.length; i += chunkSize) {
+    await gapiCall(window.gapi.client.sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId,
+      resource: {
+        valueInputOption: 'USER_ENTERED',
+        data: data.slice(i, i + chunkSize),
+      },
+    }));
+  }
+}
+
+async function listSheetProperties(spreadsheetId) {
+  const meta = await gapiCall(window.gapi.client.sheets.spreadsheets.get({
+    spreadsheetId,
+    fields: 'sheets.properties',
+  }));
+  return meta.result.sheets || [];
+}
+
+async function deleteSheetByTitle(spreadsheetId, title) {
+  const sheets = await listSheetProperties(spreadsheetId);
+  const hit = sheets.find((sheet) => sheet.properties.title === title);
+  if (!hit || sheets.length < 2) return false;
+  await gapiCall(window.gapi.client.sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    resource: { requests: [{ deleteSheet: { sheetId: hit.properties.sheetId } }] },
+  }));
+  return true;
+}
+
+async function formatColumnsAsText(spreadsheetId, title, startColumnIndex, endColumnIndex) {
+  const sheets = await listSheetProperties(spreadsheetId);
+  const hit = sheets.find((sheet) => sheet.properties.title === title);
+  if (!hit) return;
+  await gapiCall(window.gapi.client.sheets.spreadsheets.batchUpdate({
     spreadsheetId,
     resource: {
-      valueInputOption: 'USER_ENTERED',
-      data,
+      requests: [{
+        repeatCell: {
+          range: {
+            sheetId: hit.properties.sheetId,
+            startRowIndex: 1,
+            startColumnIndex,
+            endColumnIndex,
+          },
+          cell: { userEnteredFormat: { numberFormat: { type: 'TEXT' } } },
+          fields: 'userEnteredFormat.numberFormat',
+        },
+      }],
     },
   }));
+}
+
+function openingFromLiveRows(rows = []) {
+  const fromB = Number(rows[1]?.[1]);
+  if (Number.isFinite(fromB) && fromB !== 0) return fromB;
+  const fromC = Number(rows[1]?.[2]);
+  if (Number.isFinite(fromC)) return fromC;
+  return Number.isFinite(fromB) ? fromB : 0;
+}
+
+async function rewriteColumnAsText(spreadsheetId, title, columnLetter, mapCell) {
+  const response = await gapiCall(window.gapi.client.sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${title}'!${columnLetter}2:${columnLetter}5000`,
+    valueRenderOption: 'UNFORMATTED_VALUE',
+  }));
+  const rows = response.result.values || [];
+  const data = [];
+  rows.forEach((row, index) => {
+    const next = mapCell(row[0], index);
+    if (next == null || next === '') return;
+    data.push({
+      range: `'${title}'!${columnLetter}${index + 2}`,
+      values: [[`'${String(next).replace(/'/g, '')}`]],
+    });
+  });
+  if (!data.length) return;
+  await writeFormulas(spreadsheetId, data);
+}
+
+/** Keep month/flat as text so SUMIFS("Aug-26", TO_TEXT(flat)) can match. */
+export async function normalizeLiveLookupKeys(spreadsheetId) {
+  await formatColumnsAsText(spreadsheetId, SHEET_NAMES.MAINTENANCE, 0, 2);
+  await formatColumnsAsText(spreadsheetId, SHEET_NAMES.EXPENSES, 2, 3);
+  await rewriteColumnAsText(
+    spreadsheetId,
+    SHEET_NAMES.MAINTENANCE,
+    'A',
+    (cell) => coerceMonthLabel(cell) || String(cell || '').trim(),
+  );
+  await rewriteColumnAsText(
+    spreadsheetId,
+    SHEET_NAMES.MAINTENANCE,
+    'B',
+    (cell) => String(cell ?? '').trim(),
+  );
+  await rewriteColumnAsText(
+    spreadsheetId,
+    SHEET_NAMES.EXPENSES,
+    'C',
+    (cell) => coerceMonthLabel(cell) || String(cell || '').trim(),
+  );
 }
 
 /**
@@ -469,9 +567,8 @@ export async function readLiveSummaryState(spreadsheetId) {
     valueRenderOption: 'UNFORMATTED_VALUE',
   }), { result: { values: [] } });
   const rows = response.result.values || [];
-  const opening = Number(rows[1]?.[1]);
   return {
-    opening: Number.isFinite(opening) ? opening : 0,
+    opening: openingFromLiveRows(rows),
     months: sortMonthLabels((rows[4] || []).slice(2)),
     version: String(rows[3]?.[0] || '').trim(),
     rows,
@@ -528,6 +625,12 @@ export async function writeLiveSummaryTab(spreadsheetId, openingBalance, months)
     values: [[`'${label}`]],
   }));
   await writeFormulas(spreadsheetId, headerText);
+  const flatText = FLATS.map((flat, index) => ({
+    range: `'${SHEET_NAMES.LIVE_SUMMARY}'!A${6 + index}`,
+    values: [[`'${flat}`]],
+  }));
+  await writeFormulas(spreadsheetId, flatText);
+  await formatColumnsAsText(spreadsheetId, SHEET_NAMES.LIVE_SUMMARY, 0, 1);
   return monthList;
 }
 
@@ -541,7 +644,10 @@ export async function syncLiveSummaryMonths(spreadsheetId, { forceFormulas = fal
   if (!forceFormulas && sameMonthList(state.months, planned) && planned.length && !stale) {
     return { months: planned, rewritten: false };
   }
+  await normalizeLiveLookupKeys(spreadsheetId);
+  await deleteSheetByTitle(spreadsheetId, SHEET_NAMES.LIVE_SUMMARY);
   await writeLiveSummaryTab(spreadsheetId, state.opening, planned.length ? planned : state.months);
+  await deleteSheetByTitle(spreadsheetId, 'Sheet1');
   await applyMaintenanceStillDueFormulas(spreadsheetId);
   await applyMonthlySummaryFormulas(spreadsheetId, planned);
   return { months: planned.length ? planned : state.months, rewritten: true };

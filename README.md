@@ -22,6 +22,11 @@ A **Progressive Web App (PWA)** for managing apartment maintenance finances, bui
 - **🔐 Secure** — Google OAuth 2.0, audit logging, role-based access; only the founding owner may create LIVE
 - **💸 Payees** — GPay / PhonePe from a 10-digit phone (optional UPI ID)
 
+## What's new in 1.9.8
+
+- Live Summary is recreated when it is still on `tpt-live-v2` SUMIFS. Maintenance month and flat are locked as text so `"Aug-26"` matches, and unused `Sheet1` is removed. Opening 612 is kept. Cell A4 must read `tpt-live-v5`.
+- Open Dashboard or Settings → Refresh sheet layout. Sidebar must show **v1.9.8** (cache `tpt-v41`). Do not create a second LIVE file.
+
 ## What's new in 1.9.7
 
 - GPay now opens a real UPI address (`number@ybl` when only a phone is stored) using `gpay://` / the Android GPay Intent. A bare phone in `tez://` was why PhonePe worked and GPay did not.
