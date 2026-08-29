@@ -98,22 +98,48 @@ export function categoryFromMemo(memo) {
   return found ? found[1] : 'Sundry';
 }
 
-/** Summary row 10 headers + flat rows 12–21. Drops owner names and the carry-forward / surplus row. */
+export function findFlatNumber(row) {
+  for (const cell of (row || []).slice(0, 4)) {
+    const flat = String(cell ?? '').trim().replace(/\.0$/, '');
+    if (/^\d{3}$/.test(flat)) return flat;
+  }
+  return '';
+}
+
+function isSkipSummaryRow(row) {
+  const text = (row || []).slice(0, 4).map((cell) => String(cell ?? '')).join(' ');
+  return /carry\s*forward|surplus|deficit|^total\b|contribution/i.test(text);
+}
+
+/** Green Available-balance cell on the Summary header (label + number to the right). */
+export function availableBalanceFromSummaryGrid(grid) {
+  for (const row of grid || []) {
+    for (let i = 0; i < row.length; i += 1) {
+      if (!/available\s*balance/i.test(String(row[i] ?? ''))) continue;
+      for (const candidate of [row[i + 1], row[i + 2]]) {
+        const amount = Number(String(candidate ?? '').replace(/[,₹\s]/g, ''));
+        if (Number.isFinite(amount) && amount > 0) return amount;
+      }
+    }
+  }
+  return null;
+}
+
+/** Summary month headers + one row per flat. Drops owner names, carry-forward, surplus, and late-fee rows. */
 export function maintenanceRowsFromSummaryGrid(grid) {
   const rows = grid || [];
   if (!rows.length) return [];
   const headers = rows[0] || [];
-  const months = headers.slice(2).map((cell, index) => ({
-    index: index + 2,
+  const months = headers.map((cell, index) => ({
+    index,
     label: toAppMonthLabel(cell),
   })).filter((item) => isHistoryMonth(item.label));
 
   const out = [];
   for (const row of rows.slice(1)) {
-    const first = String(row[0] ?? '').trim();
-    if (/carry\s*forward/i.test(first)) continue;
-    const flat = first.replace(/\.0$/, '');
-    if (!/^\d{3}$/.test(flat)) continue;
+    if (isSkipSummaryRow(row)) continue;
+    const flat = findFlatNumber(row);
+    if (!flat) continue;
     for (const month of months) {
       const raw = row[month.index];
       if (raw === '' || raw == null) continue;

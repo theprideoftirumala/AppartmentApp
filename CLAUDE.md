@@ -58,7 +58,7 @@ The workbook is designed so a treasurer can understand every number without open
 1. **Guide** — Plain-language explanation of every tab, column, and edit rule
 2. **Configuration** — Key / Value / Description for all app settings
 3. **Flats** — Owner details for 10 flats (101-502)
-4. **Maintenance** — Monthly payment records per flat from Nov 2020. History is copied from Summary. Column K (Still Due) is a formula: due − paid.
+4. **Maintenance** — Monthly payment records per flat from Nov 2020. Collected amounts come from the existing Summary grid (flat × month). Refresh sheet layout updates those amounts. Column K (Still Due) is a formula: due − paid.
 5. **Pending Dues** — Type a month in the yellow cell to see who still owes (formulas; do not type in the table)
 6. **Expenses** — Expense entries from Nov 2020 (copied from Exp - Detailed) plus new app rows
 7. **Misc Funds** — Extra collections (festival, levy, donation)
@@ -102,7 +102,8 @@ All configurable values are in `src/config/constants.js` and can be overridden a
 
 - Monthly maintenance: ₹3,000 (configurable)
 - Corpus fund: ₹0 (configurable)
-- Available balance: ₹1,712.54 from the Summary tab on 29 Aug 2026 (final). Surplus/deficit and late-fee rows are not used. History (Nov 2020–Aug 2026) is merged into Maintenance and Expenses on Setup / Refresh sheet layout. Live months start Sep 2026.
+- Available balance: the green cell on the existing Summary tab (copied into Configuration). Surplus/deficit and late-fee rows are not used. Collected maintenance is the Summary grid. Live months start Sep 2026.
+- Published sheet ID: `public/sheet-config.json` points at The Pride of Tirumala-APP. Do not create a second society file.
 - Treasurer: Flat 401, President: Flat 102 (configurable)
 - Late fee, late-fee day, and emergency reserve are not app settings. Leftover rows can stay on the Configuration sheet for history.
 - Sample data: compile-time off (`FEATURES.SAMPLE_DATA`). History lives on the five legacy tabs and Handover Summary.

@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  availableBalanceFromSummaryGrid,
   categoryFromMemo,
   dateToMonthLabel,
   expenseRowsFromDetailedGrid,
+  findFlatNumber,
   isHistoryMonth,
   isLiveAppMonth,
   maintenanceRowsFromSummaryGrid,
@@ -73,6 +75,27 @@ describe('history import', () => {
     expect(isHistoryMonth('Aug-26')).toBe(true);
     expect(isLiveAppMonth('Sep-26')).toBe(true);
     expect(isHistoryMonth('Sep-26')).toBe(false);
+  });
+
+  it('reads a flat number from column A or B and skips surplus', () => {
+    expect(findFlatNumber(['101', 'Rama Rao'])).toBe('101');
+    expect(findFlatNumber(['', '502', 'Nanaji'])).toBe('502');
+    const rows = maintenanceRowsFromSummaryGrid([
+      ['S.No', 'Flat', 'Owner', "Mar '26"],
+      ['', 'Carry Forward', '', 28487],
+      ['1', '502', 'Someone', 3000],
+    ]);
+    expect(rows).toEqual([
+      ['Mar-26', '502', 3000, 3000, '', '', '', 'PAID', 0, 'From Summary tab'],
+    ]);
+    expect(JSON.stringify(rows)).not.toMatch(/Someone|Nanaji|Rama/i);
+  });
+
+  it('reads the Summary Available balance cell', () => {
+    expect(availableBalanceFromSummaryGrid([
+      ['Last updated', '8/29/2026'],
+      ['Available balance', '1,732.54'],
+    ])).toBe(1732.54);
   });
 
   it('maps common memos to categories', () => {

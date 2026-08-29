@@ -369,7 +369,7 @@ export default function Settings() {
                 },
                 {
                   key: 'AVAILABLE_BALANCE', label: 'Available balance (29 Aug 2026) ₹', type: 'number',
-                  info: 'The green Available balance cell on the Summary tab: ₹1,712.54. This is the final figure from that sheet. Late-fee and surplus/deficit rows are ignored.'
+                  info: 'Copied from the green Available balance cell on the existing Summary tab. Late-fee and surplus/deficit rows are ignored.'
                 },
                 {
                   key: 'FISCAL_YEAR_START', label: 'Books start (YYYY-MM)', type: 'text',
@@ -614,10 +614,10 @@ export default function Settings() {
           <div className="card mt-4">
             <h3 className="card-title mb-2">Refresh sheet layout</h3>
             <p className="text-muted text-sm mb-4">
-              Adds any missing app tabs to <strong>{SHEET_FILE_NAME}</strong> and copies
-              Summary collections and Exp-Detailed lines through Aug 2026 that are not
-              already on Maintenance or Expenses (not surplus/deficit or late-fee rows).
-              Leaves the five history tabs untouched.
+              Adds any missing app tabs to the existing <strong>{SHEET_FILE_NAME}</strong>
+              Google Sheet. Collected maintenance is read from the Summary grid (all 10 flats)
+              and written to Maintenance. Amounts already on Maintenance are updated to match
+              Summary. Surplus/deficit and late-fee rows are skipped. History tabs stay as they are.
             </p>
             <button
               className="btn btn-secondary"

@@ -22,7 +22,12 @@ import {
   handoverSummaryRows,
 } from '../data/handoverLedger';
 import { isValidSpreadsheetId, getCurrentMonthLabel } from '../utils/helpers';
-import { expenseRowsFromDetailedGrid, maintenanceRowsFromSummaryGrid } from '../utils/legacySheetImport';
+import {
+  availableBalanceFromSummaryGrid,
+  expenseRowsFromDetailedGrid,
+  findFlatNumber,
+  maintenanceRowsFromSummaryGrid,
+} from '../utils/legacySheetImport';
 import { gapiCall } from '../utils/gapi';
 import {
   maintenanceStillDueFormula,
@@ -69,7 +74,7 @@ async function maintenanceRowsFromLegacySummary(spreadsheetId) {
   try {
     const response = await window.gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: "'Summary'!B10:BY21",
+      range: "'Summary'!A10:CA23",
     });
     return maintenanceRowsFromSummaryGrid(response.result.values || []);
   } catch {
@@ -77,21 +82,71 @@ async function maintenanceRowsFromLegacySummary(spreadsheetId) {
   }
 }
 
+async function availableBalanceFromLegacySummary(spreadsheetId) {
+  try {
+    const response = await window.gapi.client.sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: "'Summary'!A1:BL8",
+    });
+    return availableBalanceFromSummaryGrid(response.result.values || []);
+  } catch {
+    return null;
+  }
+}
+
 async function flatsRowsFromLegacySummary(spreadsheetId) {
   try {
     const response = await window.gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: "'Summary'!B12:C21",
+      range: "'Summary'!A12:C23",
     });
     const byFlat = new Map();
     for (const row of response.result.values || []) {
-      const flat = String(row[0] ?? '').trim().replace(/\.0$/, '');
-      const name = String(row[1] ?? '').trim();
-      if (FLATS.includes(flat) && name) byFlat.set(flat, name);
+      const flat = findFlatNumber(row);
+      if (!FLATS.includes(flat)) continue;
+      const name = String(row[0] === flat ? row[1] : row[2] ?? row[1] ?? '').trim();
+      if (flat && name && !/^\d{3}$/.test(name)) byFlat.set(flat, name);
     }
     return FLATS.map((flat) => [flat, byFlat.get(flat) || '', '', '', '', '', '', 'Member']);
   } catch {
     return emptyFlatRows();
+  }
+}
+
+async function upsertMaintenanceFromSummary(spreadsheetId, historyRows) {
+  if (!historyRows.length) return;
+  const response = await window.gapi.client.sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${SHEET_NAMES.MAINTENANCE}'!A2:D5000`,
+  });
+  const existing = new Map();
+  (response.result.values || []).forEach((row, index) => {
+    existing.set(`${row[0]}|${row[1]}`, { index, due: row[2], paid: row[3] });
+  });
+  const updates = [];
+  const toAdd = [];
+  for (const row of historyRows) {
+    const found = existing.get(`${row[0]}|${row[1]}`);
+    if (!found) {
+      toAdd.push(row);
+      continue;
+    }
+    if (Number(found.due) !== Number(row[2]) || Number(found.paid) !== Number(row[3])) {
+      updates.push({
+        range: `'${SHEET_NAMES.MAINTENANCE}'!C${found.index + 2}:D${found.index + 2}`,
+        values: [[row[2], row[3]]],
+      });
+    }
+  }
+  if (updates.length) await writeValues(spreadsheetId, updates);
+  if (toAdd.length) {
+    await window.gapi.client.sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: `'${SHEET_NAMES.MAINTENANCE}'!A:K`,
+      valueInputOption: 'RAW',
+      insertDataOption: 'INSERT_ROWS',
+      resource: { values: toAdd },
+    });
   }
 }
 
@@ -384,13 +439,7 @@ export async function ensureSheetStructure(spreadsheetId = getSpreadsheetId()) {
     );
 
     const maintenanceHistory = await maintenanceRowsFromLegacySummary(spreadsheetId);
-    await appendMissingHistoryRows(
-      spreadsheetId,
-      SHEET_NAMES.MAINTENANCE,
-      `'${SHEET_NAMES.MAINTENANCE}'!A2:B5000`,
-      maintenanceHistory,
-      (row) => `${row[0]}|${row[1]}`,
-    )
+    await upsertMaintenanceFromSummary(spreadsheetId, maintenanceHistory);
 
     const maintenanceMonths = await window.gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId,
@@ -401,7 +450,7 @@ export async function ensureSheetStructure(spreadsheetId = getSpreadsheetId()) {
     await upgradeWorkbookLayout(spreadsheetId);
     await applyMonthlySummaryFormulas(spreadsheetId, extraMonths);
     await ensureConfigKeys(spreadsheetId);
-    await migrateConfigValues(spreadsheetId);
+    await migrateConfigValues(spreadsheetId, await availableBalanceFromLegacySummary(spreadsheetId));
   });
 }
 
@@ -425,7 +474,7 @@ async function ensureConfigKeys(spreadsheetId) {
   }
 }
 
-async function migrateConfigValues(spreadsheetId) {
+async function migrateConfigValues(spreadsheetId, availableBalance = null) {
   const response = await window.gapi.client.sheets.spreadsheets.values.get({
     spreadsheetId,
     range: `'${SHEET_NAMES.CONFIGURATION}'!A2:B100`,
@@ -440,6 +489,12 @@ async function migrateConfigValues(spreadsheetId) {
     }
     if (key === 'FISCAL_YEAR_START' && value === '2026-09') {
       updates.push({ range: cell, values: [['2020-11']] });
+    }
+    if (key === 'AVAILABLE_BALANCE' && Number.isFinite(availableBalance) && availableBalance > 0) {
+      const current = Number(value);
+      if (!Number.isFinite(current) || current !== availableBalance) {
+        updates.push({ range: cell, values: [[String(availableBalance)]] });
+      }
     }
   });
   if (updates.length) await writeValues(spreadsheetId, updates);

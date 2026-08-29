@@ -27,7 +27,7 @@ export const DISCOVERY_DOCS = [
 // ─── Apartment Configuration ────────────────────────────────────
 export const APP_NAME = 'The Pride of Tirumala';
 export const APP_SHORT_NAME = 'TPT Tracker';
-export const APP_VERSION = '1.8.5';
+export const APP_VERSION = '1.8.6';
 
 /**
  * Bump this when GOOGLE_SCOPES change so existing sessions re-consent.
@@ -161,7 +161,7 @@ export const CONFIG_DESCRIPTIONS = {
   MONTHLY_MAINTENANCE: 'Monthly maintenance amount each flat pays (₹). Example: 3000',
   CORPUS_FUND: 'One-time corpus fund balance (₹). Edit here; the app reads this value.',
   DEFICIT_LAST_YEAR: 'Do not add an extra opening amount. History from Summary and Exp-Detailed is already in Maintenance and Expenses.',
-  AVAILABLE_BALANCE: 'Available balance on the Summary tab as of 29 Aug 2026 (₹1,712.54). This is the final figure from that cell.',
+  AVAILABLE_BALANCE: 'Green Available balance cell on the Summary tab. The app copies this figure on Refresh sheet layout.',
   APARTMENT_ADDRESS: 'Postal address of the apartment',
   FISCAL_YEAR_START: 'First month on the books as YYYY-MM. History starts 2020-11.',
   TREASURER_FLAT: 'Flat number of the current Treasurer (must match a row in the Flats tab)',

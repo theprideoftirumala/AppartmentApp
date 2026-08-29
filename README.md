@@ -78,7 +78,7 @@ Add a row on Maintenance or Expenses and refresh the app — the sheet is what t
 1. **Guide** — How to read and edit the workbook
 2. **Configuration** — App settings (key / value / description)
 3. **Flats** — Owner details for all 10 flats (names copied from Summary on first connect)
-4. **Maintenance** — Monthly payment records from Nov 2020 (history copied from Summary)
+4. **Maintenance** — Collected amounts from the existing Summary grid (Nov 2020–Aug 2026)
 5. **Pending Dues** — Type a month in the yellow cell
 6. **Expenses** — Expense entries from Nov 2020 (history copied from Exp - Detailed)
 7. **Payees** — Vendor phones / UPI (GPay and PhonePe)
