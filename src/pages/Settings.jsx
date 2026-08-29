@@ -176,7 +176,7 @@ export default function Settings() {
       showToast(`Backup created: ${result.name}`, 'success');
       fetchData();
     } catch (err) {
-      showToast('Failed to create backup', 'error');
+      showToast(err?.message || 'Failed to create backup', 'error');
     } finally {
       setBackingUp(false);
     }
@@ -213,7 +213,7 @@ export default function Settings() {
       await ensureSheetStructure();
       sessionStorage.setItem('tpt_sheet_layout_v14', '1');
       await addAuditLog(user.email, 'UPGRADE_SHEET', 'Refreshed Guide, Pending Dues, and live formulas');
-      showToast('Sheet updated: Maintenance and Monthly Summary now match the Summary collection grid.', 'success');
+      showToast('Sheet updated: Maintenance and Expenses now match Summary without duplicate lines.', 'success');
     } catch (err) {
       showToast(err.message || 'Could not update the sheet layout', 'error');
     } finally {
@@ -569,6 +569,7 @@ export default function Settings() {
             </div>
             <p className="text-muted text-sm mb-4">
               Copies of <strong>{SHEET_FILE_NAME}</strong> go into Drive / TPT-AppartmentApp / backups.
+              If Drive blocks a direct copy, the app clones the tabs instead. First backup can take a minute.
               The app also copies the file before first Setup and once on each Google sign-in.
             </p>
 
@@ -616,8 +617,9 @@ export default function Settings() {
             <p className="text-muted text-sm mb-4">
               Adds any missing app tabs to the existing <strong>{SHEET_FILE_NAME}</strong>
               Google Sheet. Collected maintenance is read from the Summary grid (all 10 flats)
-              and written to Maintenance. Amounts already on Maintenance are updated to match
-              Summary. Surplus/deficit and late-fee rows are skipped. History tabs stay as they are.
+              and written to Maintenance. Expenses come from Exp-Detailed plus Summary
+              category rows (including Sundry). Matching totals are not added twice.
+              Surplus/deficit and late-fee rows are skipped. History tabs stay as they are.
             </p>
             <button
               className="btn btn-secondary"

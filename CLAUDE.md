@@ -41,7 +41,7 @@ src/
 ├── data/handoverLedger.js   # Nov 2020–Aug 2026 totals (no owner names)
 ├── utils/gapi.js            # Promise.resolve wrapper for gapi thenables
 ├── utils/setupFlow.js       # Setup never offers create
-├── utils/legacySheetImport.js # Summary / Exp-Detailed → app rows (through Aug 2026)
+├── utils/legacySheetImport.js # Summary collections + expense categories / Exp-Detailed (no duplicate totals)
 ├── utils/voiceExpense.js    # On-device speech parse
 ├── utils/receiptOcr.js      # On-device Tesseract parse
 └── utils/appCache.js        # Clear local + service-worker cache
@@ -60,7 +60,7 @@ The workbook is designed so a treasurer can understand every number without open
 3. **Flats** — Owner details for 10 flats (101-502)
 4. **Maintenance** — Per-flat collected amounts, copied from the existing Summary grid (column A flats × month columns). Opening Dashboard/Maintenance as founding owner updates this tab. Column K (Still Due) is a formula: due − paid.
 5. **Pending Dues** — Type a month in the yellow cell to see who still owes (formulas; do not type in the table)
-6. **Expenses** — Expense entries from Nov 2020 (copied from Exp - Detailed) plus new app rows
+6. **Expenses** — Expense entries from Nov 2020 (Exp - Detailed line items, then Summary category/Sundry totals that are not already covered) plus new app rows
 7. **Misc Funds** — Extra collections (festival, levy, donation)
 8. **Emergency Contacts** — Categorized contact directory
 9. **Reminders** — Recurring task reminders

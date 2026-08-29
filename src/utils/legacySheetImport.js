@@ -113,9 +113,60 @@ export function findFlatNumber(row) {
   return '';
 }
 
+/** Flat cells sit in A/B. Later 3-digit amounts (859, 100) are not flats. */
+function hasLeadingFlatNumber(row) {
+  for (const cell of (row || []).slice(0, 2)) {
+    const flat = String(cell ?? '').trim().replace(/\.0$/, '');
+    if (/^\d{3}$/.test(flat)) return true;
+  }
+  return false;
+}
+
 function isSkipSummaryRow(row) {
   const text = (row || []).slice(0, 4).map((cell) => String(cell ?? '')).join(' ');
   return /carry\s*forward|surplus|deficit|^total\b|contribution/i.test(text);
+}
+
+function firstLabel(row) {
+  for (const cell of (row || []).slice(0, 4)) {
+    const text = String(cell ?? '').replace(/\s+/g, ' ').trim();
+    if (text && !/^\d+(\.\d+)?$/.test(text)) return text;
+  }
+  return '';
+}
+
+function isSkipExpenseLabel(text) {
+  return /carry\s*forward|surplus|deficit|^totals?\b|contribution|available\s*balance|late\s*fee|^expenses?$|^income$|^collection/i.test(text);
+}
+
+const SUMMARY_CATEGORY_RULES = [
+  [/sundry/i, 'Sundry'],
+  [/watchman|salary/i, 'Watchman Salary'],
+  [/generator|diesel|desiel/i, 'Generator Fuel'],
+  [/electric/i, 'Common Electricity'],
+  [/water/i, 'Water Charges'],
+  [/garbage|wastage/i, 'Garbage'],
+  [/lift|elevator/i, 'Lift Service'],
+  [/pest/i, 'Pest Control'],
+  [/clean|housekeep/i, 'Cleaning'],
+  [/internet|wifi|broadband/i, 'Internet'],
+  [/\br\s*&\s*m\b|repair/i, 'Repairs & Maintenance'],
+  [/service/i, 'Repairs & Maintenance'],
+];
+
+export function categoryFromSummaryLabel(label) {
+  const text = String(label || '').trim();
+  if (!text || isSkipExpenseLabel(text)) return '';
+  const found = SUMMARY_CATEGORY_RULES.find(([pattern]) => pattern.test(text));
+  return found ? found[1] : '';
+}
+
+function lastDayOfMonth(label) {
+  const ym = monthLabelToYearMonth(label);
+  if (!ym) return '';
+  const [year, month] = ym.split('-').map(Number);
+  const last = new Date(Date.UTC(year, month, 0));
+  return last.toISOString().slice(0, 10);
 }
 
 /** Green Available-balance cell on the Summary header (label + number to the right). */
@@ -191,4 +242,140 @@ export function expenseRowsFromDetailedGrid(grid) {
     n += 1;
   }
   return out;
+}
+
+/**
+ * Monthly category totals from the Summary expense block, including Sundry.
+ * Skips flats, contribution, total, surplus/deficit. Live months stay off.
+ */
+export function expenseRowsFromSummaryGrid(grid) {
+  const rows = grid || [];
+  if (!rows.length) return [];
+  const headers = rows[0] || [];
+  const months = headers.map((cell, index) => ({
+    index,
+    label: toAppMonthLabel(cell),
+  })).filter((item) => isHistoryMonth(item.label));
+
+  const out = [];
+  let n = 1;
+  for (const row of rows.slice(1)) {
+    if (hasLeadingFlatNumber(row)) continue;
+    const label = firstLabel(row);
+    const category = categoryFromSummaryLabel(label);
+    if (!category) continue;
+    for (const month of months) {
+      const amount = parsePaidAmount(row[month.index]);
+      if (amount === 0) continue;
+      out.push([
+        `EXP-SUM-${n}`,
+        lastDayOfMonth(month.label),
+        month.label,
+        label,
+        category,
+        amount,
+        '',
+        'N',
+        '',
+        '',
+        'From Summary tab',
+      ]);
+      n += 1;
+    }
+  }
+  return out;
+}
+
+function monthAmount(row) {
+  return Number(row?.[5]) || 0;
+}
+
+function monthOf(row) {
+  return String(row?.[2] || '');
+}
+
+function categoryOf(row) {
+  return String(row?.[4] || '');
+}
+
+function sumBy(rows, keyFn) {
+  const totals = new Map();
+  for (const row of rows) {
+    const key = keyFn(row);
+    totals.set(key, (totals.get(key) || 0) + monthAmount(row));
+  }
+  return totals;
+}
+
+function amountsClose(a, b) {
+  return Math.abs(Number(a) - Number(b)) < 1;
+}
+
+/**
+ * Keep Exp-Detailed line items. Add a Summary category (including Sundry)
+ * only when that month/category is not already covered by detailed lines.
+ */
+export function mergeHistoryExpenses(detailedRows, summaryRows) {
+  const detailed = detailedRows || [];
+  const summary = summaryRows || [];
+  const detailedMonthSum = sumBy(detailed, monthOf);
+  const summaryMonthSum = sumBy(summary, monthOf);
+  const detailedCategorySum = sumBy(detailed, (row) => `${monthOf(row)}|${categoryOf(row)}`);
+  const detailedExact = new Set(
+    detailed.map((row) => `${monthOf(row)}|${categoryOf(row)}|${monthAmount(row)}`),
+  );
+
+  const extra = [];
+  for (const row of summary) {
+    const month = monthOf(row);
+    const category = categoryOf(row);
+    const amount = monthAmount(row);
+    if (detailedExact.has(`${month}|${category}|${amount}`)) continue;
+    if (amountsClose(detailedCategorySum.get(`${month}|${category}`) || 0, amount)) continue;
+    if (
+      detailedMonthSum.has(month)
+      && amountsClose(detailedMonthSum.get(month), summaryMonthSum.get(month) || 0)
+    ) {
+      continue;
+    }
+    extra.push(row);
+  }
+  return [...detailed, ...extra];
+}
+
+export function importedExpenseFingerprint(row) {
+  return `${String(row?.[1] || '').trim()}|${monthAmount(row)}|${String(row?.[3] || '').trim().toLowerCase()}`;
+}
+
+export function isImportedExpenseRow(row) {
+  const id = String(row?.[0] || '');
+  const source = String(row?.[10] || '');
+  return /^EXP-(HIST|SUM)-/i.test(id) || /From (Exp - Detailed|Summary)/i.test(source);
+}
+
+/** Indexes of imported rows that duplicate another imported line or a Summary rollup. */
+export function leftoverDuplicateImportIndexes(rows) {
+  const list = rows || [];
+  const seen = new Set();
+  const drop = new Set();
+  const detailed = [];
+  const summary = [];
+  list.forEach((row, index) => {
+    if (!isImportedExpenseRow(row)) return;
+    const key = importedExpenseFingerprint(row);
+    if (seen.has(key)) {
+      drop.add(index);
+      return;
+    }
+    seen.add(key);
+    const id = String(row?.[0] || '');
+    const source = String(row?.[10] || '');
+    if (/From Exp - Detailed/i.test(source) || /^EXP-HIST-/i.test(id)) detailed.push(row);
+    else if (/From Summary/i.test(source) || /^EXP-SUM-/i.test(id)) summary.push({ row, index });
+  });
+  const keepSummary = new Set(mergeHistoryExpenses(detailed, summary.map((item) => item.row)).slice(detailed.length));
+  for (const item of summary) {
+    if (!keepSummary.has(item.row)) drop.add(item.index);
+  }
+  return [...drop].sort((a, b) => a - b);
 }

@@ -376,6 +376,105 @@ export async function uploadReceipt(file, yearMonth) {
 // BACKUPS
 // ═══════════════════════════════════════════════════════════════
 
+function apiErrorMessage(err, fallback) {
+  return err?.result?.error?.message || err?.message || fallback;
+}
+
+async function moveFileToFolder(fileId, folderId) {
+  const meta = await gapiCall(window.gapi.client.drive.files.get({
+    fileId,
+    fields: 'id, name, createdTime, parents',
+    supportsAllDrives: true,
+  }));
+  const previous = (meta.result.parents || []).join(',');
+  const moved = await gapiCall(window.gapi.client.drive.files.update({
+    fileId,
+    addParents: folderId,
+    removeParents: previous,
+    supportsAllDrives: true,
+    fields: 'id, name, createdTime',
+  }));
+  return moved.result;
+}
+
+/** Drive files.copy often 404s on a converted sheet under drive.file. Sheets copyTo still works. */
+async function cloneSpreadsheetViaSheets(fileId, backupName, backupsId) {
+  const meta = await gapiCall(window.gapi.client.sheets.spreadsheets.get({
+    spreadsheetId: fileId,
+    fields: 'sheets.properties(sheetId,title,hidden)',
+  }));
+  const created = await gapiCall(window.gapi.client.sheets.spreadsheets.create({
+    resource: { properties: { title: backupName } },
+    fields: 'spreadsheetId,sheets.properties.sheetId',
+  }));
+  const destId = created.result.spreadsheetId;
+  const defaultSheetId = created.result.sheets?.[0]?.properties?.sheetId;
+  try {
+    for (const sheet of meta.result.sheets || []) {
+      const copied = await gapiCall(window.gapi.client.sheets.spreadsheets.sheets.copyTo({
+        spreadsheetId: fileId,
+        sheetId: sheet.properties.sheetId,
+        resource: { destinationSpreadsheetId: destId },
+      }));
+      await gapiCall(window.gapi.client.sheets.spreadsheets.batchUpdate({
+        spreadsheetId: destId,
+        resource: {
+          requests: [{
+            updateSheetProperties: {
+              properties: {
+                sheetId: copied.result.sheetId,
+                title: sheet.properties.title,
+                hidden: Boolean(sheet.properties.hidden),
+              },
+              fields: 'title,hidden',
+            },
+          }],
+        },
+      }));
+    }
+    if (defaultSheetId != null) {
+      await gapiCall(window.gapi.client.sheets.spreadsheets.batchUpdate({
+        spreadsheetId: destId,
+        resource: { requests: [{ deleteSheet: { sheetId: defaultSheetId } }] },
+      }));
+    }
+    return moveFileToFolder(destId, backupsId);
+  } catch (err) {
+    try {
+      await gapiCall(window.gapi.client.drive.files.delete({ fileId: destId, supportsAllDrives: true }));
+    } catch {
+      // leftover blank file is better than throwing a second error
+    }
+    throw err;
+  }
+}
+
+async function copyWorkbookToBackups(fileId, backupName, backupsId) {
+  try {
+    const copied = await gapiCall(window.gapi.client.drive.files.copy({
+      fileId,
+      supportsAllDrives: true,
+      resource: { name: backupName, parents: [backupsId] },
+      fields: 'id, name, createdTime',
+    }));
+    if (copied.result?.id) return copied.result;
+  } catch {
+    // drive.file cannot copy a sheet this app did not create
+  }
+  try {
+    const copied = await gapiCall(window.gapi.client.drive.files.copy({
+      fileId,
+      supportsAllDrives: true,
+      resource: { name: backupName },
+      fields: 'id, name, createdTime, parents',
+    }));
+    if (copied.result?.id) return moveFileToFolder(copied.result.id, backupsId);
+  } catch {
+    // fall through to Sheets clone
+  }
+  return cloneSpreadsheetViaSheets(fileId, backupName, backupsId);
+}
+
 /**
  * Copy the society workbook into Drive/backups.
  * Pass an id to back up before the first bind (pre-setup).
@@ -403,20 +502,17 @@ export async function createBackup(spreadsheetId = null, options = {}) {
     const reason = options.reason ? `${options.reason}_` : '';
     const backupName = `${SHEET_FILE_NAME}_${reason}${timestamp}`;
 
-    const response = await gapiCall(window.gapi.client.drive.files.copy({
-      fileId,
-      resource: {
-        name: backupName,
-        parents: [backupsId],
-      },
-      fields: 'id, name, createdTime',
-    }));
-
-    return {
-      id: response.result.id,
-      name: response.result.name,
-      createdTime: response.result.createdTime,
-    };
+    try {
+      const file = await copyWorkbookToBackups(fileId, backupName, backupsId);
+      if (!file?.id) throw new Error('Backup copy returned no file.');
+      return {
+        id: file.id,
+        name: file.name || backupName,
+        createdTime: file.createdTime || now.toISOString(),
+      };
+    } catch (err) {
+      throw new Error(apiErrorMessage(err, 'Could not copy The Pride of Tirumala-APP into Drive/backups.'));
+    }
   });
 }
 
@@ -425,7 +521,11 @@ export async function createBackup(spreadsheetId = null, options = {}) {
  */
 export async function listBackups() {
   return withAuth(async () => {
-    const rootId = getRootFolderId();
+    let rootId = getRootFolderId();
+    if (!rootId) {
+      rootId = await findFolder(DRIVE_ROOT_FOLDER);
+      if (rootId) localStorage.setItem(STORAGE_KEYS.ROOT_FOLDER_ID, rootId);
+    }
     if (!rootId) return [];
 
     const backupsId = await findFolder(DRIVE_BACKUPS_FOLDER, rootId);

@@ -25,8 +25,11 @@ import { isValidSpreadsheetId, getCurrentMonthLabel } from '../utils/helpers';
 import {
   availableBalanceFromSummaryGrid,
   expenseRowsFromDetailedGrid,
+  expenseRowsFromSummaryGrid,
   findFlatNumber,
+  leftoverDuplicateImportIndexes,
   maintenanceRowsFromSummaryGrid,
+  mergeHistoryExpenses,
 } from '../utils/legacySheetImport';
 import { gapiCall } from '../utils/gapi';
 import {
@@ -65,6 +68,20 @@ async function expenseRowsFromLegacyDetailed(spreadsheetId) {
       range: "'Exp - Detailed'!A3:C900",
     });
     return expenseRowsFromDetailedGrid(response.result.values || []);
+  } catch {
+    return [];
+  }
+}
+
+async function expenseRowsFromLegacySummary(spreadsheetId) {
+  try {
+    const response = await window.gapi.client.sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: "'Summary'!A10:BZ50",
+      valueRenderOption: 'UNFORMATTED_VALUE',
+      majorDimension: 'ROWS',
+    });
+    return expenseRowsFromSummaryGrid(response.result.values || []);
   } catch {
     return [];
   }
@@ -167,6 +184,36 @@ async function appendMissingHistoryRows(spreadsheetId, title, existingRange, new
     valueInputOption: 'RAW',
     insertDataOption: 'INSERT_ROWS',
     resource: { values: toAdd },
+  });
+}
+
+async function sheetIdByTitle(spreadsheetId, title) {
+  const meta = await window.gapi.client.sheets.spreadsheets.get({
+    spreadsheetId,
+    fields: 'sheets.properties(sheetId,title)',
+  });
+  return (meta.result.sheets || []).find((sheet) => sheet.properties.title === title)?.properties.sheetId;
+}
+
+async function removeDuplicateImportedExpenses(spreadsheetId) {
+  const response = await window.gapi.client.sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${SHEET_NAMES.EXPENSES}'!A2:K5000`,
+  });
+  const rows = response.result.values || [];
+  const drop = leftoverDuplicateImportIndexes(rows);
+  if (!drop.length) return;
+  const sheetId = await sheetIdByTitle(spreadsheetId, SHEET_NAMES.EXPENSES);
+  if (sheetId == null) return;
+  await window.gapi.client.sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    resource: {
+      requests: drop.slice().sort((a, b) => b - a).map((index) => ({
+        deleteDimension: {
+          range: { sheetId, dimension: 'ROWS', startIndex: index + 1, endIndex: index + 2 },
+        },
+      })),
+    },
   });
 }
 
@@ -431,14 +478,18 @@ export async function ensureSheetStructure(spreadsheetId = getSpreadsheetId()) {
       }
     }
 
-    const expenseHistory = await expenseRowsFromLegacyDetailed(spreadsheetId);
+    const expenseHistory = mergeHistoryExpenses(
+      await expenseRowsFromLegacyDetailed(spreadsheetId),
+      await expenseRowsFromLegacySummary(spreadsheetId),
+    );
     await appendMissingHistoryRows(
       spreadsheetId,
       SHEET_NAMES.EXPENSES,
-      `'${SHEET_NAMES.EXPENSES}'!A2:F5000`,
+      `'${SHEET_NAMES.EXPENSES}'!A2:K5000`,
       expenseHistory,
       (row) => `${row[1]}|${Number(row[5])}|${String(row[3] || '').trim().toLowerCase()}`,
     );
+    await removeDuplicateImportedExpenses(spreadsheetId);
 
     await syncCollectionsFromSummary(spreadsheetId, { force: true });
     await upgradeWorkbookLayout(spreadsheetId);

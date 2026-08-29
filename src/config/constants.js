@@ -27,7 +27,7 @@ export const DISCOVERY_DOCS = [
 // ─── Apartment Configuration ────────────────────────────────────
 export const APP_NAME = 'The Pride of Tirumala';
 export const APP_SHORT_NAME = 'TPT Tracker';
-export const APP_VERSION = '1.8.9';
+export const APP_VERSION = '1.8.10';
 
 /**
  * Bump this when GOOGLE_SCOPES change so existing sessions re-consent.

@@ -2,13 +2,17 @@ import { describe, expect, it } from 'vitest';
 import {
   availableBalanceFromSummaryGrid,
   categoryFromMemo,
+  categoryFromSummaryLabel,
   parsePaidAmount,
   dateToMonthLabel,
   expenseRowsFromDetailedGrid,
+  expenseRowsFromSummaryGrid,
   findFlatNumber,
   isHistoryMonth,
   isLiveAppMonth,
+  leftoverDuplicateImportIndexes,
   maintenanceRowsFromSummaryGrid,
+  mergeHistoryExpenses,
   parseSheetDate,
   toAppMonthLabel,
 } from './legacySheetImport';
@@ -112,5 +116,63 @@ describe('history import', () => {
   it('maps common memos to categories', () => {
     expect(categoryFromMemo('15 days salary')).toBe('Watchman Salary');
     expect(categoryFromMemo('unknown item')).toBe('Sundry');
+  });
+
+  it('reads Summary expense categories including Sundry and skips totals', () => {
+    expect(categoryFromSummaryLabel('Sundry expenses')).toBe('Sundry');
+    expect(categoryFromSummaryLabel('Salary - Watchmen')).toBe('Watchman Salary');
+    expect(categoryFromSummaryLabel('Total expenses')).toBe('');
+    const rows = expenseRowsFromSummaryGrid([
+      ['Flat', 'Name', "Sep '24", "Sep '26"],
+      ['101', 'Someone', 3000, 3000],
+      ['Cleaning', '', 2000, 100],
+      ['Sundry expenses', '', 859, 50], // 859 is an amount, not flat 859
+      ['Total expenses', '', 2859, 150],
+      ['(deficit) balance', '', 1713, 0],
+    ]);
+    expect(rows).toEqual([
+      ['EXP-SUM-1', '2024-09-30', 'Sep-24', 'Cleaning', 'Cleaning', 2000, '', 'N', '', '', 'From Summary tab'],
+      ['EXP-SUM-2', '2024-09-30', 'Sep-24', 'Sundry expenses', 'Sundry', 859, '', 'N', '', '', 'From Summary tab'],
+    ]);
+  });
+
+  it('keeps Exp-Detailed lines and does not add matching Summary totals', () => {
+    const detailed = expenseRowsFromDetailedGrid([
+      ['30/9/2024', 2000, 'cleaning'],
+      ['30/9/2024', 859, 'misc hardware'],
+    ]);
+    const summary = expenseRowsFromSummaryGrid([
+      ['', '', "Sep '24"],
+      ['Cleaning', '', 2000],
+      ['Sundry expenses', '', 859],
+    ]);
+    const merged = mergeHistoryExpenses(detailed, summary);
+    expect(merged).toHaveLength(2);
+    expect(merged.every((row) => row[10] === 'From Exp - Detailed')).toBe(true);
+  });
+
+  it('adds a Summary Sundry row only when Exp-Detailed does not cover it', () => {
+    const detailed = expenseRowsFromDetailedGrid([
+      ['30/9/2024', 2000, 'cleaning'],
+    ]);
+    const summary = expenseRowsFromSummaryGrid([
+      ['', '', "Sep '24"],
+      ['Cleaning', '', 2000],
+      ['Sundry expenses', '', 859],
+    ]);
+    const merged = mergeHistoryExpenses(detailed, summary);
+    expect(merged).toHaveLength(2);
+    expect(merged[0][3]).toBe('cleaning');
+    expect(merged[1][3]).toBe('Sundry expenses');
+    expect(merged[1][5]).toBe(859);
+  });
+
+  it('flags imported Summary rollups that duplicate detailed lines', () => {
+    const rows = [
+      ['EXP-HIST-1', '2024-09-30', 'Sep-24', 'cleaning', 'Cleaning', 2000, '', 'N', '', '', 'From Exp - Detailed'],
+      ['EXP-SUM-1', '2024-09-30', 'Sep-24', 'Cleaning', 'Cleaning', 2000, '', 'N', '', '', 'From Summary tab'],
+      ['EXP-APP-1', '2024-09-30', 'Sep-24', 'new live item', 'Sundry', 10, '', 'N', '', '', ''],
+    ];
+    expect(leftoverDuplicateImportIndexes(rows)).toEqual([1]);
   });
 });
