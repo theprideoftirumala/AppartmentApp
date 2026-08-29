@@ -27,7 +27,7 @@ export const DISCOVERY_DOCS = [
 // ─── Apartment Configuration ────────────────────────────────────
 export const APP_NAME = 'The Pride of Tirumala';
 export const APP_SHORT_NAME = 'TPT Tracker';
-export const APP_VERSION = '1.8.3';
+export const APP_VERSION = '1.8.4';
 
 /**
  * Bump this when GOOGLE_SCOPES change so existing sessions re-consent.
@@ -81,9 +81,6 @@ export const DEFAULT_CONFIG = {
   FISCAL_YEAR_START: '2020-11',
   TREASURER_FLAT: '401',
   PRESIDENT_FLAT: '102',
-  LATE_FEE: 100,
-  LATE_FEE_AFTER_DAY: 15,
-  EMERGENCY_RESERVE: 15000,
   MAX_USERS: 20,
   MAX_OWNERS: 2,
   WATCHMAN_NAME: '',
@@ -169,9 +166,6 @@ export const CONFIG_DESCRIPTIONS = {
   FISCAL_YEAR_START: 'First month on the books as YYYY-MM. History starts 2020-11.',
   TREASURER_FLAT: 'Flat number of the current Treasurer (must match a row in the Flats tab)',
   PRESIDENT_FLAT: 'Flat number of the current President (must match a row in the Flats tab)',
-  LATE_FEE: 'Late payment penalty in ₹ applied after LATE_FEE_AFTER_DAY',
-  LATE_FEE_AFTER_DAY: 'Day of the month after which late fee applies (1-31)',
-  EMERGENCY_RESERVE: 'Minimum cash reserve the society should try to keep (₹)',
   MAX_USERS: 'Maximum email addresses allowed in Access Control',
   MAX_OWNERS: 'Maximum Owner-role users (people who can edit)',
   WATCHMAN_NAME: 'Default watchman display name (optional; detailed records live in Watchman Details)',

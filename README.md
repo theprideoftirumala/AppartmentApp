@@ -66,8 +66,6 @@ All settings are configurable from the app's Settings page or directly from the 
 | Available balance | ₹1,712.54 | Summary tab figure on 29 Aug 2026 |
 | Treasurer Flat | 401 | Current treasurer |
 | President Flat | 102 | Current president |
-| Late Fee | ₹100 | Penalty after 15th of month |
-| Emergency Reserve | ₹15,000 | Minimum balance to maintain |
 
 ## 📊 Google Sheet Structure
 

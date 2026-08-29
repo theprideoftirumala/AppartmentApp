@@ -17,6 +17,9 @@ describe('feature flags', () => {
     expect(LIVE_APP_START).toBe('2026-09');
     expect(MAINTENANCE_MIN_DATE).toBe('2020-11-01');
     expect(DEFAULT_CONFIG.WATCHMAN_SALARY).toBe(8500);
+    expect(DEFAULT_CONFIG).not.toHaveProperty('LATE_FEE');
+    expect(DEFAULT_CONFIG).not.toHaveProperty('LATE_FEE_AFTER_DAY');
+    expect(DEFAULT_CONFIG).not.toHaveProperty('EMERGENCY_RESERVE');
   });
 
   it('keeps sample data off after handover', () => {

@@ -104,7 +104,7 @@ All configurable values are in `src/config/constants.js` and can be overridden a
 - Corpus fund: ₹0 (configurable)
 - Available balance: ₹1,712.54 from the Summary tab on 29 Aug 2026 (final). Surplus/deficit and late-fee rows are not used. History (Nov 2020–Aug 2026) is merged into Maintenance and Expenses on Setup / Refresh sheet layout. Live months start Sep 2026.
 - Treasurer: Flat 401, President: Flat 102 (configurable)
-- Late fee: ₹100 after 15th (configurable)
+- Late fee, late-fee day, and emergency reserve are not app settings. Leftover rows can stay on the Configuration sheet for history.
 - Sample data: compile-time off (`FEATURES.SAMPLE_DATA`). History lives on the five legacy tabs and Handover Summary.
 
 ## Security Model
