@@ -25,7 +25,7 @@ export function dashboardCorrectionMessages({
   const messages = [];
   if (liveSnap?.running != null && amountsDiffer(liveSnap.running, appBalance)) {
     messages.push(
-      'Live Summary running available balance does not match the app total (opening + Sep 2026+ collections − expenses). The Google Sheet formulas are the source of truth. Check month labels (example Sep-26) on Maintenance and Expenses. Do not type amounts on Live Summary.',
+      'Live Summary running available balance does not match the app total (opening + Aug 2026+ collections − expenses). The Google Sheet formulas are the source of truth. Check month labels (example Aug-26) on Maintenance and Expenses. Do not type amounts on Live Summary.',
     );
   }
   if (liveSnap?.collection != null && amountsDiffer(liveSnap.collection, monthCollection)) {

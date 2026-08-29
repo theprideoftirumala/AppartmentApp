@@ -4,7 +4,7 @@
  * Google Sheet is the single source of truth / database
  */
 
-import { SHEET_NAMES, SHEET_HEADERS, DEFAULT_CONFIG, CONFIG_DESCRIPTIONS, FLATS, STORAGE_KEYS, SHEET_FILE_NAME, isLiveSocietySheetName, isGoogleSpreadsheetMime } from '../config/constants';
+import { FIRST_LIVE_MONTH_LABEL, SHEET_NAMES, SHEET_HEADERS, DEFAULT_CONFIG, CONFIG_DESCRIPTIONS, FLATS, STORAGE_KEYS, SHEET_FILE_NAME, isLiveSocietySheetName, isGoogleSpreadsheetMime } from '../config/constants';
 import { isLiveAppMonth } from '../utils/legacySheetImport';
 import { isMissingSheetRangeError } from '../utils/sheetRangeError';
 import { duplicateExpenseMessage, firstDuplicateExpense } from '../utils/expenseDuplicate';
@@ -37,9 +37,10 @@ import {
   getLiveSpreadsheetIdFromStorage,
   bindLiveSpreadsheet,
   getCurrentMonthLabel,
+  getFiscalMonthOptions,
 } from '../utils/helpers';
 import { gapiCall, gapiCallSafe } from '../utils/gapi';
-import { parseLiveSummarySnapshot } from '../utils/liveSummaryLayout';
+import { parseLiveSummarySnapshot, sortMonthLabels } from '../utils/liveSummaryLayout';
 import { dashboardCorrectionMessages } from '../utils/sheetCorrections';
 import { parseHandoverSummaryRows } from '../data/handoverLedger';
 import {
@@ -51,6 +52,8 @@ import {
   applyMaintenanceStillDueFormulas,
   upgradeWorkbookLayout,
   syncCollectionsFromSummary,
+  syncLiveSummaryMonths,
+  appendNextLiveMonthColumn,
 } from './sheetSetup';
 
 export {
@@ -62,6 +65,7 @@ export {
   syncCollectionsFromSummary,
   applyMaintenanceStillDueFormulas,
   upgradeWorkbookLayout,
+  syncLiveSummaryMonths,
 };
 
 /**
@@ -542,13 +546,13 @@ export async function initializeMonthMaintenance(month, amount) {
       sheetText(month, 12), flat, sheetNumber(amount), '0', '', '', '', 'PENDING', '0', '',
     ]);
 
-    await window.gapi.client.sheets.spreadsheets.values.append({
+    await gapiCall(window.gapi.client.sheets.spreadsheets.values.append({
       spreadsheetId,
       range: `'${SHEET_NAMES.MAINTENANCE}'!A:J`,
       valueInputOption: 'RAW',
       insertDataOption: 'INSERT_ROWS',
       resource: { values: rows },
-    });
+    }));
     await applyMaintenanceStillDueFormulas(spreadsheetId);
     await applyMonthlySummaryFormulas(spreadsheetId, [month]);
   });
@@ -1503,12 +1507,16 @@ export async function getDashboardData() {
       const liveResponse = await gapiCallSafe(
         window.gapi.client.sheets.spreadsheets.values.get({
           spreadsheetId: liveId,
-          range: `'${SHEET_NAMES.LIVE_SUMMARY}'!A1:N33`,
+          range: `'${SHEET_NAMES.LIVE_SUMMARY}'!A1:AZ33`,
           valueRenderOption: 'UNFORMATTED_VALUE',
         }),
         { result: { values: [] } },
       );
-      liveSnapshot = parseLiveSummarySnapshot(liveResponse.result.values || [], monthLabel);
+      const headerMonths = (liveResponse.result.values?.[4] || []).slice(2);
+      const snapMonth = headerMonths.includes(monthLabel)
+        ? monthLabel
+        : (headerMonths[headerMonths.length - 1] || monthLabel);
+      liveSnapshot = parseLiveSummarySnapshot(liveResponse.result.values || [], snapMonth);
     }
 
     const corrections = dashboardCorrectionMessages({
@@ -1927,10 +1935,10 @@ export async function addPayee(payee) {
     const existing = await getPayees();
     const duplicate = firstDuplicatePayee(payee, existing);
     if (duplicate) {
-      throw new Error('That payee already exists (same UPI ID or same name and phone).');
+      throw new Error('That payee already exists (same phone number or same UPI ID).');
     }
-    if (!sheetText(payee.name, 80) && !sheetText(payee.upiId, 80)) {
-      throw new Error('Enter a display name or a UPI ID from the payee — do not invent one.');
+    if (!sheetText(payee.name, 80) && !sheetText(payee.phone, 20)) {
+      throw new Error('Enter a display name or a 10-digit phone. UPI ID is optional — do not invent one.');
     }
     const key = sheetText(payee.key || `payee-${Date.now()}`, 40);
     await gapiCall(window.gapi.client.sheets.spreadsheets.values.append({
@@ -1962,7 +1970,7 @@ export async function updatePayee(index, payee) {
     const others = existing.filter((_, i) => i !== index);
     const duplicate = firstDuplicatePayee(payee, others);
     if (duplicate) {
-      throw new Error('That payee already exists (same UPI ID or same name and phone).');
+      throw new Error('That payee already exists (same phone number or same UPI ID).');
     }
     await gapiCall(window.gapi.client.sheets.spreadsheets.values.update({
       spreadsheetId,
@@ -1996,13 +2004,57 @@ export async function getHistorySummaryGrid() {
   });
 }
 
+export async function getWorkingMonthLabels() {
+  return withAuth(async () => {
+    const liveId = getLiveSpreadsheetId();
+    if (isValidSpreadsheetId(liveId)) {
+      const result = await syncLiveSummaryMonths(liveId);
+      return result.months;
+    }
+    const spreadsheetId = getSpreadsheetId();
+    if (!isValidSpreadsheetId(spreadsheetId)) return [FIRST_LIVE_MONTH_LABEL];
+    const [maintenance, expenses] = await Promise.all([
+      gapiCallSafe(window.gapi.client.sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: `'${SHEET_NAMES.MAINTENANCE}'!A2:A5000`,
+      }), { result: { values: [] } }),
+      gapiCallSafe(window.gapi.client.sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: `'${SHEET_NAMES.EXPENSES}'!C2:C5000`,
+      }), { result: { values: [] } }),
+    ]);
+    const labels = sortMonthLabels([
+      ...(maintenance.result.values || []).map((row) => row[0]),
+      ...(expenses.result.values || []).map((row) => row[0]),
+    ]);
+    return labels.length ? labels : getFiscalMonthOptions('2020-11', 0);
+  });
+}
+
+export async function appendNextLiveMonth() {
+  return withWriteAuth(async () => {
+    const liveId = getLiveSpreadsheetId();
+    if (!isValidSpreadsheetId(liveId)) {
+      throw new Error('Add next month only after The Pride of Tirumala-LIVE is connected.');
+    }
+    const { month } = await appendNextLiveMonthColumn(liveId);
+    const config = await getConfiguration();
+    try {
+      await initializeMonthMaintenance(month, config.MONTHLY_MAINTENANCE || 3000);
+    } catch (err) {
+      if (!String(err.message || '').includes('already has')) throw err;
+    }
+    return month;
+  });
+}
+
 export async function getLiveSummarySnapshot(monthLabel) {
   return withAuth(async () => {
     const spreadsheetId = getLiveSpreadsheetId();
     if (!spreadsheetId) return null;
     const response = await gapiCallSafe(window.gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: `'${SHEET_NAMES.LIVE_SUMMARY}'!A1:N33`,
+      range: `'${SHEET_NAMES.LIVE_SUMMARY}'!A1:AZ33`,
       valueRenderOption: 'UNFORMATTED_VALUE',
     }), { result: { values: [] } });
     return parseLiveSummarySnapshot(response.result.values || [], monthLabel);

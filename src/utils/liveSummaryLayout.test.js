@@ -5,16 +5,33 @@ import {
   columnLetter,
   liveMonthHeaders,
   liveSummaryStaticAndFormulaGrid,
+  nextSequentialMonthLabel,
   parseLiveSummarySnapshot,
+  pickDefaultWorkingMonth,
+  plannedLiveMonths,
+  workingMonthLabels,
 } from './liveSummaryLayout';
 
 describe('liveMonthHeaders', () => {
-  it('starts at Sep-26 and stays on live months', () => {
-    expect(LIVE_APP_START).toBe('2026-09');
-    const months = liveMonthHeaders('2026-09', 12);
-    expect(months[0]).toBe('Sep-26');
-    expect(months[11]).toBe('Aug-27');
-    expect(months).not.toContain('Aug-26');
+  it('starts at Aug-26 and does not prebuild a full year', () => {
+    expect(LIVE_APP_START).toBe('2026-08');
+    expect(liveMonthHeaders()).toEqual(['Aug-26']);
+    const months = liveMonthHeaders('2026-08', 3);
+    expect(months).toEqual(['Aug-26', 'Sep-26', 'Oct-26']);
+    expect(months).not.toContain('Jul-26');
+  });
+});
+
+describe('nextSequentialMonthLabel', () => {
+  it('starts at Aug-26 and appends the next calendar month', () => {
+    expect(nextSequentialMonthLabel([])).toBe('Aug-26');
+    expect(nextSequentialMonthLabel(['Aug-26'])).toBe('Sep-26');
+    expect(nextSequentialMonthLabel(['Dec-26'])).toBe('Jan-27');
+    expect(workingMonthLabels(['Sep-26'])).toEqual(['Aug-26', 'Sep-26']);
+    expect(plannedLiveMonths(['Jul-26', 'Sep-26', 'Sep-26'])).toEqual(['Aug-26', 'Sep-26']);
+    expect(plannedLiveMonths([])).toEqual(['Aug-26']);
+    expect(pickDefaultWorkingMonth(['Aug-26', 'Sep-26'], 'Sep-26')).toBe('Sep-26');
+    expect(pickDefaultWorkingMonth(['Aug-26'], 'Oct-26')).toBe('Aug-26');
   });
 });
 

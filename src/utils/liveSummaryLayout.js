@@ -1,10 +1,11 @@
 /**
- * Live Summary grid (Sep 2026+). Collection and expense cells are formulas
+ * Live Summary grid (Aug 2026+). Collection and expense cells are formulas
  * from Maintenance and Expenses so the tab can be maintained in Sheets
- * without typing the same amount twice.
+ * without typing the same amount twice. Months start at Aug-26 and are
+ * appended one at a time — never a prebuilt year of empty columns.
  */
 
-import { FLATS, LIVE_APP_START } from '../config/constants';
+import { FIRST_LIVE_MONTH_LABEL, FLATS, LIVE_APP_START } from '../config/constants';
 import { LIVE_SUMMARY_EXPENSE_ROWS } from '../config/liveWorkbook';
 import { monthLabelToYearMonth } from './legacySheetImport';
 
@@ -22,7 +23,7 @@ export function columnLetter(indexZero) {
   return out;
 }
 
-export function liveMonthHeaders(startYm = LIVE_APP_START, count = 12) {
+export function liveMonthHeaders(startYm = LIVE_APP_START, count = 1) {
   const match = String(startYm || '').match(/^(\d{4})-(\d{2})$/);
   if (!match) return [];
   let year = Number(match[1]);
@@ -66,14 +67,14 @@ export function liveSummaryStaticAndFormulaGrid(openingBalance, months = liveMon
   const formulas = {};
 
   rows[layout.titleRow - 1] = [
-    'The Pride of Tirumala — live books from Sep 2026. Same shape as the old Summary tab.',
+    'The Pride of Tirumala — live books from Aug 2026. Same shape as the old Summary tab. Months are added one at a time.',
   ];
   rows[layout.openingLabelRow - 1] = [
     'Opening available balance (copied from the old Summary green cell at create). Do not type a made-up number.',
     Number.isFinite(Number(openingBalance)) ? Number(openingBalance) : 0,
   ];
   rows[layout.helpRow - 1] = [
-    'Grey formula cells update from Maintenance (collections) and Expenses (line items). Type those tabs in the app or in this Google Sheet. Do not type collection or expense amounts on this tab — that would duplicate. To add a month, copy the last month column.',
+    'Grey formula cells update from Maintenance (collections) and Expenses (line items). Type those tabs in the app or in this Google Sheet. Do not type collection or expense amounts on this tab. Add the next month in the app (Maintenance → Add next month). Do not pre-fill a year of empty columns.',
   ];
   rows[3] = [];
 
@@ -157,6 +158,55 @@ export function liveSummaryStaticAndFormulaGrid(openingBalance, months = liveMon
   }
 
   return { values, formulas, lastCol, months };
+}
+
+export function sortMonthLabels(labels = []) {
+  return [...new Set((labels || []).map((label) => String(label || '').trim()).filter((label) => monthLabelToYearMonth(label)))]
+    .sort((a, b) => monthLabelToYearMonth(a).localeCompare(monthLabelToYearMonth(b)));
+}
+
+export function yearMonthToLabel(yearMonth) {
+  const match = String(yearMonth || '').match(/^(\d{4})-(\d{2})$/);
+  if (!match) return '';
+  return `${MONTH_NAMES[Number(match[2]) - 1]}-${match[1].slice(-2)}`;
+}
+
+export function nextSequentialMonthLabel(labels = []) {
+  const sorted = sortMonthLabels(labels);
+  if (!sorted.length) return FIRST_LIVE_MONTH_LABEL;
+  const lastYm = monthLabelToYearMonth(sorted[sorted.length - 1]);
+  const match = lastYm.match(/^(\d{4})-(\d{2})$/);
+  if (!match) return FIRST_LIVE_MONTH_LABEL;
+  let year = Number(match[1]);
+  let month = Number(match[2]) + 1;
+  if (month > 12) {
+    month = 1;
+    year += 1;
+  }
+  return yearMonthToLabel(`${year}-${String(month).padStart(2, '0')}`);
+}
+
+export function workingMonthLabels(existing = []) {
+  return sortMonthLabels([FIRST_LIVE_MONTH_LABEL, ...existing]);
+}
+
+/** Always Aug-26, plus live months that already have Maintenance or Expenses rows. Drops empty placeholder columns. */
+export function plannedLiveMonths(dataMonths = []) {
+  const liveData = (dataMonths || []).filter((label) => monthLabelToYearMonth(label) >= LIVE_APP_START);
+  return workingMonthLabels(liveData);
+}
+
+export function sameMonthList(left = [], right = []) {
+  const a = sortMonthLabels(left);
+  const b = sortMonthLabels(right);
+  return a.length === b.length && a.every((label, i) => label === b[i]);
+}
+
+export function pickDefaultWorkingMonth(months, preferred) {
+  const list = sortMonthLabels(months);
+  if (!list.length) return FIRST_LIVE_MONTH_LABEL;
+  if (preferred && list.includes(preferred)) return preferred;
+  return list[list.length - 1];
 }
 
 export function liveSummaryColumnForMonth(headersRow, monthLabel) {

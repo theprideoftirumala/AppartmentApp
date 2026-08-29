@@ -50,20 +50,20 @@ describe('history import', () => {
     expect(JSON.stringify(rows)).not.toMatch(/Someone/i);
   });
 
-  it('skips Sep 2026 onward so the live start date is not imported', () => {
-    expect(toAppMonthLabel("Sep'26")).toBe('Sep-26');
+  it('skips Aug 2026 onward so the live start date is not imported', () => {
+    expect(toAppMonthLabel("August '26")).toBe('Aug-26');
     const rows = maintenanceRowsFromSummaryGrid([
-      ['Flat number', 'Name', "August '26", "Sep'26"],
-      ['101', 'Someone', 2500, 3000],
+      ['Flat number', 'Name', "July '26", "August '26", "Sep'26"],
+      ['101', 'Someone', 2000, 2500, 3000],
     ]);
     expect(rows).toEqual([
-      ['Aug-26', '101', 2500, 2500, '', '', '', 'PAID', 0, 'From Summary tab'],
+      ['Jul-26', '101', 2000, 2000, '', '', '', 'PAID', 0, 'From Summary tab'],
     ]);
   });
 
   it('copies Exp-Detailed lines without inventing amounts', () => {
     const rows = expenseRowsFromDetailedGrid([
-      ['28/8/2026', 1100, 'water tanker'],
+      ['28/7/2026', 1100, 'water tanker'],
       ['', '', 'note only'],
     ]);
     expect(rows).toHaveLength(1);
@@ -76,10 +76,11 @@ describe('history import', () => {
     ])).toEqual([]);
   });
 
-  it('treats Aug-26 as history and Sep-26 as live', () => {
-    expect(isHistoryMonth('Aug-26')).toBe(true);
+  it('treats Jul-26 as history and Aug-26 as live', () => {
+    expect(isHistoryMonth('Jul-26')).toBe(true);
+    expect(isLiveAppMonth('Aug-26')).toBe(true);
+    expect(isHistoryMonth('Aug-26')).toBe(false);
     expect(isLiveAppMonth('Sep-26')).toBe(true);
-    expect(isHistoryMonth('Sep-26')).toBe(false);
   });
 
   it('reads a flat number from column A or B and skips surplus', () => {

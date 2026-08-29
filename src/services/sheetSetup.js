@@ -30,8 +30,16 @@ import {
   maintenanceRowsFromSummaryGrid,
   mergeHistoryExpenses,
 } from '../utils/legacySheetImport';
-import { liveSummaryStaticAndFormulaGrid } from '../utils/liveSummaryLayout';
-import { gapiCall } from '../utils/gapi';
+import {
+  liveMonthHeaders,
+  liveSummaryStaticAndFormulaGrid,
+  nextSequentialMonthLabel,
+  plannedLiveMonths,
+  sameMonthList,
+  sortMonthLabels,
+  workingMonthLabels,
+} from '../utils/liveSummaryLayout';
+import { gapiCall, gapiCallSafe } from '../utils/gapi';
 import {
   maintenanceStillDueFormula,
   monthlySummaryFormulaRow,
@@ -236,13 +244,13 @@ async function writeValues(spreadsheetId, data) {
 /** Write formula cells. Must use USER_ENTERED so Sheets evaluates them. */
 async function writeFormulas(spreadsheetId, data) {
   if (!data.length) return;
-  await window.gapi.client.sheets.spreadsheets.values.batchUpdate({
+  await gapiCall(window.gapi.client.sheets.spreadsheets.values.batchUpdate({
     spreadsheetId,
     resource: {
       valueInputOption: 'USER_ENTERED',
       data,
     },
-  });
+  }));
 }
 
 /**
@@ -451,26 +459,87 @@ export async function createSpreadsheet() {
   );
 }
 
-export async function writeLiveSummaryTab(spreadsheetId, openingBalance) {
+const LIVE_SUMMARY_RANGE = `'${SHEET_NAMES.LIVE_SUMMARY}'!A1:AZ33`;
+
+export async function readLiveSummaryState(spreadsheetId) {
+  const response = await gapiCallSafe(window.gapi.client.sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: LIVE_SUMMARY_RANGE,
+    valueRenderOption: 'UNFORMATTED_VALUE',
+  }), { result: { values: [] } });
+  const rows = response.result.values || [];
+  const opening = Number(rows[1]?.[1]);
+  return {
+    opening: Number.isFinite(opening) ? opening : 0,
+    months: sortMonthLabels((rows[4] || []).slice(2)),
+    rows,
+  };
+}
+
+async function dataMonthLabels(spreadsheetId) {
+  const [maintenance, expenses] = await Promise.all([
+    gapiCallSafe(window.gapi.client.sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `'${SHEET_NAMES.MAINTENANCE}'!A2:A5000`,
+    }), { result: { values: [] } }),
+    gapiCallSafe(window.gapi.client.sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `'${SHEET_NAMES.EXPENSES}'!C2:C5000`,
+    }), { result: { values: [] } }),
+  ]);
+  return [
+    ...(maintenance.result.values || []).map((row) => row[0]),
+    ...(expenses.result.values || []).map((row) => row[0]),
+  ];
+}
+
+export async function writeLiveSummaryTab(spreadsheetId, openingBalance, months) {
   await addSheetIfMissing(spreadsheetId, SHEET_NAMES.LIVE_SUMMARY);
-  const { values, formulas } = liveSummaryStaticAndFormulaGrid(openingBalance);
-  await window.gapi.client.sheets.spreadsheets.values.update({
+  const monthList = Array.isArray(months) && months.length ? sortMonthLabels(months) : liveMonthHeaders();
+  const { values, formulas } = liveSummaryStaticAndFormulaGrid(openingBalance, monthList);
+  await gapiCallSafe(window.gapi.client.sheets.spreadsheets.values.clear({
+    spreadsheetId,
+    range: LIVE_SUMMARY_RANGE,
+  }), {});
+  await gapiCall(window.gapi.client.sheets.spreadsheets.values.update({
     spreadsheetId,
     range: `'${SHEET_NAMES.LIVE_SUMMARY}'!A1`,
     valueInputOption: 'RAW',
     resource: { values },
-  });
+  }));
   const formulaData = Object.entries(formulas).map(([cell, formula]) => ({
     range: `'${SHEET_NAMES.LIVE_SUMMARY}'!${cell}`,
     values: [[formula]],
   }));
   await writeFormulas(spreadsheetId, formulaData);
+  return monthList;
+}
+
+/** Rebuild Live Summary to Aug-26 plus months that already have data. Drops unused placeholder columns. */
+export async function syncLiveSummaryMonths(spreadsheetId) {
+  await addSheetIfMissing(spreadsheetId, SHEET_NAMES.LIVE_SUMMARY);
+  const state = await readLiveSummaryState(spreadsheetId);
+  const planned = plannedLiveMonths(await dataMonthLabels(spreadsheetId));
+  if (sameMonthList(state.months, planned) && planned.length) {
+    return { months: planned, rewritten: false };
+  }
+  await writeLiveSummaryTab(spreadsheetId, state.opening, planned);
+  return { months: planned, rewritten: true };
+}
+
+export async function appendNextLiveMonthColumn(spreadsheetId) {
+  const state = await readLiveSummaryState(spreadsheetId);
+  const current = workingMonthLabels(state.months);
+  const next = nextSequentialMonthLabel(current);
+  const months = sortMonthLabels([...current, next]);
+  await writeLiveSummaryTab(spreadsheetId, state.opening, months);
+  return { month: next, months };
 }
 
 /**
  * Add app tabs to The Pride of Tirumala-APP. Never overwrites legacy history tabs
  * (Summary, Exp - Detailed, Borewell Exp, Motor repair oct, Notes) or existing rows.
- * liveWorkbook: Sep 2026+ file — skip history import from Summary / Exp-Detailed.
+ * liveWorkbook: Aug 2026+ file — skip history import from Summary / Exp-Detailed.
  */
 export async function ensureSheetStructure(spreadsheetId = getSpreadsheetId(), { liveWorkbook = false } = {}) {
   return withAuth(async () => {
@@ -525,8 +594,12 @@ export async function ensureSheetStructure(spreadsheetId = getSpreadsheetId(), {
     await ensureConfigKeys(spreadsheetId);
     const opening = isLive ? null : await availableBalanceFromLegacySummary(spreadsheetId);
     await migrateConfigValues(spreadsheetId, opening);
-    if (isLive && await sheetIsEmpty(spreadsheetId, SHEET_NAMES.LIVE_SUMMARY)) {
-      await writeLiveSummaryTab(spreadsheetId, opening || 0);
+    if (isLive) {
+      if (await sheetIsEmpty(spreadsheetId, SHEET_NAMES.LIVE_SUMMARY)) {
+        await writeLiveSummaryTab(spreadsheetId, opening || 0);
+      } else {
+        await syncLiveSummaryMonths(spreadsheetId);
+      }
     }
   });
 }

@@ -27,7 +27,7 @@ export const DISCOVERY_DOCS = [
 // ─── Apartment Configuration ────────────────────────────────────
 export const APP_NAME = 'The Pride of Tirumala';
 export const APP_SHORT_NAME = 'TPT Tracker';
-export const APP_VERSION = '1.9.1';
+export const APP_VERSION = '1.9.2';
 
 /**
  * Bump this when GOOGLE_SCOPES change so existing sessions re-consent.
@@ -91,8 +91,9 @@ export const DEFAULT_CONFIG = {
   SAMPLE_DATA: 'N',
 };
 
-/** First live app month. History import and the Available-balance snapshot end the month before. */
-export const LIVE_APP_START = '2026-09';
+/** First live app month. History import ends the month before. August 2026 is included. */
+export const LIVE_APP_START = '2026-08';
+export const FIRST_LIVE_MONTH_LABEL = 'Aug-26';
 
 // ─── Google Drive Folder Names ──────────────────────────────────
 export const DRIVE_ROOT_FOLDER = 'TPT-AppartmentApp';
@@ -101,7 +102,7 @@ export const DRIVE_BACKUPS_FOLDER = 'backups';
 export const DRIVE_ACTIVITY_FOLDER = 'activity-funds';
 /** Live society workbook in Drive. Do not create a second file. */
 export const SHEET_FILE_NAME = 'The Pride of Tirumala-APP';
-/** Sep 2026+ books. Founding owner may create this file. Never named TPT-MaintenanceTracker. */
+/** Aug 2026+ books. Founding owner may create this file. Never named TPT-MaintenanceTracker. */
 export const LIVE_SHEET_FILE_NAME = 'The Pride of Tirumala-LIVE';
 export const SOCIETY_SHEET_ALIASES = [
   'The Pride of Tirumala-APP',
@@ -358,7 +359,7 @@ export const FISCAL_MONTHS = [
  * @param {string} startMonth - Format: "2026-09"
  * @returns {string[]} Array of month labels like ["Sep-26", "Oct-26", ...]
  */
-export function generateFiscalMonths(startMonth = '2026-09') {
+export function generateFiscalMonths(startMonth = '2026-08') {
   const [startYear, startMon] = startMonth.split('-').map(Number);
   const months = [];
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',

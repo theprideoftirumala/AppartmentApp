@@ -1,13 +1,13 @@
 /**
  * Pay watchman and vendors via GPay / PhonePe / any UPI app.
- * UPI IDs are stored on the Payees tab — never invented in the app.
+ * Prefer a 10-digit phone. An optional UPI ID overrides the phone.
  */
 
 import { useCallback, useEffect, useState } from 'react';
 import { IndianRupee, Phone, Plus, Smartphone } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { addPayee, getPayees, updatePayee } from '../services/googleSheets';
-import { canPayUpi, gpayUrl, phonepeUrl, telUrl, upiPayUrl } from '../utils/upiPay';
+import { canPayPayee, gpayUrl, phonepeUrl, telUrl, upiPayUrl } from '../utils/upiPay';
 import { formatCurrency } from '../utils/helpers';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Navbar from '../components/common/Navbar';
@@ -58,7 +58,7 @@ export default function Payees() {
     try {
       setAdding(true);
       await addPayee(draft);
-      showToast('Payee added. Paste the real UPI ID if you have it — the app will not invent one.', 'success');
+      showToast('Payee added. GPay and PhonePe use the phone number unless a UPI ID is pasted.', 'success');
       setDraft(EMPTY_PAYEE);
       refresh();
     } catch (err) {
@@ -75,8 +75,8 @@ export default function Payees() {
         <div>
           <h1 className="page-title">Payees</h1>
           <p className="page-subtitle">
-            Pay the watchman and vendors with GPay, PhonePe, or any UPI app.
-            Add rows here or on the Payees tab in the Google Sheet. Same UPI ID, or same name and phone, is blocked.
+            Pay the watchman and vendors with GPay, PhonePe, or any UPI app using a 10-digit phone.
+            A UPI ID is optional and overrides the phone if pasted. Same phone or same UPI ID is blocked.
           </p>
         </div>
       </div>
@@ -85,7 +85,7 @@ export default function Payees() {
         <div className="card mb-4">
           <h3 className="card-title"><Plus size={16} /> Add payee</h3>
           <p className="text-muted text-sm mb-3">
-            Type the UPI ID exactly as the payee gave it (example name@okaxis). Leave UPI blank until you have it.
+            Enter a name and a 10-digit phone. Leave UPI blank unless the payee gave you an ID (example name@okaxis). Do not invent a UPI ID.
           </p>
           <div className="form-grid">
             <label className="form-label">
@@ -98,7 +98,7 @@ export default function Payees() {
             </label>
             <label className="form-label">
               Phone
-              <input className="form-input" value={draft.phone} onChange={(e) => setDraft((p) => ({ ...p, phone: e.target.value }))} />
+              <input className="form-input" value={draft.phone} onChange={(e) => setDraft((p) => ({ ...p, phone: e.target.value }))} placeholder="9844580856" />
             </label>
             <label className="form-label">
               UPI ID
@@ -142,13 +142,7 @@ export default function Payees() {
 
 function PayeeCard({ payee, isOwner, onSave }) {
   const [draft, setDraft] = useState(payee);
-  const ready = canPayUpi(draft.upiId);
-  const linkPayee = {
-    vpa: draft.upiId,
-    name: draft.name || draft.category,
-    amount: draft.defaultAmount,
-    note: draft.category || 'TPT society',
-  };
+  const ready = canPayPayee(draft);
 
   useEffect(() => {
     setDraft(payee);
@@ -192,16 +186,16 @@ function PayeeCard({ payee, isOwner, onSave }) {
         )}
         {ready ? (
           <>
-            <a className="btn btn-primary" href={gpayUrl(linkPayee)}>
+            <a className="btn btn-primary" href={gpayUrl(draft)}>
               <IndianRupee size={16} /> GPay
             </a>
-            <a className="btn btn-secondary" href={phonepeUrl(linkPayee)}>
+            <a className="btn btn-secondary" href={phonepeUrl(draft)}>
               <Smartphone size={16} /> PhonePe
             </a>
-            <a className="btn btn-ghost" href={upiPayUrl(linkPayee)}>Any UPI</a>
+            <a className="btn btn-ghost" href={upiPayUrl(draft)}>Any UPI</a>
           </>
         ) : (
-          <p className="text-muted text-sm">Add a UPI ID to enable GPay / PhonePe.</p>
+          <p className="text-muted text-sm">Add a 10-digit phone (or a UPI ID) to enable GPay / PhonePe.</p>
         )}
       </div>
     </div>

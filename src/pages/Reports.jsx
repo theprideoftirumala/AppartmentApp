@@ -24,7 +24,9 @@ import {
   getMiscFunds, parseApiError,
 } from '../services/googleSheets';
 import { downloadReport, shareReport } from '../services/pdfExport';
-import { formatCurrency, formatDate, getCurrentMonthLabel, getFiscalMonthOptions, groupExpensesByCategory, sheetAvailableBalance } from '../utils/helpers';
+import { formatCurrency, formatDate, getCurrentMonthLabel, groupExpensesByCategory, sheetAvailableBalance } from '../utils/helpers';
+import { useWorkingMonths } from '../hooks/useWorkingMonths';
+import { pickDefaultWorkingMonth } from '../utils/liveSummaryLayout';
 import StatusBadge from '../components/common/StatusBadge';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Navbar from '../components/common/Navbar';
@@ -51,7 +53,17 @@ export default function Reports() {
   const [quickExporting, setQuickExporting] = useState(false);
   const [quickSharing, setQuickSharing] = useState(false);
 
-  const monthOptions = getFiscalMonthOptions();
+  const { months: monthOptions } = useWorkingMonths();
+
+  useEffect(() => {
+    if (!monthOptions.length) return;
+    setSelectedMonth((current) => (
+      monthOptions.includes(current) ? current : pickDefaultWorkingMonth(monthOptions, getCurrentMonthLabel())
+    ));
+    setQuickMonth((current) => (
+      monthOptions.includes(current) ? current : pickDefaultWorkingMonth(monthOptions, getCurrentMonthLabel())
+    ));
+  }, [monthOptions]);
 
   const loadReport = useCallback(async () => {
     try {

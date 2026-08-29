@@ -196,7 +196,7 @@ export default function Settings() {
       await addAuditLog(user.email, result.created ? 'CREATE_LIVE' : 'CONNECT_LIVE', LIVE_SHEET_FILE_NAME);
       showToast(
         result.created
-          ? 'Live books created (Sep 2026+). Opening balance came from the old Summary green cell. History months stay on The Pride of Tirumala-APP.'
+          ? 'Live books created (from Aug 2026). Opening balance came from the old Summary green cell. Do not re-enter August if it is already in that cell. History months stay on The Pride of Tirumala-APP.'
           : 'Connected the existing The Pride of Tirumala-LIVE file.',
         'success',
       );
@@ -655,11 +655,12 @@ export default function Settings() {
 
         {activeTab === 'backups' && isFoundingOwner(user?.email) && (
           <div className="card mt-4">
-            <h3 className="card-title mb-2">Live books from Sep 2026</h3>
+            <h3 className="card-title mb-2">Live books from Aug 2026</h3>
             <p className="text-muted text-sm mb-4">
               Creates or reconnects <strong>{LIVE_SHEET_FILE_NAME}</strong>. It copies Configuration, Flats, Payees,
               Access Control, contacts, reminders, and watchman rows from the APP file. Opening available balance
-              is the green cell on the old Summary tab at create time. History months stay on {SHEET_FILE_NAME}.
+              is the green cell on the old Summary tab at create time (already includes August as of that cell).
+              Live Summary starts with Aug-26 only. Add the next month from Maintenance. History months stay on {SHEET_FILE_NAME}.
               Live Summary uses formulas from Maintenance and Expenses so you can keep the sheet by hand.
               This does not replace the APP file and is never named TPT-MaintenanceTracker.
             </p>

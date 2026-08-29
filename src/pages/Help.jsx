@@ -28,7 +28,7 @@ All data is stored in a Google Sheet in your Google Drive — the sheet is the s
             },
             {
                 heading: 'Where is the data stored?',
-                text: `History (Nov 2020–Aug 2026) lives in a Google Sheet named "The Pride of Tirumala-APP". From Sep 2026 the working cash book is a second file, "The Pride of Tirumala-LIVE", created only by the founding owner (Settings → Backups → Create live books). The app never creates TPT-MaintenanceTracker or a replacement APP file.
+                text: `History (Nov 2020–Aug 2026 as stored on Summary) lives in a Google Sheet named "The Pride of Tirumala-APP". From Aug 2026 the working cash book is a second file, "The Pride of Tirumala-LIVE", created only by the founding owner (Settings → Backups → Create live books). The app never creates TPT-MaintenanceTracker or a replacement APP file.
 
 Open the live sheet from Settings (Open live sheet). Open the old Summary (including surplus/deficit as typed there) at #/old or Settings → Open old sheet.
 
@@ -140,7 +140,7 @@ They must re-consent Google Drive scopes on first login after this change. Maxim
             {
                 heading: 'Available balance (29 Aug 2026)',
                 text: `The green Available balance cell on the Summary tab is the official cash figure. The app copies it into Configuration AVAILABLE_BALANCE — it is not hardcoded in the app.
-Settings → Configuration → Available balance shows that same sheet value (read-only). History months (Nov 2020–Aug 2026) are shown for viewing and PDF export. They do not add on top of this figure. New Sep 2026+ collections and expenses change the running total from the Summary cell.`,
+Settings → Configuration → Available balance shows that same sheet value (read-only). History months on APP (Nov 2020–Jul 2026 imported; Aug 2026 stays on Summary / #/old) do not add on top of this figure. New Aug 2026+ collections and expenses on LIVE change the running total from that opening cell. Do not re-enter August on LIVE if it is already inside the green cell.`,
             },
             {
                 heading: 'Changing the monthly maintenance amount',
@@ -236,7 +236,7 @@ The next due date is automatically scheduled based on the frequency (e.g., Month
             },
             {
                 heading: '6. Monthly Summary Tab — Financial Overview',
-                text: `COLUMNS: Month | Collection (Rs.) | Misc Funds (Rs.) | Expenses (Rs.) | Net Balance (Rs.) | Cumulative (Rs.) | Collection % | Pending Flats | Status\n\nTHIS TAB IS CALCULATED BY THE APP — click "Sync Sheet" in Reports to update it.\n\nUNDERSTANDING EACH COLUMN:\n\nNet Balance = Collection + Misc Funds - Expenses for that month only\n  - This is not a second surplus/deficit to add to Available balance\n\nAvailable balance = the green cell on the Summary tab (copied into Configuration)\n  - History months are for viewing and export\n  - Sep 2026+ months change the running total from that figure\n\nCollection % = (Number of PAID flats / 10) * 100\n  - 100% = all 10 flats paid for the month\n  - 50% = 5 out of 10 flats paid\n\nPending Flats = List of flat numbers that have NOT paid (PENDING or PARTIAL status)\n\nHOW TO READ THE BIG PICTURE:\n1. Available balance is the green Summary cell (Configuration AVAILABLE_BALANCE)\n2. History months (Nov-20 through Aug-26) are on Maintenance and Expenses for viewing and PDF export\n3. Compare Net Balance month by month to see collection versus spend\n\nHOW TO MANUALLY ANALYZE (without syncing):\n- Filter Maintenance to one month and sum Amount Paid\n- Filter Expenses to the same month and sum Amount\n- The difference is that month's net (not a surplus/deficit to add to Available balance)`
+                text: `COLUMNS: Month | Collection (Rs.) | Misc Funds (Rs.) | Expenses (Rs.) | Net Balance (Rs.) | Cumulative (Rs.) | Collection % | Pending Flats | Status\n\nTHIS TAB IS CALCULATED BY THE APP — click "Sync Sheet" in Reports to update it.\n\nUNDERSTANDING EACH COLUMN:\n\nNet Balance = Collection + Misc Funds - Expenses for that month only\n  - This is not a second surplus/deficit to add to Available balance\n\nAvailable balance = the green cell on the Summary tab (copied into Configuration)\n  - History months are for viewing and export\n  - Aug 2026+ months on LIVE change the running total from that figure\n\nCollection % = (Number of PAID flats / 10) * 100\n  - 100% = all 10 flats paid for the month\n  - 50% = 5 out of 10 flats paid\n\nPending Flats = List of flat numbers that have NOT paid (PENDING or PARTIAL status)\n\nHOW TO READ THE BIG PICTURE:\n1. Available balance is the green Summary cell (Configuration AVAILABLE_BALANCE)\n2. History months (Nov-20 through Aug-26) are on Maintenance and Expenses for viewing and PDF export\n3. Compare Net Balance month by month to see collection versus spend\n\nHOW TO MANUALLY ANALYZE (without syncing):\n- Filter Maintenance to one month and sum Amount Paid\n- Filter Expenses to the same month and sum Amount\n- The difference is that month's net (not a surplus/deficit to add to Available balance)`
             },
             {
                 heading: '7. Access Control Tab — User Management',
@@ -262,18 +262,18 @@ LIVE file: Live Summary collection cells are SUMIFS from Maintenance. Expense ro
 
 HOW THE APP BALANCE IS CALCULATED when LIVE is not connected:
   Current Balance = AVAILABLE_BALANCE (copied from the APP Summary green cell)
-                  + collections from Sep 2026 onward
-                  - expenses from Sep 2026 onward
+                  + collections from Aug 2026 onward
+                  - expenses from Aug 2026 onward
 
 IF NUMBERS LOOK WRONG:
-  1. Confirm you are looking at LIVE for Sep 2026+ and APP / #/old for history
+  1. Confirm you are looking at LIVE for Aug 2026+ and APP / #/old for history
   2. Check AVAILABLE_BALANCE / Live Summary B2 opening
-  3. Verify expenses have the correct Month label (Sep-26 not Sep-2026)
+  3. Verify expenses have the correct Month label (Aug-26 not Aug-2026)
   4. Do not type amounts on Live Summary
   5. Refresh the app
 
-ADDING MONTHS BY HAND:
-  On Live Summary, copy the last month column. Keep formula cells. Add matching Maintenance and Expenses rows.`,
+ADDING MONTHS:
+  Use Maintenance → Add next month. The app appends the next calendar month after the last Live Summary header (Aug-26 → Sep-26 → …). Do not pre-fill a year of empty columns.`,
             },
             {
                 heading: '12. Filtering, Sorting & Analyzing Data',
@@ -331,11 +331,11 @@ ADDING MONTHS BY HAND:
             },
             {
                 heading: 'Dashboard does not match the Google Sheet',
-                text: `After LIVE exists, Dashboard reads The Pride of Tirumala-LIVE (Maintenance, Expenses, Live Summary formulas). Edit that file, then tap refresh on Dashboard.\n\nIf a yellow “Sheet correction needed” banner appears, the app total does not match a formula cell. The sheet is the source of truth. Fix month labels (Sep-26) and amounts on Maintenance/Expenses. Do not type over Live Summary formulas. Then refresh.\n\nOld APP Summary remains at #/old.`,
+                text: `After LIVE exists, Dashboard reads The Pride of Tirumala-LIVE (Maintenance, Expenses, Live Summary formulas). Edit that file, then tap refresh on Dashboard.\n\nIf a yellow “Sheet correction needed” banner appears, the app total does not match a formula cell. The sheet is the source of truth. Fix month labels (Aug-26) and amounts on Maintenance/Expenses. Do not type over Live Summary formulas. Then refresh.\n\nOld APP Summary remains at #/old.`,
             },
             {
                 heading: 'The balance looks wrong — how is it calculated?',
-                text: `After live books exist: Dashboard uses Live Summary running available balance (opening + monthly surplus/deficit formulas).\nBefore live books: Current Balance = Available balance from the APP Summary green cell + Sep 2026+ collections − Sep 2026+ expenses.\nOld surplus/deficit as typed on APP Summary is at #/old. Those rows are not imported as extra money.\n\nIf the balance seems off:\n1. Open Live Summary on The Pride of Tirumala-LIVE (do not type over formulas)\n2. Check Maintenance and Expenses month labels (Sep-26 onward)\n3. Settings → Backups → Refresh sheet layout, then refresh the app\n4. Compare #/old for history only`,
+                text: `After live books exist: Dashboard uses Live Summary running available balance (opening + monthly surplus/deficit formulas).\nBefore live books: Current Balance = Available balance from the APP Summary green cell + Aug 2026+ collections − Aug 2026+ expenses.\nOld surplus/deficit as typed on APP Summary is at #/old. Those rows are not imported as extra money.\n\nIf the balance seems off:\n1. Open Live Summary on The Pride of Tirumala-LIVE (do not type over formulas)\n2. Check Maintenance and Expenses month labels (Aug-26 onward)\n3. Settings → Backups → Refresh sheet layout, then refresh the app\n4. Compare #/old for history only`,
             },
             {
                 heading: 'How do I change the monthly maintenance amount?',
@@ -351,7 +351,7 @@ ADDING MONTHS BY HAND:
             },
             {
                 heading: 'How do I pay the watchman or a vendor with GPay / PhonePe?',
-                text: `Open Payees. Owners can add a row (or add it on the Payees tab in the sheet). Paste the UPI ID the payee gave you — the app never invents one. Same UPI ID, or same name and phone, is blocked as a duplicate. Then tap GPay or PhonePe. Readers can pay if a UPI ID is already on the sheet.`,
+                text: `Open Payees. Owners can add a row (or add it on the Payees tab in the sheet). Enter a 10-digit phone. GPay uses that number; PhonePe uses number@ybl (PhonePe's own mobile handle). A UPI ID is optional and overrides the phone if the payee gave you one — the app never invents a bank UPI ID. Same phone or same UPI ID is blocked as a duplicate. Readers can pay if a phone or UPI ID is already on the sheet.`,
             },
             {
                 heading: 'How to update the Available balance?',

@@ -62,7 +62,7 @@ export default function Handover({ embedded = false }) {
         <div>
           <h1 className="page-title">Handover summary</h1>
           <p className="page-subtitle">
-            From {HANDOVER_SOURCE}. History stays on The Pride of Tirumala-APP. Live months (Sep 2026+) are on The Pride of Tirumala-LIVE.
+            From {HANDOVER_SOURCE}. History stays on The Pride of Tirumala-APP. Live months (Aug 2026+) are on The Pride of Tirumala-LIVE.
           </p>
         </div>
       </div>

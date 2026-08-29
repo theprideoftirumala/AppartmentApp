@@ -29,7 +29,7 @@ Track monthly maintenance collection (₹3,000/flat × 10 flats), log expenses w
 
 ## Society workbook (critical)
 
-There is **one history workbook** named `The Pride of Tirumala-APP` and **one founding owner**. From Sep 2026 the working cash book is a second file, `The Pride of Tirumala-LIVE`, created only by that owner.
+There is **one history workbook** named `The Pride of Tirumala-APP` and **one founding owner**. From Aug 2026 the working cash book is a second file, `The Pride of Tirumala-LIVE`, created only by that owner.
 
 - File aliases for history: `The Pride of Tirumala-APP` and `The Pride of Tirumala-APP.xlsx`. Ignore `The Pride of Tirumala-APP-old` and `TPT-MaintenanceTracker`.
 - The app **never creates** `TPT-MaintenanceTracker` or any replacement APP file. LIVE is additive.
@@ -38,11 +38,11 @@ There is **one history workbook** named `The Pride of Tirumala-APP` and **one fo
 - History tabs (never overwrite): Summary, Exp - Detailed, Borewell Exp, Motor repair oct, Notes
 - A Drive copy is taken before first Setup, before creating LIVE, and on every Google sign-in (APP and LIVE if bound; not Guest PIN)
 - `#/old` is a read-only view of the APP Summary grid (including surplus/deficit as stored) plus handover totals
-- LIVE Live Summary: formulas from Maintenance and Expenses. Do not type collection/expense amounts there. Opening available balance is the APP Summary green cell at create. Monthly surplus (deficit) and running available balance are formulas.
+- LIVE Live Summary: formulas from Maintenance and Expenses. Starts with Aug-26 only; append the next month from the app. Do not type collection/expense amounts there. Opening available balance is the APP Summary green cell at create (already includes August as of that cell). Monthly surplus (deficit) and running available balance are formulas.
 - Available balance on APP is the green Summary cell, copied into Configuration. It is not a `DEFAULT_CONFIG` number. Old surplus/deficit rows are not imported as collections.
 - `public/sheet-config.json` holds the published APP spreadsheet ID. Do not invent a LIVE id in source.
 - Sample live-tab data is compile-time off (`FEATURES.SAMPLE_DATA`)
-- Payees: add in the app or on the Payees tab. GPay/PhonePe use the stored UPI ID only. Duplicates (same UPI or same name+phone) are rejected. Expenses with the same date, description, and amount are rejected.
+- Payees: add in the app or on the Payees tab. GPay/PhonePe use a 10-digit phone (PhonePe `number@ybl`). UPI ID is optional and overrides the phone. Duplicates (same phone or same UPI) are rejected. Expenses with the same date, description, and amount are rejected.
 
 ## Access model (critical)
 

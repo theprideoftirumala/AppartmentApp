@@ -38,7 +38,7 @@ export default function OldReport() {
           <h1 className="page-title">Old report</h1>
           <p className="page-subtitle">
             Read-only view of <strong>{SHEET_FILE_NAME}</strong> (Nov 2020–Aug 2026).
-            Numbers come from the Summary tab as stored in Google Sheets. Sep 2026+ lives on The Pride of Tirumala-LIVE.
+            Numbers come from the Summary tab as stored in Google Sheets. Live months (Aug 2026+) are on The Pride of Tirumala-LIVE.
           </p>
         </div>
         {oldUrl && (

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { APP_VERSION, DEFAULT_CONFIG, FEATURES, LIVE_APP_START, LIVE_SHEET_FILE_NAME, MAINTENANCE_MIN_DATE, SHEET_FILE_NAME, SOCIETY_DISCLAIMER, isLiveSocietySheetName, isLiveWorkbookName, isSampleDataEnabled, isSocietySheetName } from './constants';
+import { APP_VERSION, DEFAULT_CONFIG, FEATURES, FIRST_LIVE_MONTH_LABEL, LIVE_APP_START, LIVE_SHEET_FILE_NAME, MAINTENANCE_MIN_DATE, SHEET_FILE_NAME, SOCIETY_DISCLAIMER, isLiveSocietySheetName, isLiveWorkbookName, isSampleDataEnabled, isSocietySheetName } from './constants';
 
 describe('feature flags', () => {
   it('keeps late fee and misc funds off in the app', () => {
@@ -14,7 +14,8 @@ describe('feature flags', () => {
     expect(DEFAULT_CONFIG.DEFICIT_LAST_YEAR).toBe(0);
     expect(DEFAULT_CONFIG).not.toHaveProperty('AVAILABLE_BALANCE');
     expect(DEFAULT_CONFIG.FISCAL_YEAR_START).toBe('2020-11');
-    expect(LIVE_APP_START).toBe('2026-09');
+    expect(LIVE_APP_START).toBe('2026-08');
+    expect(FIRST_LIVE_MONTH_LABEL).toBe('Aug-26');
     expect(MAINTENANCE_MIN_DATE).toBe('2020-11-01');
     expect(DEFAULT_CONFIG.WATCHMAN_SALARY).toBe(8500);
     expect(DEFAULT_CONFIG).not.toHaveProperty('LATE_FEE');

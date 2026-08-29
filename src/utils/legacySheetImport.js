@@ -1,7 +1,7 @@
 /**
  * Parse The Pride of Tirumala-APP history tabs into app rows.
  * Owner names are dropped. Late-fee / surplus rows are not imported.
- * Months from Sep 2026 onward stay off the import (live app months).
+ * Months from Aug 2026 onward stay off the import (live app months).
  */
 
 import { LIVE_APP_START } from '../config/constants';
@@ -63,7 +63,7 @@ export function monthLabelToYearMonth(label) {
   return month ? `20${match[2]}-${month}` : '';
 }
 
-/** Nov-20 through Aug-26. Sep-26 and later are live app months, not history. */
+/** Nov-20 through Jul-26. Aug-26 and later are live app months. */
 export function isHistoryMonth(label) {
   const ym = monthLabelToYearMonth(label);
   return Boolean(ym) && ym < LIVE_APP_START;

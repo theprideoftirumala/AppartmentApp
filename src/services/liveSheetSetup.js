@@ -1,5 +1,5 @@
 /**
- * Create and seed The Pride of Tirumala-LIVE (Sep 2026+).
+ * Create and seed The Pride of Tirumala-LIVE (Aug 2026+).
  * Does not replace The Pride of Tirumala-APP. Founding owner only.
  */
 

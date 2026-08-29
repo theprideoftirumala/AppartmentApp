@@ -437,7 +437,7 @@ src/
 │   ├── EmergencyContacts.jsx  WhatsApp-enabled contact directory
 │   ├── Settings.jsx           Config + Access Control + Guest PIN
 │   ├── Help.jsx               Owner-only guide + Google Sheets deep-dive
-│   ├── Payees.jsx             GPay / PhonePe; add payees; no invented UPI
+│   ├── Payees.jsx             GPay / PhonePe from phone; optional UPI; no invented UPI
 │   ├── OldReport.jsx          #/old read-only APP Summary + handover
 │   ├── Setup.jsx              Connect The Pride of Tirumala-APP (never create)
 │   └── Login.jsx              Google OAuth + Guest PIN entry

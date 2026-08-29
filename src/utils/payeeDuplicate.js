@@ -1,6 +1,8 @@
 /**
- * Same UPI ID, or same name+phone, is the same payee. UPI IDs are never invented.
+ * Same 10-digit phone, or same UPI ID, is the same payee. UPI IDs are never invented.
  */
+
+import { indianMobileDigits } from './upiPay';
 
 function normalizeUpi(value) {
   return String(value || '').trim().toLowerCase();
@@ -23,6 +25,11 @@ export function payeeFingerprint(payee = {}) {
 export function firstDuplicatePayee(candidate, existing = []) {
   if (!normalizeName(candidate?.name) && !normalizeUpi(candidate?.upiId) && !digits(candidate?.phone)) {
     return null;
+  }
+  const mobile = indianMobileDigits(candidate?.phone);
+  if (mobile) {
+    const samePhone = existing.find((row) => indianMobileDigits(row.phone) === mobile);
+    if (samePhone) return samePhone;
   }
   const key = payeeFingerprint(candidate);
   if (key === 'name:|phone:') return null;

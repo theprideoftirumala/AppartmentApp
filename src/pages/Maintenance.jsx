@@ -8,11 +8,14 @@ import { Building2, Plus } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
 import {
+  appendNextLiveMonth,
   getMaintenanceRecords, upsertMaintenancePayment, initializeMonthMaintenance,
-  getFlats, getConfiguration,
+  getFlats, getConfiguration, getLiveSpreadsheetId,
   addAuditLog, parseApiError,
 } from '../services/googleSheets';
-import { formatCurrency, getCurrentMonthLabel, getFiscalMonthOptions } from '../utils/helpers';
+import { formatCurrency, getCurrentMonthLabel } from '../utils/helpers';
+import { useWorkingMonths } from '../hooks/useWorkingMonths';
+import { nextSequentialMonthLabel, pickDefaultWorkingMonth } from '../utils/liveSummaryLayout';
 import { PAYMENT_MODES, MAINTENANCE_STATUS, MAINTENANCE_MIN_DATE } from '../config/constants';
 import Modal from '../components/common/Modal';
 import StatusBadge from '../components/common/StatusBadge';
@@ -30,7 +33,9 @@ export default function Maintenance() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
   const [saving, setSaving] = useState(false);
-  const monthOptions = getFiscalMonthOptions();
+  const { months: monthOptions, refresh: refreshMonths } = useWorkingMonths();
+  const liveBound = Boolean(getLiveSpreadsheetId());
+  const nextMonthLabel = nextSequentialMonthLabel(monthOptions);
 
   const fetchData = useCallback(async () => {
     try {
@@ -54,6 +59,28 @@ export default function Maintenance() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    if (!monthOptions.length) return;
+    setSelectedMonth((current) => (
+      monthOptions.includes(current) ? current : pickDefaultWorkingMonth(monthOptions, getCurrentMonthLabel())
+    ));
+  }, [monthOptions]);
+
+  const handleAddNextMonth = async () => {
+    try {
+      setSaving(true);
+      const month = await appendNextLiveMonth();
+      await addAuditLog(user.email, 'INIT_MONTH', `Added next live month ${month}`);
+      showToast(`Added ${month}. Type collections on Maintenance — do not type amounts on Live Summary.`, 'success');
+      await refreshMonths();
+      setSelectedMonth(month);
+    } catch (err) {
+      showToast(parseApiError(err) || 'Could not add the next month', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleInitMonth = async () => {
     try {
@@ -101,7 +128,9 @@ export default function Maintenance() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Maintenance Collection</h1>
-          <p className="page-subtitle">Track monthly payments from all flats</p>
+          <p className="page-subtitle">
+            Working months only. After live books exist, add the next month in order (Aug-26, then Sep-26, …).
+          </p>
         </div>
         <div className="flex gap-2 items-center flex-wrap">
           <select
@@ -114,6 +143,11 @@ export default function Maintenance() {
               <option key={m} value={m}>{m}</option>
             ))}
           </select>
+          {isOwner !== false && liveBound && (
+            <button className="btn btn-secondary btn-sm" onClick={handleAddNextMonth} disabled={saving}>
+              <Plus size={16} /> Add {nextMonthLabel}
+            </button>
+          )}
           {isOwner !== false && (
             <button className="btn btn-primary btn-sm" onClick={() => openPaymentModal()}>
               <Plus size={16} /> Record Payment

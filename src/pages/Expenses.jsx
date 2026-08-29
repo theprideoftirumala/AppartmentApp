@@ -9,7 +9,9 @@ import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
 import { getExpenses, addExpenses, deleteExpense, addAuditLog } from '../services/googleSheets';
 import { uploadReceipt } from '../services/googleDrive';
-import { formatCurrency, formatDate, getCurrentMonthLabel, getCurrentYearMonth, getFiscalMonthOptions } from '../utils/helpers';
+import { formatCurrency, formatDate, getCurrentMonthLabel, getCurrentYearMonth } from '../utils/helpers';
+import { useWorkingMonths } from '../hooks/useWorkingMonths';
+import { pickDefaultWorkingMonth } from '../utils/liveSummaryLayout';
 import { EXPENSE_CATEGORIES, PAYMENT_MODES, FEATURES } from '../config/constants';
 import { createSpeechRecognizer, parseExpensesFromSpeech, speechSupported } from '../utils/voiceExpense';
 import { parseReceiptText, recognizeReceiptImage } from '../utils/receiptOcr';
@@ -30,7 +32,7 @@ export default function Expenses() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMonth, setFilterMonth] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
-  const monthOptions = getFiscalMonthOptions();
+  const { months: monthOptions } = useWorkingMonths();
 
   const fetchData = useCallback(async () => {
     try {
@@ -243,6 +245,7 @@ export default function Expenses() {
         onClose={() => setShowAddModal(false)}
         onSave={handleAddExpenses}
         saving={saving}
+        monthOptions={monthOptions}
       />
     </div>
   );
@@ -252,7 +255,7 @@ function emptyExpenseLine() {
   return { description: '', category: '', amount: '', paymentMode: 'UPI', remarks: '' };
 }
 
-function AddExpenseModal({ isOpen, onClose, onSave, saving }) {
+function AddExpenseModal({ isOpen, onClose, onSave, saving, monthOptions = [] }) {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [month, setMonth] = useState(getCurrentMonthLabel());
   const [lines, setLines] = useState([emptyExpenseLine()]);
@@ -262,20 +265,19 @@ function AddExpenseModal({ isOpen, onClose, onSave, saving }) {
   const [scanning, setScanning] = useState(false);
   const cameraRef = useRef(null);
   const recognizerRef = useRef(null);
-  const monthOptions = getFiscalMonthOptions();
   const canVoice = FEATURES.VOICE_EXPENSES && speechSupported();
   const canCamera = FEATURES.CAMERA_EXPENSES;
 
   useEffect(() => {
     if (!isOpen) return;
     setDate(new Date().toISOString().split('T')[0]);
-    setMonth(getCurrentMonthLabel());
+    setMonth(pickDefaultWorkingMonth(monthOptions, getCurrentMonthLabel()));
     setLines([emptyExpenseLine()]);
     setFiles([]);
     setListening(false);
     setVoiceHint('');
     setScanning(false);
-  }, [isOpen]);
+  }, [isOpen, monthOptions]);
 
   const handleVoice = () => {
     if (listening && recognizerRef.current) {

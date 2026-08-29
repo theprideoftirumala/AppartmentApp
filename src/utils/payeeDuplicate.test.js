@@ -16,6 +16,14 @@ describe('firstDuplicatePayee', () => {
       [{ name: 'Watchman', upiId: 'a@okaxis' }],
     )).toBeNull();
   });
+
+  it('matches the same mobile number even when the name differs', () => {
+    const found = firstDuplicatePayee(
+      { name: 'Nandesh', phone: '+91 9844580856' },
+      [{ name: 'Watchman', phone: '9844580856' }],
+    );
+    expect(found.phone).toBe('9844580856');
+  });
 });
 
 describe('payeeFingerprint', () => {
