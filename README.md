@@ -16,7 +16,7 @@ A **Progressive Web App (PWA)** for managing apartment maintenance finances, bui
 - **🔔 Reminders** — Recurring reminders for lift maintenance, water tankers, AMC renewals
 - **📞 Emergency Contacts** — Click-to-call contact directory with categories
 - **👥 Access Control** — Email whitelist with Owner/Reader roles (max 20 users, 2 owners)
-- **💾 Backups** — Automatic Drive backup on each Owner Google sign-in (not Readers or Guest PIN)
+- **💾 Backups** — Drive copy before first Setup and on each Google sign-in (not Guest PIN)
 - **📱 PWA** — Installable on iOS, Android, and desktop
 - **🔐 Secure** — Google OAuth 2.0, audit logging, role-based access
 
@@ -63,7 +63,7 @@ All settings are configurable from the app's Settings page or directly from the 
 |---------|---------|-------------|
 | Monthly Maintenance | ₹3,000 | Amount per flat per month |
 | Corpus Fund | ₹0 | Corpus fund balance |
-| Deficit | -₹5,200 | Last year carry-forward |
+| Opening surplus | ₹612 | Cash handed over 29 Aug 2026 |
 | Treasurer Flat | 401 | Current treasurer |
 | President Flat | 102 | Current president |
 | Late Fee | ₹100 | Penalty after 15th of month |
@@ -71,28 +71,29 @@ All settings are configurable from the app's Settings page or directly from the 
 
 ## 📊 Google Sheet Structure
 
-The Google Sheet is the source of truth. Every tab has human-readable headers. A **Guide** tab explains each column. A **Sample Data** tab holds copy-paste examples.
+The Google Sheet **The Pride of Tirumala-APP** is the source of truth. The app never creates a second society file.
 
-**Setup modes**
-- **Test with sample data** — live tabs are filled with pretend Sep–Oct 2026 rows so you can click through the app
-- **Start fresh** — live tabs are empty for real collections; Guide + Sample Data stay as the template
+**First use:** upload `The Pride of Tirumala-APP.xlsx` to Drive → Open with Google Sheets → File → Save as Google Sheets. Keep the name **The Pride of Tirumala-APP**. Setup copies a backup, then adds empty app tabs beside the five history tabs (Summary, Exp - Detailed, Borewell Exp, Motor repair oct, Notes). Those history tabs are never overwritten.
 
-After testing, Owners can use **Settings → Create Fresh Production Sheet**. The sample workbook is renamed and kept in Drive.
+Add a row on Maintenance or Expenses and refresh the app — the sheet is what the website shows.
 
 1. **Guide** — How to read and edit the workbook
 2. **Configuration** — App settings (key / value / description)
-3. **Flats** — Owner details for all 10 flats
-4. **Maintenance** — Monthly payment records
-5. **Expenses** — All expense entries
-6. **Misc Funds** — Extra collections
-7. **Emergency Contacts** — Contact directory
-8. **Reminders** — Recurring task reminders
-9. **Access Control** — User email whitelist
-10. **Audit Log** — All write operations
-11. **Water Tanker Log** — Tanker delivery tracking
-12. **Monthly Summary** — Calculated summaries
-13. **Watchman Details** — Staff record
-14. **Sample Data** — Example rows (does not affect totals)
+3. **Flats** — Owner details for all 10 flats (names copied from Summary on first connect)
+4. **Maintenance** — Monthly payment records from Sep-26
+5. **Pending Dues** — Type a month in the yellow cell
+6. **Expenses** — All expense entries from Sep-26
+7. **Payees** — Vendor phones / UPI (GPay and PhonePe)
+8. **Emergency Contacts** — Contact directory
+9. **Reminders** — Recurring task reminders
+10. **Access Control** — User email whitelist
+11. **Audit Log** — All write operations
+12. **Water Tanker Log** — Tanker delivery tracking
+13. **Monthly Summary** — Live surplus/deficit formulas
+14. **Watchman Details** — Staff record
+15. **Handover Summary** — Nov 2020–Aug 2026 monthly totals
+16. **Society Notes** — Wifi id, borewell, motor-repair notes
+17. **Activity Funds** — Registry of optional named collections
 
 > Even if the app stops working, the Google Sheet remains fully readable and editable.
 

@@ -18,7 +18,7 @@
 
 import { normalizeEmail } from '../utils/helpers';
 
-/** The only identity that may create the society sheet and grant Owner. */
+/** The only identity that may connect The Pride of Tirumala-APP and grant Owner. */
 export const FOUNDING_OWNER_EMAIL = 'theprideoftirumala@gmail.com';
 
 /**

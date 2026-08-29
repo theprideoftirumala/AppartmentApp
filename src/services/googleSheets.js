@@ -112,7 +112,7 @@ async function assertCanManageUsers() {
  */
 export function parseApiError(error) {
   if (error?.code === 'SHEET_NOT_ACCESSIBLE' || error?.message === 'SHEET_NOT_ACCESSIBLE') {
-    return 'This browser is pointing at a Google Sheet your account cannot open. If you are a resident, ask the society Owner to add you. Only the founding owner can create the society workbook.';
+    return 'This browser is pointing at a Google Sheet your account cannot open. If you are a resident, ask the society Owner to add you and share The Pride of Tirumala-APP as Viewer. The app does not create a second workbook.';
   }
   if (!navigator.onLine) {
     return 'You appear to be offline. Please check your internet connection.';

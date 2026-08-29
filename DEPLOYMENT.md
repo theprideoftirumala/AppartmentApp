@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-1. **Node.js 20+** installed
+1. **Node.js 22+** installed (see `package.json` engines)
 2. **Google Cloud Console** project with:
    - Google Sheets API enabled
    - Google Drive API enabled
@@ -143,6 +143,7 @@ Before first setup, ensure both APIs are enabled in the same Google Cloud projec
 4. **Scopes**: Add:
    - `https://www.googleapis.com/auth/spreadsheets`
    - `https://www.googleapis.com/auth/drive.file`
+   - `https://www.googleapis.com/auth/drive.metadata.readonly`
    - `https://www.googleapis.com/auth/userinfo.email`
    - `https://www.googleapis.com/auth/userinfo.profile`
 5. **Test users**: Add all users who will access the app (max 100 in testing mode)
@@ -179,6 +180,21 @@ The Google Client ID is in `src/config/constants.js`. This is intentionally publ
 
 ---
 
+## First-time society workbook
+
+Do **not** create `TPT-MaintenanceTracker`. Use the existing Excel:
+
+1. Upload `The Pride of Tirumala-APP.xlsx` to the founding owner’s Google Drive
+2. Right-click → **Open with → Google Sheets**
+3. **File → Save as Google Sheets**
+4. Keep the name **The Pride of Tirumala-APP** (no `.xlsx`)
+5. Hard-refresh the live app and sign in as the founding owner
+6. Setup copies the file into `TPT-AppartmentApp/backups/`, then adds empty app tabs beside the five history tabs
+
+Optionally paste the Google Sheet ID into `public/sheet-config.json` after that connect.
+
+---
+
 ## Updating the App
 
 1. Make changes to the code
@@ -199,3 +215,5 @@ The Google Client ID is in `src/config/constants.js`. This is intentionally publ
 | API quota exceeded | Google Sheets API has 300 requests/min — this is plenty for 10-20 users |
 | PWA not installable | Ensure HTTPS (GitHub Pages provides this automatically) |
 | Blank page after deploy | Check `base` in `vite.config.js` matches your deployment path |
+| Setup says convert the Excel file | In Drive: Open with Google Sheets → File → Save as Google Sheets. Name it The Pride of Tirumala-APP |
+| Old TPT-MaintenanceTracker still opens | The app ignores that name. Bind The Pride of Tirumala-APP; hard-refresh or clear cache |

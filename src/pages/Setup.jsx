@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { FolderPlus, FileSpreadsheet, CheckCircle, Loader, Shield, ArrowRight, Search, Copy } from 'lucide-react';
+import { FolderPlus, FileSpreadsheet, CheckCircle, Loader, Shield, ArrowRight, Search, Copy, ExternalLink } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useApp } from '../contexts/AppContext';
 import { setupFolderStructure, findSocietySpreadsheet, createBackup } from '../services/googleDrive';
@@ -29,6 +29,43 @@ const STEPS = [
 ];
 
 const OWNER_EMAIL_MASKED = maskEmail(FOUNDING_OWNER_EMAIL);
+const DRIVE_HOME = 'https://drive.google.com';
+
+function ConvertWorkbookHelp({ foundXlsx, onSearch }) {
+  return (
+    <div className="setup-welcome">
+      <div className="setup-logo">
+        <Shield size={48} />
+      </div>
+      <h2>{foundXlsx ? 'Convert the Excel file to a Google Sheet' : 'Put the society workbook in Drive'}</h2>
+      <p>
+        {foundXlsx
+          ? <>Found <strong>{SHEET_FILE_NAME}.xlsx</strong>. The app can only read a Google Sheet, not an Excel file.</>
+          : <>No <strong>{SHEET_FILE_NAME}</strong> Google Sheet was found. The app does not create a second society file.</>}
+      </p>
+      <ol className="setup-steps">
+        <li>Open <a href={DRIVE_HOME} target="_blank" rel="noreferrer">Google Drive</a> as {OWNER_EMAIL_MASKED}.</li>
+        {!foundXlsx && (
+          <li>Upload <strong>The Pride of Tirumala-APP.xlsx</strong> (New → File upload).</li>
+        )}
+        <li>Right-click the file → <strong>Open with → Google Sheets</strong>.</li>
+        <li>In the opened file: <strong>File → Save as Google Sheets</strong>.</li>
+        <li>Name it exactly <strong>{SHEET_FILE_NAME}</strong> (no .xlsx).</li>
+        <li>Leave Summary, Exp - Detailed, Borewell Exp, Motor repair oct, and Notes unchanged.</li>
+        <li>Return here and tap Search again. The app copies a backup, then adds empty app tabs beside those history tabs.</li>
+      </ol>
+      <p className="text-muted">Keep the original .xlsx. The app uses only the Google Sheet. Do not upload a second workbook.</p>
+      <div className="setup-actions">
+        <a className="btn btn-secondary btn-lg setup-drive-link" href={DRIVE_HOME} target="_blank" rel="noreferrer">
+          <ExternalLink size={18} /> Open Drive
+        </a>
+        <button className="btn btn-primary btn-lg" type="button" onClick={onSearch}>
+          <Search size={18} /> Search again <ArrowRight size={18} />
+        </button>
+      </div>
+    </div>
+  );
+}
 
 async function backupThenExtend(spreadsheetId, userEmail, { reason = 'pre-setup' } = {}) {
   let backedUp = false;
@@ -224,50 +261,11 @@ export default function Setup() {
             </div>
           )}
 
-          {needsGoogleSheet && currentStep === 0 && (
-            <div className="setup-welcome">
-              <div className="setup-logo">
-                <Shield size={48} />
-              </div>
-              <h2>Open the Excel file as a Google Sheet</h2>
-              <p>
-                Found <strong>{SHEET_FILE_NAME}.xlsx</strong> in Drive. Google Sheets API cannot use an Excel file until it is a Google Sheet.
-              </p>
-              <ul className="setup-checklist">
-                <li>In Drive, open the file → File → Save as Google Sheets</li>
-                <li>Keep the name <strong>{SHEET_FILE_NAME}</strong></li>
-                <li>Leave the original five history tabs as they are</li>
-                <li>Then search again. The app will back up the file and add empty app tabs beside those history tabs</li>
-              </ul>
-              <div className="setup-actions">
-                <button className="btn btn-primary btn-lg" onClick={() => { autoSearchKey.current = ''; lookForExistingSheet(); }}>
-                  <Search size={18} /> Search again <ArrowRight size={18} />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {showMissingHelp && currentStep === 0 && (
-            <div className="setup-welcome">
-              <div className="setup-logo">
-                <Shield size={48} />
-              </div>
-              <h2>Put the society workbook in Drive</h2>
-              <p>
-                No <strong>{SHEET_FILE_NAME}</strong> Google Sheet was found. This app does not create a new society file.
-              </p>
-              <ul className="setup-checklist">
-                <li>Upload <strong>The Pride of Tirumala-APP.xlsx</strong> to the Drive of {OWNER_EMAIL_MASKED}</li>
-                <li>Open it with Google Sheets and keep the name <strong>{SHEET_FILE_NAME}</strong></li>
-                <li>Do not create TPT-MaintenanceTracker or any second workbook</li>
-                <li>Search again. Setup will copy a backup first, then add Guide, Configuration, Maintenance, Expenses, and the other app tabs</li>
-              </ul>
-              <div className="setup-actions">
-                <button className="btn btn-primary btn-lg" onClick={() => { autoSearchKey.current = ''; lookForExistingSheet(); }}>
-                  <Search size={18} /> Search again <ArrowRight size={18} />
-                </button>
-              </div>
-            </div>
+          {(needsGoogleSheet || showMissingHelp) && currentStep === 0 && (
+            <ConvertWorkbookHelp
+              foundXlsx={needsGoogleSheet}
+              onSearch={() => { autoSearchKey.current = ''; lookForExistingSheet(); }}
+            />
           )}
 
           {(currentStep === 1 || currentStep === 2) && (

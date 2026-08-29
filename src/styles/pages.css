@@ -669,6 +669,26 @@
   color: var(--color-primary);
 }
 
+.setup-steps {
+  list-style: decimal;
+  padding-left: 1.4rem;
+  margin: var(--space-4) 0;
+  text-align: left;
+}
+
+.setup-steps li {
+  padding: var(--space-2) 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.setup-drive-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-right: var(--space-3);
+}
+
 .setup-mode-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

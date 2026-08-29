@@ -35,10 +35,12 @@ src/
 │   ├── googleSheets.js      # Society workbook CRUD
 │   ├── googleDrive.js       # Receipts, backups, activity folder
 │   ├── activityFunds.js     # One reusable sheet per optional activity
-│   ├── sheetSetup.js        # Create/upgrade society workbook
+│   ├── sheetSetup.js        # Extend The Pride of Tirumala-APP (never create a new society file)
 │   └── pdfExport.js         # Monthly + activity PDFs
 ├── pages/ActivityFunds.jsx  # Start / view optional activity funds
+├── data/handoverLedger.js   # Nov 2020–Aug 2026 totals (no owner names)
 ├── utils/gapi.js            # Promise.resolve wrapper for gapi thenables
+├── utils/setupFlow.js       # Setup never offers create
 ├── utils/voiceExpense.js    # On-device speech parse
 ├── utils/receiptOcr.js      # On-device Tesseract parse
 └── utils/appCache.js        # Clear local + service-worker cache
@@ -47,6 +49,10 @@ src/
 ## Google Sheet Structure (source of truth)
 
 The workbook is designed so a treasurer can understand every number without opening this app.
+
+**History tabs already in The Pride of Tirumala-APP.xlsx — never overwrite:** Summary, Exp - Detailed, Borewell Exp, Motor repair oct, Notes.
+
+**App tabs added beside those if missing:**
 
 1. **Guide** — Plain-language explanation of every tab, column, and edit rule
 2. **Configuration** — Key / Value / Description for all app settings
@@ -98,7 +104,7 @@ All configurable values are in `src/config/constants.js` and can be overridden a
 - Opening surplus: ₹612 cash handed over on 29 Aug 2026 (Excel running net was ₹1,712.54)
 - Treasurer: Flat 401, President: Flat 102 (configurable)
 - Late fee: ₹100 after 15th (configurable)
-- Sample data: removed after handover. History lives on Handover Summary.
+- Sample data: compile-time off (`FEATURES.SAMPLE_DATA`). History lives on the five legacy tabs and Handover Summary.
 
 ## Security Model
 
@@ -137,8 +143,8 @@ Add to the `EXPENSE_CATEGORIES` array in `src/config/constants.js` and rebuild.
 ### Change fiscal year
 Update `FISCAL_YEAR_START` in the Configuration sheet.
 
-### Enable or disable sample test data
-Settings → Configuration → Sample data (Y/N). Leave N for real accounts. Y unlocks Load sample data for the founding owner.
+### Convert the Excel file for first use
+In Drive: right-click The Pride of Tirumala-APP.xlsx → Open with Google Sheets → File → Save as Google Sheets. Keep the name **The Pride of Tirumala-APP**. Setup then backs up and adds app tabs.
 
 ## API Quotas
 

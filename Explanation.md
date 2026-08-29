@@ -52,7 +52,7 @@ graph TD
     SVC_AUTH --> LS
     APP_CTX --> LS
     SVC_PDF --> UI
-    AUTH_CTX -.->|"Owner sign-in only"| DRIVE
+        AUTH_CTX -.->|"Google sign-in backup"| DRIVE
 ```
 
 ---
@@ -436,7 +436,7 @@ src/
 │   ├── EmergencyContacts.jsx  WhatsApp-enabled contact directory
 │   ├── Settings.jsx           Config + Access Control + Guest PIN
 │   ├── Help.jsx               Owner-only guide + Google Sheets deep-dive
-│   ├── Setup.jsx              First-time wizard (find-or-create sheet)
+│   ├── Setup.jsx              Connect The Pride of Tirumala-APP (never create)
 │   └── Login.jsx              Google OAuth + Guest PIN entry
 ├── styles/
 │   ├── variables.css          Design tokens (colours, spacing, etc.)

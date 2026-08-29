@@ -36,6 +36,20 @@ Setup connects The Pride of Tirumala-APP already in Drive, copies a backup first
 Backups (copies of the sheet) are stored in the "backups" subfolder. A copy is also taken on each Google sign-in.`,
             },
             {
+                heading: 'How to convert The Pride of Tirumala-APP.xlsx',
+                text: `The app cannot use an Excel file. Convert it once in Drive, then keep using the Google Sheet.
+
+1. Open drive.google.com as ${OWNER_EMAIL_MASKED}
+2. Upload The Pride of Tirumala-APP.xlsx if it is not already there
+3. Right-click the file → Open with → Google Sheets
+4. File → Save as Google Sheets
+5. Name it exactly The Pride of Tirumala-APP (no .xlsx)
+6. Leave the five history tabs as they are
+7. Sign in to this app. Setup copies a backup, then adds empty app tabs (Guide, Maintenance, Expenses, …)
+
+Keep the original .xlsx. Do not upload a second society workbook.`,
+            },
+            {
                 heading: 'Who can access the app?',
                 text: `Only ${OWNER_EMAIL_MASKED} is the founding Owner and may connect the society Google Sheet.
 Everyone else must be added in Settings → Access Control. New users default to Reader (view-only) and are shared the existing The Pride of Tirumala-APP as Viewer — they must not upload a second sheet.
