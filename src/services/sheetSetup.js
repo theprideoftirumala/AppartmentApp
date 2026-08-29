@@ -11,12 +11,16 @@ import {
   STORAGE_KEYS,
   SHEET_FILE_NAME,
   CONFIG_DESCRIPTIONS,
-  FEATURES,
-  isSampleDataEnabled,
 } from '../config/constants';
 import { ensureValidToken, getCurrentUser } from './googleAuth';
 import { isFoundingOwner } from '../config/accessPolicy';
-import { GUIDE_ROWS, SAMPLE_CATALOG_ROWS, buildSampleLiveRows } from '../data/sampleSheetData';
+import { GUIDE_ROWS } from '../data/sampleSheetData';
+import {
+  HANDOVER_CONTACTS,
+  HANDOVER_NOTES,
+  HANDOVER_PAYEES,
+  handoverSummaryRows,
+} from '../data/handoverLedger';
 import { isValidSpreadsheetId, bindSpreadsheet, getCurrentMonthLabel } from '../utils/helpers';
 import { gapiCall } from '../utils/gapi';
 import {
@@ -328,7 +332,7 @@ async function sheetIsEmpty(spreadsheetId, title) {
 }
 
 /**
- * Create the main spreadsheet with Guide + Sample Data tabs.
+ * Create the main spreadsheet with Guide, handover history, and empty live tabs.
  * @param {string} folderId
  * @param {{ mode?: 'sample' | 'fresh', title?: string }} [options]
  */
@@ -339,7 +343,6 @@ export async function createSpreadsheet(folderId, options = {}) {
     if (!isFoundingOwner(actor?.email)) {
       throw new Error('Only the society founding owner can create the society spreadsheet. Ask that account to share it with you as Viewer.');
     }
-    const mode = options.mode === 'sample' && FEATURES.SAMPLE_DATA ? 'sample' : 'fresh';
     const title = options.title || SHEET_FILE_NAME;
     const sheetNames = Object.values(SHEET_NAMES);
 
@@ -377,34 +380,30 @@ export async function createSpreadsheet(folderId, options = {}) {
         values: GUIDE_ROWS,
       },
       {
-        range: `'${SHEET_NAMES.SAMPLE_DATA}'!A2`,
-        values: SAMPLE_CATALOG_ROWS,
-      },
-      {
         range: `'${SHEET_NAMES.CONFIGURATION}'!A2`,
         values: configRows(),
       },
-    ];
-
-    if (mode === 'sample') {
-      const sample = buildSampleLiveRows();
-      liveWrites.push(
-        { range: `'${SHEET_NAMES.FLATS}'!A2`, values: sample[SHEET_NAMES.FLATS] },
-        { range: `'${SHEET_NAMES.MAINTENANCE}'!A2`, values: sample[SHEET_NAMES.MAINTENANCE] },
-        { range: `'${SHEET_NAMES.EXPENSES}'!A2`, values: sample[SHEET_NAMES.EXPENSES] },
-        { range: `'${SHEET_NAMES.MISC_FUNDS}'!A2`, values: sample[SHEET_NAMES.MISC_FUNDS] },
-        { range: `'${SHEET_NAMES.EMERGENCY_CONTACTS}'!A2`, values: sample[SHEET_NAMES.EMERGENCY_CONTACTS] },
-        { range: `'${SHEET_NAMES.WATER_TANKER}'!A2`, values: sample[SHEET_NAMES.WATER_TANKER] },
-        { range: `'${SHEET_NAMES.WATCHMAN_DETAILS}'!A2`, values: sample[SHEET_NAMES.WATCHMAN_DETAILS] },
-        { range: `'${SHEET_NAMES.MONTHLY_SUMMARY}'!A2`, values: sample[SHEET_NAMES.MONTHLY_SUMMARY] },
-        { range: `'${SHEET_NAMES.REMINDERS}'!A2`, values: sample[SHEET_NAMES.REMINDERS] },
-      );
-    } else {
-      liveWrites.push({
+      {
+        range: `'${SHEET_NAMES.HANDOVER_SUMMARY}'!A2`,
+        values: handoverSummaryRows(),
+      },
+      {
+        range: `'${SHEET_NAMES.PAYEES}'!A2`,
+        values: HANDOVER_PAYEES,
+      },
+      {
+        range: `'${SHEET_NAMES.EMERGENCY_CONTACTS}'!A2`,
+        values: HANDOVER_CONTACTS,
+      },
+      {
+        range: `'${SHEET_NAMES.SOCIETY_NOTES}'!A2`,
+        values: HANDOVER_NOTES,
+      },
+      {
         range: `'${SHEET_NAMES.FLATS}'!A2`,
         values: emptyFlatRows(),
-      });
-    }
+      },
+    ];
 
     await writeValues(spreadsheetId, liveWrites);
 
@@ -437,9 +436,12 @@ export async function ensureSheetStructure(spreadsheetId = getSpreadsheetId()) {
       if (await sheetIsEmpty(spreadsheetId, title)) {
         const values = [headers];
         if (title === SHEET_NAMES.GUIDE) values.push(...GUIDE_ROWS);
-        if (title === SHEET_NAMES.SAMPLE_DATA) values.push(...SAMPLE_CATALOG_ROWS);
         if (title === SHEET_NAMES.CONFIGURATION) values.push(...configRows());
         if (title === SHEET_NAMES.FLATS) values.push(...emptyFlatRows());
+        if (title === SHEET_NAMES.HANDOVER_SUMMARY) values.push(...handoverSummaryRows());
+        if (title === SHEET_NAMES.PAYEES) values.push(...HANDOVER_PAYEES);
+        if (title === SHEET_NAMES.EMERGENCY_CONTACTS) values.push(...HANDOVER_CONTACTS);
+        if (title === SHEET_NAMES.SOCIETY_NOTES) values.push(...HANDOVER_NOTES);
         await window.gapi.client.sheets.spreadsheets.values.update({
           spreadsheetId,
           range: `'${title}'!A1`,
@@ -501,60 +503,7 @@ export async function archiveAndCreateFresh(folderId, userEmail) {
  * Does not create a new spreadsheet. Leaves Access Control and Audit Log alone.
  */
 export async function seedSampleLiveData() {
-  return withAuth(async () => {
-    if (!isFoundingOwner(getCurrentUser()?.email)) {
-      throw new Error('Only the founding owner can load sample data into the society sheet.');
-    }
-    const spreadsheetId = getSpreadsheetId();
-    if (!isValidSpreadsheetId(spreadsheetId)) {
-      throw new Error('Spreadsheet is not connected.');
-    }
-    const cfgResponse = await window.gapi.client.sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: `'${SHEET_NAMES.CONFIGURATION}'!A2:B100`,
-    });
-    const cfg = {};
-    (cfgResponse.result.values || []).forEach(([key, value]) => {
-      if (key) cfg[key] = value;
-    });
-    if (!isSampleDataEnabled({ ...DEFAULT_CONFIG, ...cfg })) {
-      throw new Error('Sample data is turned off. Set SAMPLE_DATA to Y in Settings → Configuration.');
-    }
-
-    await ensureSheetStructure(spreadsheetId);
-
-    const sample = buildSampleLiveRows();
-    const tabs = [
-      SHEET_NAMES.FLATS,
-      SHEET_NAMES.MAINTENANCE,
-      SHEET_NAMES.EXPENSES,
-      SHEET_NAMES.MISC_FUNDS,
-      SHEET_NAMES.EMERGENCY_CONTACTS,
-      SHEET_NAMES.REMINDERS,
-      SHEET_NAMES.WATER_TANKER,
-      SHEET_NAMES.WATCHMAN_DETAILS,
-      SHEET_NAMES.MONTHLY_SUMMARY,
-    ];
-
-    await window.gapi.client.sheets.spreadsheets.values.batchClear({
-      spreadsheetId,
-      resource: {
-        ranges: tabs.map((name) => `'${name}'!A2:Z2000`),
-      },
-    });
-
-    const data = tabs
-      .filter((name) => sample[name]?.length)
-      .map((name) => ({
-        range: `'${name}'!A2`,
-        values: sample[name],
-      }));
-    await writeValues(spreadsheetId, data);
-    await applyMaintenanceStillDueFormulas(spreadsheetId);
-    await applyMonthlySummaryFormulas(spreadsheetId);
-    await writePendingDuesTemplate(spreadsheetId);
-    return { spreadsheetId, tabs: data.length };
-  });
+  throw new Error('Sample data was removed after the 29 Aug 2026 handover. Use the Handover Summary tab for history.');
 }
 
 export { getSpreadsheetId, columnLetter };

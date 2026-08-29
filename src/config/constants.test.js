@@ -8,14 +8,16 @@ describe('feature flags', () => {
     expect(FEATURES.VOICE_EXPENSES).toBe(true);
     expect(FEATURES.CAMERA_EXPENSES).toBe(true);
     expect(FEATURES.ACTIVITY_FUNDS).toBe(true);
-    expect(FEATURES.SAMPLE_DATA).toBe(true);
+    expect(FEATURES.SAMPLE_DATA).toBe(false);
     expect(DEFAULT_CONFIG.SAMPLE_DATA).toBe('N');
+    expect(DEFAULT_CONFIG.DEFICIT_LAST_YEAR).toBe(612);
+    expect(DEFAULT_CONFIG.WATCHMAN_SALARY).toBe(8500);
   });
 
-  it('enables sample data only when SAMPLE_DATA is Y', () => {
+  it('keeps sample data off after handover', () => {
     expect(isSampleDataEnabled()).toBe(false);
     expect(isSampleDataEnabled({ SAMPLE_DATA: 'N' })).toBe(false);
-    expect(isSampleDataEnabled({ SAMPLE_DATA: 'Y' })).toBe(true);
+    expect(isSampleDataEnabled({ SAMPLE_DATA: 'Y' })).toBe(false);
   });
 });
 

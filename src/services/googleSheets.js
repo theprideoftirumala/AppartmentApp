@@ -1719,3 +1719,46 @@ export async function getAuditLogForMonth(monthLabel) {
     }
   });
 }
+
+export async function getPayees() {
+  return withAuth(async () => {
+    const spreadsheetId = getSpreadsheetId();
+    if (!spreadsheetId) return [];
+    const response = await window.gapi.client.sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `'${SHEET_NAMES.PAYEES}'!A2:G100`,
+    }).catch(() => ({ result: { values: [] } }));
+    return (response.result.values || []).filter((row) => row[0] || row[2]).map((row) => ({
+      key: row[0] || '',
+      category: row[1] || '',
+      name: row[2] || '',
+      phone: row[3] || '',
+      upiId: row[4] || '',
+      defaultAmount: row[5] || '',
+      notes: row[6] || '',
+    }));
+  });
+}
+
+export async function updatePayee(index, payee) {
+  return withWriteAuth(async () => {
+    const spreadsheetId = getSpreadsheetId();
+    if (!spreadsheetId) throw new Error('Spreadsheet is not connected.');
+    await window.gapi.client.sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `'${SHEET_NAMES.PAYEES}'!A${index + 2}:G${index + 2}`,
+      valueInputOption: 'RAW',
+      resource: {
+        values: [[
+          sheetText(payee.key, 40),
+          sheetText(payee.category, 40),
+          sheetText(payee.name, 80),
+          sheetText(payee.phone, 20),
+          sheetText(payee.upiId, 80),
+          payee.defaultAmount === '' ? '' : sheetNumber(payee.defaultAmount),
+          sheetText(payee.notes, 200),
+        ]],
+      },
+    });
+  });
+}

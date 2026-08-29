@@ -407,8 +407,8 @@ export default function Settings() {
                   info: 'One-time corpus amount collected from flat owners. Edit directly in the Configuration sheet in Google Drive.'
                 },
                 {
-                  key: 'DEFICIT_LAST_YEAR', label: 'Deficit from August 2026 (Handover) ₹', type: 'number', readonly: true,
-                  info: 'Opening balance/deficit as on 31 Aug 2026 (handover). To change this value, update DEFAULT_CONFIG.DEFICIT_LAST_YEAR in src/config/constants.js and the DEFICIT_LAST_YEAR row in the Configuration sheet.'
+                  key: 'DEFICIT_LAST_YEAR', label: 'Opening surplus (29 Aug 2026 handover) ₹', type: 'number',
+                  info: 'Cash handed over on 29 Aug 2026. The I&E Excel running net was ₹1,712.54; the cash given was ₹612. Positive = surplus.'
                 },
                 {
                   key: 'FISCAL_YEAR_START', label: 'Fiscal Year Start (YYYY-MM)', type: 'text',
@@ -690,11 +690,11 @@ export default function Settings() {
 
         {activeTab === 'backups' && isOwner && isFoundingOwner(user?.email) && (
           <div className="card mt-4">
-            <h3 className="card-title mb-2">Start fresh after testing</h3>
+            <h3 className="card-title mb-2">Create the handover workbook</h3>
             <p className="text-muted text-sm mb-4">
-              Finished trying the sample numbers? This archives the current workbook in Drive
-              (renamed with a SAMPLE date) and creates an empty <strong>TPT-MaintenanceTracker</strong>
-              with Guide + Sample Data tabs only. Live tabs start blank for real collections.
+              Archives the current workbook in Drive and creates a new <strong>TPT-MaintenanceTracker</strong>
+              with the 29 Aug 2026 handover: opening surplus ₹612, I&amp;E history, payees, and empty live tabs from Sep-26.
+              Owner names are not written by the app.
             </p>
             <button
               className="btn btn-secondary"

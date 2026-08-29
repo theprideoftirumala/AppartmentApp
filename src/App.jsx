@@ -38,6 +38,8 @@ import EmergencyContacts from './pages/EmergencyContacts';
 import Settings from './pages/Settings';
 import Help from './pages/Help';
 import ActivityFunds from './pages/ActivityFunds';
+import Payees from './pages/Payees';
+import Handover from './pages/Handover';
 
 function AccessBootstrap() {
   const { user, isGuest, setAccessDenied } = useAuth();
@@ -167,6 +169,22 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <EmergencyContacts />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/payees"
+          element={
+            <ProtectedRoute>
+              <Payees />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/handover"
+          element={
+            <ProtectedRoute>
+              <Handover />
             </ProtectedRoute>
           }
         />

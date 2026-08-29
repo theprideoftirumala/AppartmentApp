@@ -27,7 +27,7 @@ export const DISCOVERY_DOCS = [
 // ─── Apartment Configuration ────────────────────────────────────
 export const APP_NAME = 'The Pride of Tirumala';
 export const APP_SHORT_NAME = 'TPT Tracker';
-export const APP_VERSION = '1.7.3';
+export const APP_VERSION = '1.8.0';
 
 /**
  * Bump this when GOOGLE_SCOPES change so existing sessions re-consent.
@@ -48,7 +48,8 @@ export const FEATURES = {
   CAMERA_EXPENSES: true,
   ACTIVITY_FUNDS: true,
   LOGIN_BACKUP: true,
-  SAMPLE_DATA: true,
+  SAMPLE_DATA: false,
+  PAYEES: true,
 };
 
 export function isYesFlag(value) {
@@ -74,7 +75,7 @@ export const DEFAULT_CONFIG = {
   APARTMENT_NAME: 'The Pride of Tirumala',
   MONTHLY_MAINTENANCE: 3000,
   CORPUS_FUND: 0,
-  DEFICIT_LAST_YEAR: -5200,
+  DEFICIT_LAST_YEAR: 612,
   FISCAL_YEAR_START: '2026-09',
   TREASURER_FLAT: '401',
   PRESIDENT_FLAT: '102',
@@ -85,8 +86,9 @@ export const DEFAULT_CONFIG = {
   MAX_OWNERS: 2,
   WATCHMAN_NAME: '',
   WATCHMAN_PHONE: '',
-  WATCHMAN_SALARY: 0,
+  WATCHMAN_SALARY: 8500,
   WATCHMAN_SHIFT: 'Night (8PM - 8AM)',
+  APARTMENT_ADDRESS: 'PLNo 49&48&47, Road No 20, Alkapur, Neknampur, 500089',
   SAMPLE_DATA: 'N',
 };
 
@@ -104,27 +106,30 @@ export const SHEET_SAMPLE_SUFFIX = '-SAMPLE';
 export const SHEET_NAMES = {
   GUIDE: 'Guide',
   CONFIGURATION: 'Configuration',
+  HANDOVER_SUMMARY: 'Handover Summary',
   FLATS: 'Flats',
   MAINTENANCE: 'Maintenance',
   PENDING_DUES: 'Pending Dues',
   EXPENSES: 'Expenses',
-  MISC_FUNDS: 'Misc Funds',
+  PAYEES: 'Payees',
   EMERGENCY_CONTACTS: 'Emergency Contacts',
+  SOCIETY_NOTES: 'Society Notes',
   REMINDERS: 'Reminders',
   ACCESS_CONTROL: 'Access Control',
   AUDIT_LOG: 'Audit Log',
   WATER_TANKER: 'Water Tanker Log',
   MONTHLY_SUMMARY: 'Monthly Summary',
   WATCHMAN_DETAILS: 'Watchman Details',
-  SAMPLE_DATA: 'Sample Data',
   ACTIVITY_FUNDS: 'Activity Funds',
+  MISC_FUNDS: 'Misc Funds',
 };
 
 export const CONFIG_DESCRIPTIONS = {
   APARTMENT_NAME: 'Name of the apartment complex (shown on dashboard and PDF reports)',
   MONTHLY_MAINTENANCE: 'Monthly maintenance amount each flat pays (₹). Example: 3000',
   CORPUS_FUND: 'One-time corpus fund balance (₹). Edit here; the app reads this value.',
-  DEFICIT_LAST_YEAR: 'Opening balance at handover (₹). Negative = deficit, positive = surplus.',
+  DEFICIT_LAST_YEAR: 'Cash handed over on 29 Aug 2026 (₹). Negative = deficit, positive = surplus. Set to 612.',
+  APARTMENT_ADDRESS: 'Postal address of the apartment',
   FISCAL_YEAR_START: 'First month of the financial year as YYYY-MM. TPT uses 2026-09.',
   TREASURER_FLAT: 'Flat number of the current Treasurer (must match a row in the Flats tab)',
   PRESIDENT_FLAT: 'Flat number of the current President (must match a row in the Flats tab)',
@@ -188,7 +193,15 @@ export const SHEET_HEADERS = {
     'ID', 'Date (YYYY-MM-DD)', 'Month (MMM-YY)', 'Flat', 'Amount (₹)', 'Description',
     'Payment Mode', 'Collected By', 'Remarks',
   ],
-  [SHEET_NAMES.SAMPLE_DATA]: ['Sheet / Section', 'Example row (copy into the live tab)', 'Notes'],
+  [SHEET_NAMES.HANDOVER_SUMMARY]: [
+    'Month', 'Carry in (₹)', 'Collection (₹)', 'Expenses (₹)', 'Month surplus (₹)',
+    'Cleaning', 'Generator', 'Lift', 'Service', 'Repairs', 'Garbage',
+    'Electricity', 'Internet', 'Watchman', 'Water', 'Pest Control', 'Sundry',
+  ],
+  [SHEET_NAMES.PAYEES]: [
+    'Payee key', 'Category', 'Display name', 'Phone', 'UPI ID', 'Default amount (₹)', 'Notes',
+  ],
+  [SHEET_NAMES.SOCIETY_NOTES]: ['Topic', 'What we know', 'Value from old workbook'],
   [SHEET_NAMES.ACTIVITY_FUNDS]: [
     'Activity ID', 'Name', 'Spreadsheet ID', 'Status (Open/Closed)',
     'Created Date (YYYY-MM-DD)', 'Created By', 'Target Amount (₹)', 'Notes',
@@ -223,23 +236,21 @@ export const MAINTENANCE_MIN_DATE = '2026-09-01';
 // ─── Expense Categories ─────────────────────────────────────────
 export const EXPENSE_CATEGORIES = [
   'Watchman Salary',
-  'Common Electricity',
+  'Cleaning',
   'Generator Fuel',
-  'WiFi Bill',
-  'Water Bill (BWSSB)',
+  'Lift Service',
+  'Repairs & Maintenance',
+  'Garbage',
+  'Common Electricity',
+  'Internet',
+  'Water Charges',
   'Water Tankers',
-  'Lift Maintenance',
-  'Generator Maintenance',
-  'CCTV Maintenance',
+  'Pest Control',
   'Plumbing',
   'Electrical Repairs',
-  'Cleaning / Housekeeping',
-  'Pest Control',
-  'Painting / Civil Work',
+  'Sundry',
   'Festival / Events',
   'Legal / Administrative',
-  'Insurance',
-  'Bank Charges',
   'Miscellaneous',
 ];
 

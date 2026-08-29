@@ -62,8 +62,10 @@ The workbook is designed so a treasurer can understand every number without open
 12. **Water Tanker Log** — Dedicated tanker tracking
 13. **Monthly Summary** — Live formulas: collection, misc, expenses, net, cumulative, %, pending flats, SURPLUS/DEFICIT
 14. **Watchman Details** — Staff record
-15. **Sample Data** — Copy-paste examples; does not affect dashboard totals
-16. **Activity Funds** — Registry of optional named collections. Each activity also has its own Google Spreadsheet under `activity-funds/` and is reused if the same name is started again.
+15. **Handover Summary** — Nov 2020–Aug 2026 monthly totals from the old I&E Excel (no owner names)
+16. **Payees** — Watchman and vendor phones / UPI for GPay and PhonePe
+17. **Society Notes** — Wifi id, borewell totals, motor-repair collection
+18. **Activity Funds** — Registry of optional named collections. Each activity also has its own Google Spreadsheet under `activity-funds/` and is reused if the same name is started again.
 
 Late fee and the old Misc Funds tab stay in the workbook for history. The app no longer collects them. Use **Activity Funds** for Ganesh, motor, or similar optional collections.
 
@@ -92,10 +94,10 @@ All configurable values are in `src/config/constants.js` and can be overridden a
 
 - Monthly maintenance: ₹3,000 (configurable)
 - Corpus fund: ₹0 (configurable)
-- Deficit: -₹5,200 (configurable)
+- Opening surplus: ₹612 cash handed over on 29 Aug 2026 (Excel running net was ₹1,712.54)
 - Treasurer: Flat 401, President: Flat 102 (configurable)
 - Late fee: ₹100 after 15th (configurable)
-- Sample data: off (`SAMPLE_DATA=N`) until Settings → Configuration sets it to Y
+- Sample data: removed after handover. History lives on Handover Summary.
 
 ## Security Model
 
