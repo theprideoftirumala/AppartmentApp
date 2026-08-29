@@ -29,7 +29,14 @@ import StatusBadge from '../components/common/StatusBadge';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Navbar from '../components/common/Navbar';
 import { FEATURES } from '../config/constants';
+import { isLiveAppMonth } from '../utils/legacySheetImport';
 import { maskEmail, maskEmailsInText } from '../config/accessPolicy';
+
+function monthRunningBalance(netBalance, monthLabel, config) {
+  const snapshot = Number(config?.AVAILABLE_BALANCE);
+  const opening = Number.isFinite(snapshot) ? snapshot : 1712.54;
+  return isLiveAppMonth(monthLabel) ? opening + netBalance : netBalance;
+}
 
 export default function Reports() {
   const { showToast } = useApp();
@@ -97,7 +104,7 @@ export default function Reports() {
         totalExpenses,
         totalMiscFunds,
         netBalance,
-        cumulativeBalance: netBalance + (config.DEFICIT_LAST_YEAR || 0),
+        cumulativeBalance: monthRunningBalance(netBalance, selectedMonth, config),
       });
     } catch (err) {
       showToast(parseApiError(err) || 'Failed to load report data', 'error');
@@ -179,7 +186,7 @@ export default function Reports() {
       totalExpenses,
       totalMiscFunds,
       netBalance,
-      cumulativeBalance: netBalance + (config.DEFICIT_LAST_YEAR || 0),
+      cumulativeBalance: monthRunningBalance(netBalance, month, config),
     };
   }
 
@@ -407,8 +414,8 @@ export default function Reports() {
                     <strong>{formatCurrency((reportData.config.MONTHLY_MAINTENANCE || 3000) * 10)}</strong>
                   </div>
                   <div className="report-stat">
-                    <span>Deficit Carry Forward</span>
-                    <strong className="text-danger">{formatCurrency(reportData.config.DEFICIT_LAST_YEAR)}</strong>
+                    <span>Available balance (29 Aug 2026)</span>
+                    <strong>{formatCurrency(reportData.config.AVAILABLE_BALANCE || 1712.54)}</strong>
                   </div>
                   <div className="report-stat">
                     <span>Activities This Month</span>

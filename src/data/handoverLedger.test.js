@@ -9,8 +9,8 @@ import {
 } from './handoverLedger';
 
 describe('handover ledger from the I&E Excel', () => {
-  it('uses the cash handed over on 29 Aug 2026', () => {
-    expect(HANDOVER_CASH_SURPLUS).toBe(612);
+  it('uses the Summary Available balance on 29 Aug 2026', () => {
+    expect(HANDOVER_CASH_SURPLUS).toBe(1712.54);
     expect(HANDOVER_META.date).toBe('2026-08-29');
     expect(HANDOVER_META.lastClosedMonth).toBe("August '26");
   });

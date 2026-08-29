@@ -22,6 +22,7 @@ import {
   handoverSummaryRows,
 } from '../data/handoverLedger';
 import { isValidSpreadsheetId, getCurrentMonthLabel } from '../utils/helpers';
+import { expenseRowsFromDetailedGrid, maintenanceRowsFromSummaryGrid } from '../utils/legacySheetImport';
 import { gapiCall } from '../utils/gapi';
 import {
   maintenanceStillDueFormula,
@@ -52,7 +53,30 @@ function emptyFlatRows() {
   return FLATS.map((flat) => [flat, '', '', '', '', '', '', 'Member']);
 }
 
-/** Copy flat numbers and owner names from the existing Summary tab. Names stay in the sheet, not in app source. */
+async function expenseRowsFromLegacyDetailed(spreadsheetId) {
+  try {
+    const response = await window.gapi.client.sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: "'Exp - Detailed'!A3:C900",
+    });
+    return expenseRowsFromDetailedGrid(response.result.values || []);
+  } catch {
+    return [];
+  }
+}
+
+async function maintenanceRowsFromLegacySummary(spreadsheetId) {
+  try {
+    const response = await window.gapi.client.sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: "'Summary'!B10:BY21",
+    });
+    return maintenanceRowsFromSummaryGrid(response.result.values || []);
+  } catch {
+    return [];
+  }
+}
+
 async function flatsRowsFromLegacySummary(spreadsheetId) {
   try {
     const response = await window.gapi.client.sheets.spreadsheets.values.get({
@@ -69,6 +93,24 @@ async function flatsRowsFromLegacySummary(spreadsheetId) {
   } catch {
     return emptyFlatRows();
   }
+}
+
+async function appendMissingHistoryRows(spreadsheetId, title, existingRange, newRows, keyFn) {
+  if (!newRows.length) return;
+  const response = await window.gapi.client.sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: existingRange,
+  });
+  const existing = new Set((response.result.values || []).map(keyFn));
+  const toAdd = newRows.filter((row) => !existing.has(keyFn(row)));
+  if (!toAdd.length) return;
+  await window.gapi.client.sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: `'${title}'!A:K`,
+    valueInputOption: 'RAW',
+    insertDataOption: 'INSERT_ROWS',
+    resource: { values: toAdd },
+  });
 }
 
 async function writeValues(spreadsheetId, data) {
@@ -332,8 +374,34 @@ export async function ensureSheetStructure(spreadsheetId = getSpreadsheetId()) {
       }
     }
 
+    const expenseHistory = await expenseRowsFromLegacyDetailed(spreadsheetId);
+    await appendMissingHistoryRows(
+      spreadsheetId,
+      SHEET_NAMES.EXPENSES,
+      `'${SHEET_NAMES.EXPENSES}'!A2:F5000`,
+      expenseHistory,
+      (row) => `${row[1]}|${Number(row[5])}|${String(row[3] || '').trim().toLowerCase()}`,
+    );
+
+    const maintenanceHistory = await maintenanceRowsFromLegacySummary(spreadsheetId);
+    await appendMissingHistoryRows(
+      spreadsheetId,
+      SHEET_NAMES.MAINTENANCE,
+      `'${SHEET_NAMES.MAINTENANCE}'!A2:B5000`,
+      maintenanceHistory,
+      (row) => `${row[0]}|${row[1]}`,
+    )
+
+    const maintenanceMonths = await window.gapi.client.sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `'${SHEET_NAMES.MAINTENANCE}'!A2:A5000`,
+    }).catch(() => ({ result: { values: [] } }));
+    const extraMonths = [...new Set((maintenanceMonths.result.values || []).map((row) => row[0]).filter(Boolean))];
+
     await upgradeWorkbookLayout(spreadsheetId);
+    await applyMonthlySummaryFormulas(spreadsheetId, extraMonths);
     await ensureConfigKeys(spreadsheetId);
+    await migrateConfigValues(spreadsheetId);
   });
 }
 
@@ -346,14 +414,35 @@ async function ensureConfigKeys(spreadsheetId) {
   const missing = Object.entries(DEFAULT_CONFIG)
     .filter(([key]) => !existing.has(key))
     .map(([key, value]) => [key, String(value), CONFIG_DESCRIPTIONS[key] || '']);
-  if (!missing.length) return;
-  await window.gapi.client.sheets.spreadsheets.values.append({
+  if (missing.length) {
+    await window.gapi.client.sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: `'${SHEET_NAMES.CONFIGURATION}'!A:C`,
+      valueInputOption: 'RAW',
+      insertDataOption: 'INSERT_ROWS',
+      resource: { values: missing },
+    });
+  }
+}
+
+async function migrateConfigValues(spreadsheetId) {
+  const response = await window.gapi.client.sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `'${SHEET_NAMES.CONFIGURATION}'!A:C`,
-    valueInputOption: 'RAW',
-    insertDataOption: 'INSERT_ROWS',
-    resource: { values: missing },
+    range: `'${SHEET_NAMES.CONFIGURATION}'!A2:B100`,
   });
+  const updates = [];
+  (response.result.values || []).forEach((row, index) => {
+    const key = row[0];
+    const value = String(row[1] ?? '').trim();
+    const cell = `'${SHEET_NAMES.CONFIGURATION}'!B${index + 2}`;
+    if (key === 'DEFICIT_LAST_YEAR' && (value === '612' || value === '612.0')) {
+      updates.push({ range: cell, values: [['0']] });
+    }
+    if (key === 'FISCAL_YEAR_START' && value === '2026-09') {
+      updates.push({ range: cell, values: [['2020-11']] });
+    }
+  });
+  if (updates.length) await writeValues(spreadsheetId, updates);
 }
 
 /** Disabled: never archive-and-replace The Pride of Tirumala-APP. */

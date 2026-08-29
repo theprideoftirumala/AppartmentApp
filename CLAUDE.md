@@ -41,6 +41,7 @@ src/
 ├── data/handoverLedger.js   # Nov 2020–Aug 2026 totals (no owner names)
 ├── utils/gapi.js            # Promise.resolve wrapper for gapi thenables
 ├── utils/setupFlow.js       # Setup never offers create
+├── utils/legacySheetImport.js # Summary / Exp-Detailed → app rows (through Aug 2026)
 ├── utils/voiceExpense.js    # On-device speech parse
 ├── utils/receiptOcr.js      # On-device Tesseract parse
 └── utils/appCache.js        # Clear local + service-worker cache
@@ -57,16 +58,16 @@ The workbook is designed so a treasurer can understand every number without open
 1. **Guide** — Plain-language explanation of every tab, column, and edit rule
 2. **Configuration** — Key / Value / Description for all app settings
 3. **Flats** — Owner details for 10 flats (101-502)
-4. **Maintenance** — Monthly payment records per flat. Column K (Still Due) is a formula: due − paid.
+4. **Maintenance** — Monthly payment records per flat from Nov 2020. History is copied from Summary. Column K (Still Due) is a formula: due − paid.
 5. **Pending Dues** — Type a month in the yellow cell to see who still owes (formulas; do not type in the table)
-6. **Expenses** — All expense entries with categories (app can add several at once)
+6. **Expenses** — Expense entries from Nov 2020 (copied from Exp - Detailed) plus new app rows
 7. **Misc Funds** — Extra collections (festival, levy, donation)
 8. **Emergency Contacts** — Categorized contact directory
 9. **Reminders** — Recurring task reminders
 10. **Access Control** — Email whitelist with roles (Owner/Reader)
 11. **Audit Log** — All write operations logged
 12. **Water Tanker Log** — Dedicated tanker tracking
-13. **Monthly Summary** — Live formulas: collection, misc, expenses, net, cumulative, %, pending flats, SURPLUS/DEFICIT
+13. **Monthly Summary** — Live formulas: collection, misc, expenses, net, cumulative, %, pending flats. The app does not use Summary surplus/deficit or late-fee rows.
 14. **Watchman Details** — Staff record
 15. **Handover Summary** — Nov 2020–Aug 2026 monthly totals from the old I&E Excel (no owner names)
 16. **Payees** — Watchman and vendor phones / UPI for GPay and PhonePe
@@ -101,7 +102,7 @@ All configurable values are in `src/config/constants.js` and can be overridden a
 
 - Monthly maintenance: ₹3,000 (configurable)
 - Corpus fund: ₹0 (configurable)
-- Opening surplus: ₹612 cash handed over on 29 Aug 2026 (Excel running net was ₹1,712.54)
+- Available balance: ₹1,712.54 from the Summary tab on 29 Aug 2026 (final). Surplus/deficit and late-fee rows are not used. History (Nov 2020–Aug 2026) is merged into Maintenance and Expenses on Setup / Refresh sheet layout. Live months start Sep 2026.
 - Treasurer: Flat 401, President: Flat 102 (configurable)
 - Late fee: ₹100 after 15th (configurable)
 - Sample data: compile-time off (`FEATURES.SAMPLE_DATA`). History lives on the five legacy tabs and Handover Summary.

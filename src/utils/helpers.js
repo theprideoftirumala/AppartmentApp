@@ -360,21 +360,20 @@ export function calculateNextDue(lastCompleted, frequency) {
 /**
  * Get month options for the fiscal year
  */
-export function getFiscalMonthOptions(startMonth = '2026-09', years = 12) {
+export function getFiscalMonthOptions(startMonth = '2020-11', extraFutureMonths = 6) {
   const [startYear, startMon] = startMonth.split('-').map(Number);
-  const months = [];
+  if (!startYear || !startMon) return [];
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-  for (let y = 0; y < years; y++) {
-    for (let m = 0; m < 12; m++) {
-      const monthIndex = (startMon - 1 + m) % 12;
-      const year = startYear + y + Math.floor((startMon - 1 + m) / 12);
-      const shortYear = String(year).slice(-2);
-      months.push(`${monthNames[monthIndex]}-${shortYear}`);
-    }
+  const months = [];
+  const cursor = new Date(startYear, startMon - 1, 1);
+  const end = new Date();
+  end.setMonth(end.getMonth() + extraFutureMonths);
+  end.setDate(1);
+  while (cursor <= end) {
+    months.push(`${monthNames[cursor.getMonth()]}-${String(cursor.getFullYear()).slice(-2)}`);
+    cursor.setMonth(cursor.getMonth() + 1);
   }
-
   return months;
 }
 

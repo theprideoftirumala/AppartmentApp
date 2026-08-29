@@ -63,7 +63,7 @@ All settings are configurable from the app's Settings page or directly from the 
 |---------|---------|-------------|
 | Monthly Maintenance | ₹3,000 | Amount per flat per month |
 | Corpus Fund | ₹0 | Corpus fund balance |
-| Opening surplus | ₹612 | Cash handed over 29 Aug 2026 |
+| Available balance | ₹1,712.54 | Summary tab figure on 29 Aug 2026 |
 | Treasurer Flat | 401 | Current treasurer |
 | President Flat | 102 | Current president |
 | Late Fee | ₹100 | Penalty after 15th of month |
@@ -80,16 +80,16 @@ Add a row on Maintenance or Expenses and refresh the app — the sheet is what t
 1. **Guide** — How to read and edit the workbook
 2. **Configuration** — App settings (key / value / description)
 3. **Flats** — Owner details for all 10 flats (names copied from Summary on first connect)
-4. **Maintenance** — Monthly payment records from Sep-26
+4. **Maintenance** — Monthly payment records from Nov 2020 (history copied from Summary)
 5. **Pending Dues** — Type a month in the yellow cell
-6. **Expenses** — All expense entries from Sep-26
+6. **Expenses** — Expense entries from Nov 2020 (history copied from Exp - Detailed)
 7. **Payees** — Vendor phones / UPI (GPay and PhonePe)
 8. **Emergency Contacts** — Contact directory
 9. **Reminders** — Recurring task reminders
 10. **Access Control** — User email whitelist
 11. **Audit Log** — All write operations
 12. **Water Tanker Log** — Tanker delivery tracking
-13. **Monthly Summary** — Live surplus/deficit formulas
+13. **Monthly Summary** — Collection, expenses, and net per month (surplus/deficit rows from Summary are not used)
 14. **Watchman Details** — Staff record
 15. **Handover Summary** — Nov 2020–Aug 2026 monthly totals
 16. **Society Notes** — Wifi id, borewell, motor-repair notes

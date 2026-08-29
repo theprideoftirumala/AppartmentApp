@@ -362,7 +362,7 @@ export async function generateMonthlyReport(reportData) {
   doc.setFontSize(7.5);
   pdfFont(doc, 'normal');
   doc.setTextColor(80, 80, 80);
-  doc.text(`Monthly Maintenance: ${formatCurrency(config?.MONTHLY_MAINTENANCE || 3000)} per flat  |  Total Flats: 10  |  Expected: ${formatCurrency((config?.MONTHLY_MAINTENANCE || 3000) * 10)}  |  Opening Balance (Aug 2026): ${formatCurrency(config?.DEFICIT_LAST_YEAR || 0)}`, margin + 4, y + 6);
+  doc.text(`Monthly Maintenance: ${formatCurrency(config?.MONTHLY_MAINTENANCE || 3000)} per flat  |  Total Flats: 10  |  Expected: ${formatCurrency((config?.MONTHLY_MAINTENANCE || 3000) * 10)}  |  Available balance (29 Aug 2026): ${formatCurrency(config?.AVAILABLE_BALANCE || 1712.54)}`, margin + 4, y + 6);
 
   const paidCount = (maintenance || []).filter(r => r.status === 'PAID').length;
   const pendingCount = (maintenance || []).filter(r => r.status === 'PENDING').length;
@@ -380,7 +380,7 @@ export async function generateMonthlyReport(reportData) {
   doc.setFontSize(8.5);
   pdfFont(doc, 'bold');
   doc.setTextColor(...textColor);
-  const balanceLabel = isDeficit ? 'DEFICIT THIS MONTH' : 'SURPLUS / REMAINING FUNDS';
+  const balanceLabel = isDeficit ? 'NET THIS MONTH (SHORT)' : 'NET THIS MONTH';
   doc.text(`${balanceLabel}: ${formatCurrency(Math.abs(netBalance))}`, margin + 4, y + 5);
   doc.setFontSize(7);
   pdfFont(doc, 'normal');

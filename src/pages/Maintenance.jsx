@@ -268,9 +268,9 @@ function PaymentModal({ isOpen, onClose, onSave, record, config, flats, month, s
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!formData.flat) return;
-    // Enforce minimum date: maintenance starts Sep 2026
+    // History on this sheet starts November 2020
     if (formData.paymentDate && formData.paymentDate < MAINTENANCE_MIN_DATE) {
-      setDateError(`Payment date cannot be before ${MAINTENANCE_MIN_DATE}. Maintenance tracking starts from September 2026.`);
+      setDateError(`Payment date cannot be before ${MAINTENANCE_MIN_DATE}. History on this sheet starts November 2020.`);
       return;
     }
     setDateError('');

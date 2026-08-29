@@ -14,8 +14,10 @@ export const HANDOVER_PROPERTY = {
   flatCount: 10,
 };
 
-/** Cash physically handed over. Not the sheet running total. */
-export const HANDOVER_CASH_SURPLUS = 612;
+/** Green Available balance cell on the Summary tab, last updated 29 Aug 2026. */
+export const HANDOVER_AVAILABLE_BALANCE = 1712.54;
+/** @deprecated Use HANDOVER_AVAILABLE_BALANCE — that sheet cell is the final figure. */
+export const HANDOVER_CASH_SURPLUS = HANDOVER_AVAILABLE_BALANCE;
 
 export const HANDOVER_META = {
   date: '2026-08-29',

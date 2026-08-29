@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import {
-  TrendingUp, TrendingDown, IndianRupee, Users, AlertCircle,
+  TrendingDown, IndianRupee, Users, AlertCircle,
   RefreshCw, Calendar, Bell, Phone, ArrowRight,
   PieChart, Wallet, Plus, Building2, Info, FlaskConical, Table2
 } from 'lucide-react';
@@ -39,7 +39,7 @@ export default function Dashboard() {
       await ensureSheetStructure();
       sessionStorage.setItem('tpt_sheet_layout_v14', '1');
       setSheetUpgrade('done');
-      showToast('Google Sheet updated: Pending Dues tab and surplus/deficit formulas are ready.', 'success');
+      showToast('Google Sheet updated: history from Summary and Exp-Detailed is ready to view and export.', 'success');
     } catch (err) {
       setSheetUpgrade('error');
       showToast(err.message || 'Could not update the Google Sheet layout', 'error');
@@ -186,7 +186,6 @@ export default function Dashboard() {
   const categoryEntries = Object.entries(categoryGroups).sort((a, b) => b[1].total - a[1].total);
   const topCategories = categoryEntries.slice(0, 5);
   const stillDueThisMonth = currentMonthMaintenance.reduce((s, m) => s + (Number(m.stillDue) || 0), 0);
-  const monthNet = currentMonthCollection - currentMonthExpenseTotal;
   const remindersDueSoon = upcomingReminders.filter((r) => {
     const days = daysUntil(r.nextDue);
     return days <= 7;
@@ -243,7 +242,7 @@ export default function Dashboard() {
           <Table2 size={16} />
           <span>
             <strong>Update the Google Sheet</strong> — adds Pending Dues (type a month in the yellow cell)
-            and live surplus/deficit formulas. Does not delete your numbers.
+            and copies history from Summary and Exp-Detailed. Does not delete your numbers.
           </span>
           <button className="btn btn-primary btn-sm" disabled={upgradingSheet} onClick={applySheetLayout}>
             {upgradingSheet || sheetUpgrade === 'pending' ? 'Updating…' : 'Update sheet'}
@@ -273,7 +272,7 @@ export default function Dashboard() {
         {/* Current Balance */}
         <div className="stat-card stat-card-balance">
           <div className="stat-card-header">
-            <span className="stat-card-label">Current Balance</span>
+            <span className="stat-card-label">Available balance</span>
             <div className="stat-card-icon-wrap stat-icon-primary">
               <Wallet size={20} />
             </div>
@@ -282,11 +281,7 @@ export default function Dashboard() {
             {formatCurrency(totals.currentBalance || 0)}
           </div>
           <div className="stat-card-trend">
-            {totals.currentBalance >= 0 ? (
-              <><TrendingUp size={14} className="text-success" /> Healthy</>
-            ) : (
-              <><TrendingDown size={14} className="text-danger" /> Deficit</>
-            )}
+            <span className="text-muted">From the sheet as of 29 Aug 2026, plus later app entries</span>
           </div>
         </div>
 
@@ -346,11 +341,9 @@ export default function Dashboard() {
           <span className="widget-hint">{pendingFlats.length} flat(s) pending</span>
         </div>
         <div className="widget-card">
-          <span className="widget-label">{currentMonth} surplus / deficit</span>
-          <strong className={`widget-value ${monthNet >= 0 ? 'text-success' : 'text-danger'}`}>
-            {formatCurrency(monthNet)}
-          </strong>
-          <span className="widget-hint">{monthNet >= 0 ? 'Collection minus expenses' : 'Spent more than collected'}</span>
+          <span className="widget-label">Available balance</span>
+          <strong className="widget-value">{formatCurrency(totals.currentBalance || config.AVAILABLE_BALANCE || 1712.54)}</strong>
+          <span className="widget-hint">Summary tab figure ₹1,712.54, then new collections minus new expenses</span>
         </div>
         <div className="widget-card">
           <span className="widget-label">Reminders due soon</span>
@@ -559,19 +552,15 @@ export default function Dashboard() {
       </div>
 
       {/* Deficit/Opening Balance Note */}
-      {config.DEFICIT_LAST_YEAR !== 0 && (
-        <div className={`deficit-banner mt-6 animate-fade-in ${config.DEFICIT_LAST_YEAR < 0 ? 'deficit-banner-danger' : 'deficit-banner-info'}`}>
-          <AlertCircle size={20} />
-          <div>
-            <strong>Opening Balance (Aug 2026 Handover): {formatCurrency(config.DEFICIT_LAST_YEAR)}</strong>
-            <p className="text-sm">
-              {config.DEFICIT_LAST_YEAR < 0
-                ? `Deficit of ${formatCurrency(Math.abs(config.DEFICIT_LAST_YEAR))} carried forward. This is reflected in the Current Balance.`
-                : `Surplus of ${formatCurrency(config.DEFICIT_LAST_YEAR)} carried forward as opening balance.`}
-            </p>
-          </div>
+      <div className="deficit-banner mt-6 animate-fade-in deficit-banner-info">
+        <AlertCircle size={20} />
+        <div>
+          <strong>Available balance on 29 Aug 2026: {formatCurrency(config.AVAILABLE_BALANCE || 1712.54)}</strong>
+          <p className="text-sm">
+            That is the green Available balance cell on the Summary tab. Late fees and surplus/deficit rows from that sheet are not used. History from Summary and Exp-Detailed loads into Maintenance and Expenses so you can view and export it.
+          </p>
         </div>
-      )}
+      </div>
     </div>
   );
 }

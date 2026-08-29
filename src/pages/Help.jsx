@@ -30,8 +30,8 @@ All data is stored in a Google Sheet in your Google Drive — the sheet is the s
                 heading: 'Where is the data stored?',
                 text: `Your data lives in a Google Sheet named "The Pride of Tirumala-APP" in a Google Drive folder called "TPT-AppartmentApp".
 Open it anytime from Settings > Open Sheet. Start with the Guide tab — it explains every column in plain language.
-Use Pending Dues to see unpaid flats for any month, and Monthly Summary for surplus or deficit (those tabs use formulas, so they stay correct if you edit Maintenance by hand).
-The Handover Summary tab holds Nov 2020–Aug 2026 totals from the old I&E Excel. Live tabs start Sep-26.
+Use Pending Dues to see unpaid flats for any month. Monthly Summary shows collection, expenses, and net for each month (those tabs use formulas, so they stay correct if you edit Maintenance by hand).
+History from Summary and Exp-Detailed (Nov 2020–Aug 2026) is loaded into Maintenance and Expenses so you can view and export it. The Summary Available balance ₹1,712.54 on 29 Aug 2026 is the final figure. Surplus/deficit and late-fee rows are ignored. The app does not start in Sep 2026.
 Setup connects The Pride of Tirumala-APP already in Drive, copies a backup first, then adds empty app tabs beside the five history tabs. It does not create a new society file.
 Backups (copies of the sheet) are stored in the "backups" subfolder. A copy is also taken on each Google sign-in.`,
             },
@@ -95,7 +95,7 @@ Record who joined, what they paid, and expenses from that fund. Download a PDF f
                 heading: '5. End of Month — Generate Report',
                 text: `Go to Reports, select the month, and click PDF to download.
 Click "Share via WhatsApp" to send the PDF directly to the WhatsApp group.
-Click "Sync Sheet" to add this month on Monthly Summary and refresh the live formulas (surplus/deficit, pending flats).
+Click "Sync Sheet" to add this month on Monthly Summary and refresh the live formulas (net, pending flats).
 Open the Google Sheet → Pending Dues, type the month in the yellow cell, and you will see who still owes money.`,
             },
             {
@@ -134,9 +134,9 @@ Enter their Gmail. Role defaults to Reader (view-only). The app shares the exist
 They must re-consent Google Drive scopes on first login after this change. Maximum 20 users, 2 owners.`,
             },
             {
-                heading: 'Opening Balance / Handover Deficit',
-                text: `The opening balance from August 2026 (handover) is set in Settings → Configuration → "Deficit from August 2026 (Handover)".
-This field is read-only in the app. To update it: edit the DEFICIT_LAST_YEAR row in the Configuration sheet directly, or change DEFAULT_CONFIG.DEFICIT_LAST_YEAR in src/config/constants.js and redeploy.`,
+                heading: 'Available balance (29 Aug 2026)',
+                text: `The green Available balance cell on the Summary tab is ₹1,712.54. That is the final figure from the old workbook.
+Settings → Configuration → Available balance holds the same number. History months (Nov 2020–Aug 2026) are shown for viewing and PDF export. They do not add on top of this figure. New Sep 2026+ collections and expenses change the running total from ₹1,712.54.`,
             },
             {
                 heading: 'Changing the monthly maintenance amount',
@@ -162,11 +162,10 @@ Each Google sign-in copies The Pride of Tirumala-APP into Drive/backups. Guest P
                 text: `Configuration — App settings (monthly amount, fiscal year, roles)\nFlats — Owner details for all 10 flats\nMaintenance — Monthly payment records\nExpenses — All expense transactions\nMonthly Summary — Aggregated monthly financials\nReminders — Scheduled maintenance tasks\nAccess Control — Authorized user list\nAudit Log — Full history of all changes\nWater Tanker Log — Water tanker order history\nWatchman Details — Security guard info`,
             },
             {
-                heading: 'Remaining / Deficit in Google Sheet',
-                text: `Look at the Monthly Summary sheet. The "Net Balance" column shows monthly surplus or deficit.
-"Cumulative Balance" shows the running total across all months.
-A negative value = deficit (we spent more than collected). A positive value = surplus.
-The opening deficit from August 2026 is in the Configuration sheet (DEFICIT_LAST_YEAR row).`,
+                heading: 'Available balance in the Google Sheet',
+                text: `The official cash figure is the Summary tab Available balance: ₹1,712.54 on 29 Aug 2026.
+Monthly Summary "Net Balance" is that month's collection minus expenses only. It is not a second surplus/deficit to add on.
+AVAILABLE_BALANCE in Configuration is that same 29 Aug figure. DEFICIT_LAST_YEAR stays 0 so history is not counted twice.`,
             },
             {
                 heading: 'Read-only access for members',
@@ -217,7 +216,7 @@ The next due date is automatically scheduled based on the frequency (e.g., Month
             },
             {
                 heading: '2. Configuration Tab — Full Key Reference',
-                text: `STRUCTURE: Column A = Key name, Column B = Value, Column C = Description\nDo NOT edit Column A (key names). Only edit Column B values.\n\nKEY REFERENCE:\n\nAPARTMENT_NAME\n  Value example: "The Pride of Tirumala"\n  Used on: PDF reports, app header\n\nMONTHLY_MAINTENANCE\n  Value example: 3000\n  Used for: Amount Due when initializing a month. Change here to affect future months.\n\nCORPUS_FUND\n  Value example: 0 or 50000\n  Used for: One-time corpus. Added to the opening balance calculation.\n  Note: Read-only in the app. Edit directly here.\n\nDEFICIT_LAST_YEAR\n  Value example: 612 (positive = surplus handed over on 29 Aug 2026)\n  Used for: Opening cash for Sep-26. The old Excel running net was 1712.54; cash given was 612.\n  Important: This is the STARTING POINT for all balance calculations.\n  To update: click cell B4, type the new value, press Enter.\n\nFISCAL_YEAR_START\n  Value example: 2026-09\n  Used for: Determines which months appear in the app dropdown lists.\n\nTREASURER_FLAT\n  Value example: 401\n  Used for: Displayed on PDF report footers\n\nPRESIDENT_FLAT\n  Value example: 102\n  Used for: Displayed on PDF report footers\n\nLATE_FEE\n  Value: 100 (not enforced by app currently, kept for reference)\n\nLATE_FEE_AFTER_DAY\n  Value: 15 (day of month after which late fee applies — for reference)\n\nEMERGENCY_RESERVE\n  Value: 15000 (minimum balance to maintain — for reference)\n\nMAX_USERS / MAX_OWNERS\n  Values: 20 / 2 (enforced by the app's Access Control screen)`,
+                text: `STRUCTURE: Column A = Key name, Column B = Value, Column C = Description\nDo NOT edit Column A (key names). Only edit Column B values.\n\nKEY REFERENCE:\n\nAPARTMENT_NAME\n  Value example: "The Pride of Tirumala"\n  Used on: PDF reports, app header\n\nMONTHLY_MAINTENANCE\n  Value example: 3000\n  Used for: Amount Due when initializing a month. Change here to affect future months.\n\nCORPUS_FUND\n  Value example: 0 or 50000\n  Used for: One-time corpus. Added to the opening balance calculation.\n  Note: Read-only in the app. Edit directly here.\n\nAVAILABLE_BALANCE\n  Value example: 1712.54\n  Used for: The Summary tab Available balance on 29 Aug 2026. This is the final figure. History months do not add on top of it.\n\nDEFICIT_LAST_YEAR\n  Value: 0\n  Used for: Kept at zero so imported history is not double-counted.\n\nFISCAL_YEAR_START\n  Value example: 2020-11\n  Used for: First month in the app dropdowns (November 2020). Not September 2026.\n\nTREASURER_FLAT\n  Value example: 401\n  Used for: Displayed on PDF report footers\n\nPRESIDENT_FLAT\n  Value example: 102\n  Used for: Displayed on PDF report footers\n\nLATE_FEE\n  Value: 100 (not enforced by app currently, kept for reference)\n\nLATE_FEE_AFTER_DAY\n  Value: 15 (day of month after which late fee applies — for reference)\n\nEMERGENCY_RESERVE\n  Value: 15000 (minimum balance to maintain — for reference)\n\nMAX_USERS / MAX_OWNERS\n  Values: 20 / 2 (enforced by the app's Access Control screen)`,
             },
             {
                 heading: '3. Flats Tab — Flat Owner Details',
@@ -233,7 +232,7 @@ The next due date is automatically scheduled based on the frequency (e.g., Month
             },
             {
                 heading: '6. Monthly Summary Tab — Financial Overview',
-                text: `COLUMNS: Month | Collection (Rs.) | Misc Funds (Rs.) | Expenses (Rs.) | Net Balance (Rs.) | Cumulative (Rs.) | Collection % | Pending Flats | Status\n\nTHIS TAB IS CALCULATED BY THE APP — click "Sync Sheet" in Reports to update it.\n\nUNDERSTANDING EACH COLUMN:\n\nNet Balance = Collection + Misc Funds - Expenses\n  - Positive: surplus for the month (collected more than spent)\n  - Negative: deficit for the month (spent more than collected)\n\nCumulative = Sum of all Net Balances across all months + Opening Balance (DEFICIT_LAST_YEAR)\n  - This is the OVERALL financial health of the apartment fund\n  - Positive = the fund has money left\n  - Negative = the fund is in deficit\n\nCollection % = (Number of PAID flats / 10) * 100\n  - 100% = all 10 flats paid for the month\n  - 50% = 5 out of 10 flats paid\n\nPending Flats = List of flat numbers that have NOT paid (PENDING or PARTIAL status)\n\nHOW TO READ THE BIG PICTURE:\n1. Look at the Cumulative column (column F) in the LAST ROW — this is today's fund balance\n2. If Cumulative is negative, the fund owes money (needs to be recovered from future collections)\n3. If Cumulative is positive, the fund has a reserve\n4. Compare Net Balance month by month to see if expenses are growing\n\nHOW TO MANUALLY ANALYZE (without syncing):\n- Sum column B (Collection) for all months = total collection since Sep 2026\n- Sum column D (Expenses) for all months = total spending\n- The difference is the net fund balance (ignoring opening balance)`,
+                text: `COLUMNS: Month | Collection (Rs.) | Misc Funds (Rs.) | Expenses (Rs.) | Net Balance (Rs.) | Cumulative (Rs.) | Collection % | Pending Flats | Status\n\nTHIS TAB IS CALCULATED BY THE APP — click "Sync Sheet" in Reports to update it.\n\nUNDERSTANDING EACH COLUMN:\n\nNet Balance = Collection + Misc Funds - Expenses for that month only\n  - This is not a second surplus/deficit to add to Available balance\n\nAvailable balance (29 Aug 2026) = ₹1,712.54 from the Summary tab\n  - History months are for viewing and export\n  - Sep 2026+ months change the running total from that figure\n\nCollection % = (Number of PAID flats / 10) * 100\n  - 100% = all 10 flats paid for the month\n  - 50% = 5 out of 10 flats paid\n\nPending Flats = List of flat numbers that have NOT paid (PENDING or PARTIAL status)\n\nHOW TO READ THE BIG PICTURE:\n1. Available balance on 29 Aug 2026 is ₹1,712.54 (Configuration AVAILABLE_BALANCE)\n2. History months (Nov-20 through Aug-26) are on Maintenance and Expenses for viewing and PDF export\n3. Compare Net Balance month by month to see collection versus spend\n\nHOW TO MANUALLY ANALYZE (without syncing):\n- Filter Maintenance to one month and sum Amount Paid\n- Filter Expenses to the same month and sum Amount\n- The difference is that month's net (not a surplus/deficit to add to ₹1,712.54)`
             },
             {
                 heading: '7. Access Control Tab — User Management',
@@ -249,11 +248,11 @@ The next due date is automatically scheduled based on the frequency (e.g., Month
             },
             {
                 heading: '10. Data Validation & Format Rules',
-                text: `When editing the Google Sheet DIRECTLY (bypassing the app), follow these rules strictly:\n\nDATE FIELDS (Payment Date, Date, Next Due, etc.):\n  Format: YYYY-MM-DD\n  Example: 2026-09-15  NOT "15-Sep-2026" or "15/09/2026"\n  Important: Must be on or after 2026-09-01\n\nMONTH LABELS (Month column in Maintenance, Expenses, etc.):\n  Format: MMM-YY\n  Example: Sep-26, Oct-26, Nov-26, Dec-26, Jan-27, Feb-27...\n  Important: Must match exactly — "Sep-26" NOT "September 2026" or "09-2026"\n\nAMOUNT FIELDS:\n  Format: Plain number, no currency symbol, no commas\n  Example: 3000  NOT "Rs.3000" or "3,000"\n\nSTATUS FIELDS (Maintenance):\n  Must be exactly: PAID / PENDING / PARTIAL / WAIVED (all uppercase)\n\nSTATUS FIELDS (Access Control):\n  Must be exactly: Active / Inactive (capital first letter)\n\nROLE FIELDS:\n  Must be exactly: Owner / Reader (capital first letter)\n\nBOOLEAN FIELDS (Bill/Receipt in Expenses):\n  Must be exactly: Y or N (uppercase single letter)\n\nID FIELDS:\n  Expenses: EXP-{timestamp} (e.g., EXP-1724123456789)\n  Reminders: REM-{timestamp}\n  Misc Funds: MISC-{timestamp}\n  Never reuse or duplicate IDs`,
+                text: `When editing the Google Sheet DIRECTLY (bypassing the app), follow these rules strictly:\n\nDATE FIELDS (Payment Date, Date, Next Due, etc.):\n  Format: YYYY-MM-DD\n  Example: 2026-09-15  NOT "15-Sep-2026" or "15/09/2026"\n  Important: Must be on or after 2020-11-01 (history starts November 2020)\n\nMONTH LABELS (Month column in Maintenance, Expenses, etc.):\n  Format: MMM-YY\n  Example: Sep-26, Oct-26, Nov-26, Dec-26, Jan-27, Feb-27...\n  Important: Must match exactly — "Sep-26" NOT "September 2026" or "09-2026"\n\nAMOUNT FIELDS:\n  Format: Plain number, no currency symbol, no commas\n  Example: 3000  NOT "Rs.3000" or "3,000"\n\nSTATUS FIELDS (Maintenance):\n  Must be exactly: PAID / PENDING / PARTIAL / WAIVED (all uppercase)\n\nSTATUS FIELDS (Access Control):\n  Must be exactly: Active / Inactive (capital first letter)\n\nROLE FIELDS:\n  Must be exactly: Owner / Reader (capital first letter)\n\nBOOLEAN FIELDS (Bill/Receipt in Expenses):\n  Must be exactly: Y or N (uppercase single letter)\n\nID FIELDS:\n  Expenses: EXP-{timestamp} (e.g., EXP-1724123456789)\n  Reminders: REM-{timestamp}\n  Misc Funds: MISC-{timestamp}\n  Never reuse or duplicate IDs`,
             },
             {
                 heading: '11. How Calculations Work (No Formulas)',
-                text: `The Google Sheet has NO FORMULAS in the data area. All calculations are performed by the app JavaScript code.\n\nHOW BALANCE IS CALCULATED BY THE APP:\n  Current Balance = Sum(all Amount Paid across all months)\n                  + Sum(all Misc Funds across all months)\n                  - Sum(all Expenses across all months)\n                  + DEFICIT_LAST_YEAR (opening balance from Configuration)\n\nHOW MONTHLY SUMMARY IS CREATED:\n  When you click "Sync Sheet" in Reports, the app:\n  1. Reads all Maintenance rows for the month\n  2. Reads all Expenses rows for the month\n  3. Calculates Collection, Misc Funds total, Expenses total, Net Balance\n  4. Writes one row to the Monthly Summary tab\n\nIF NUMBERS LOOK WRONG:\n  1. Check DEFICIT_LAST_YEAR value in Configuration (should be the exact handover balance)\n  2. Verify all expenses have the correct Month label (e.g., Sep-26 not Oct-26)\n  3. Check if any row has Amount Paid > Amount Due (app allows this for advance payments)\n  4. Click "Sync Sheet" in Reports to recalculate Monthly Summary\n  5. Refresh the app (F5 or pull-to-refresh) to reload data from the sheet\n\nADDING YOUR OWN FORMULAS:\n  You CAN add formulas in EMPTY COLUMNS to the right of the data\n  Example: In Monthly Summary, add column J with =E2+F2 for a running total\n  DO NOT insert columns within the existing data range — it will break the app`,
+                text: `The Google Sheet has NO FORMULAS in the data area. All calculations are performed by the app JavaScript code.\n\nHOW BALANCE IS CALCULATED BY THE APP:\n  Current Balance = AVAILABLE_BALANCE (₹1,712.54 on 29 Aug 2026)\n                  + collections from Sep 2026 onward\n                  - expenses from Sep 2026 onward\n  History months are shown and exportable. They do not add on top of ₹1,712.54.\n\nHOW MONTHLY SUMMARY IS CREATED:\n  When you click "Sync Sheet" in Reports, the app:\n  1. Reads all Maintenance rows for the month\n  2. Reads all Expenses rows for the month\n  3. Calculates Collection, Misc Funds total, Expenses total, Net Balance\n  4. Writes one row to the Monthly Summary tab\n\nIF NUMBERS LOOK WRONG:\n  1. Check AVAILABLE_BALANCE in Configuration (should be 1712.54)\n  2. Verify all expenses have the correct Month label (e.g., Aug-26 not Sep-26)\n  3. Check if any row has Amount Paid > Amount Due (app allows this for advance payments)\n  4. Click "Sync Sheet" in Reports to recalculate Monthly Summary\n  5. Refresh the app (F5 or pull-to-refresh) to reload data from the sheet\n\nADDING YOUR OWN FORMULAS:\n  You CAN add formulas in EMPTY COLUMNS to the right of the data\n  Example: In Monthly Summary, add column J with =E2+F2 for a running total\n  DO NOT insert columns within the existing data range — it will break the app`,
             },
             {
                 heading: '12. Filtering, Sorting & Analyzing Data',
@@ -311,7 +310,7 @@ The next due date is automatically scheduled based on the frequency (e.g., Month
             },
             {
                 heading: 'The balance looks wrong — how is it calculated?',
-                text: `Current Balance = Total Collection (all months) - Total Expenses (all months) + Opening Balance (DEFICIT_LAST_YEAR)\n\nIf the balance seems off:\n1. Check the DEFICIT_LAST_YEAR value in the Configuration sheet (should be the actual handover balance from Aug 2026)\n2. Check if all expenses have been logged with the correct Month\n3. Click "Sync Sheet" in Reports to refresh the Monthly Summary\n4. Open the Google Sheet directly to verify the raw data`,
+                text: `Current Balance = Available balance ₹1,712.54 (29 Aug 2026) + Sep 2026+ collections − Sep 2026+ expenses.\nHistory (Nov 2020–Aug 2026) is shown for viewing and PDF export. It is already inside that ₹1,712.54 figure.\n\nIf the balance seems off:\n1. Check AVAILABLE_BALANCE in Configuration (should be 1712.54)\n2. Check if new expenses have the correct Month (Sep-26 onward)\n3. Click Sync Sheet in Reports, then refresh the app\n4. Open the Google Sheet to verify the raw data`,
             },
             {
                 heading: 'How do I change the monthly maintenance amount?',
@@ -326,8 +325,8 @@ The next due date is automatically scheduled based on the frequency (e.g., Month
                 text: `Each browser stores the spreadsheet ID locally.\nFounding owner: sign in and Setup will reconnect the owned The Pride of Tirumala-APP (it will not create a second file if one exists).\nResidents: you must already be added in Access Control and have the sheet shared as Viewer. You will not see a create-sheet wizard.`,
             },
             {
-                heading: 'How to update the Opening Balance / Handover Deficit?',
-                text: `The opening balance (DEFICIT_LAST_YEAR) is set during initial setup from src/config/constants.js. To change it after setup:\n1. Open the Google Sheet\n2. Go to the Configuration tab\n3. Find the row with Key = "DEFICIT_LAST_YEAR"\n4. Update the Value column (negative = deficit, positive = surplus)\n5. The app will read the new value on next refresh\n\nFor developer access: update DEFAULT_CONFIG.DEFICIT_LAST_YEAR in src/config/constants.js and redeploy.`,
+                heading: 'How to update the Available balance?',
+                text: `The Available balance is the green cell on the Summary tab (₹1,712.54 on 29 Aug 2026).\nTo change it after setup:\n1. Open the Google Sheet\n2. Go to the Configuration tab\n3. Find the row with Key = "AVAILABLE_BALANCE"\n4. Update the Value column\n5. The app will read the new value on next refresh\n\nSettings → Configuration also has this field.`,
             },
         ],
     },

@@ -368,12 +368,12 @@ export default function Settings() {
                   info: 'One-time corpus amount collected from flat owners. Edit directly in the Configuration sheet in Google Drive.'
                 },
                 {
-                  key: 'DEFICIT_LAST_YEAR', label: 'Opening surplus (29 Aug 2026 handover) ₹', type: 'number',
-                  info: 'Cash handed over on 29 Aug 2026. The I&E Excel running net was ₹1,712.54; the cash given was ₹612. Positive = surplus.'
+                  key: 'AVAILABLE_BALANCE', label: 'Available balance (29 Aug 2026) ₹', type: 'number',
+                  info: 'The green Available balance cell on the Summary tab: ₹1,712.54. This is the final figure from that sheet. Late-fee and surplus/deficit rows are ignored.'
                 },
                 {
-                  key: 'FISCAL_YEAR_START', label: 'Fiscal Year Start (YYYY-MM)', type: 'text',
-                  info: 'Start month of the financial year. For TPT this is 2026-09 (September 2026).'
+                  key: 'FISCAL_YEAR_START', label: 'Books start (YYYY-MM)', type: 'text',
+                  info: 'First month of history. The Summary tab starts Nov 2020, so this is 2020-11. Not September 2026.'
                 },
                 {
                   key: 'TREASURER_FLAT', label: 'Treasurer Flat', type: 'select', options: FLATS,
@@ -614,9 +614,10 @@ export default function Settings() {
           <div className="card mt-4">
             <h3 className="card-title mb-2">Refresh sheet layout</h3>
             <p className="text-muted text-sm mb-4">
-              Adds any missing app tabs to <strong>{SHEET_FILE_NAME}</strong> (Guide, Configuration,
-              Maintenance, Expenses, …). Leaves Summary, Exp - Detailed, Borewell Exp,
-              Motor repair oct, and Notes untouched. Does not create a new file.
+              Adds any missing app tabs to <strong>{SHEET_FILE_NAME}</strong> and copies
+              Summary collections and Exp-Detailed lines through Aug 2026 that are not
+              already on Maintenance or Expenses (not surplus/deficit or late-fee rows).
+              Leaves the five history tabs untouched.
             </p>
             <button
               className="btn btn-secondary"

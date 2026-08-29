@@ -5,6 +5,7 @@
  */
 
 import { SHEET_NAMES, SHEET_HEADERS, DEFAULT_CONFIG, CONFIG_DESCRIPTIONS, FLATS, STORAGE_KEYS, isSocietySheetName, isGoogleSpreadsheetMime } from '../config/constants';
+import { isLiveAppMonth } from '../utils/legacySheetImport';
 import { duplicateExpenseMessage, firstDuplicateExpense } from '../utils/expenseDuplicate';
 import {
   FOUNDING_OWNER_EMAIL,
@@ -1375,7 +1376,12 @@ export async function getDashboardData() {
     const totalCollected = maintenance.reduce((sum, r) => sum + r.amountPaid, 0);
     const totalMiscFunds = miscFunds.reduce((sum, f) => sum + f.amount, 0);
     const totalExpenseAmount = expenses.reduce((sum, e) => sum + e.amount, 0);
-    const currentBalance = totalCollected + totalMiscFunds - totalExpenseAmount + config.DEFICIT_LAST_YEAR + config.CORPUS_FUND;
+    const liveCollected = maintenance.filter((r) => isLiveAppMonth(r.month)).reduce((sum, r) => sum + r.amountPaid, 0);
+    const liveMiscFunds = miscFunds.filter((f) => isLiveAppMonth(f.month)).reduce((sum, f) => sum + f.amount, 0);
+    const liveExpenseAmount = expenses.filter((e) => isLiveAppMonth(e.month)).reduce((sum, e) => sum + e.amount, 0);
+    const availableSnapshot = Number(config.AVAILABLE_BALANCE);
+    const opening = Number.isFinite(availableSnapshot) ? availableSnapshot : 1712.54;
+    const currentBalance = opening + liveCollected + liveMiscFunds - liveExpenseAmount + (Number(config.CORPUS_FUND) || 0);
 
     // Cache dashboard data
     const dashboardData = {

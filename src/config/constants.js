@@ -27,7 +27,7 @@ export const DISCOVERY_DOCS = [
 // ─── Apartment Configuration ────────────────────────────────────
 export const APP_NAME = 'The Pride of Tirumala';
 export const APP_SHORT_NAME = 'TPT Tracker';
-export const APP_VERSION = '1.8.2';
+export const APP_VERSION = '1.8.3';
 
 /**
  * Bump this when GOOGLE_SCOPES change so existing sessions re-consent.
@@ -50,6 +50,7 @@ export const FEATURES = {
   LOGIN_BACKUP: true,
   SAMPLE_DATA: false,
   PAYEES: true,
+  SURPLUS_DEFICIT: false,
 };
 
 export function isYesFlag(value) {
@@ -75,8 +76,9 @@ export const DEFAULT_CONFIG = {
   APARTMENT_NAME: 'The Pride of Tirumala',
   MONTHLY_MAINTENANCE: 3000,
   CORPUS_FUND: 0,
-  DEFICIT_LAST_YEAR: 612,
-  FISCAL_YEAR_START: '2026-09',
+  DEFICIT_LAST_YEAR: 0,
+  AVAILABLE_BALANCE: 1712.54,
+  FISCAL_YEAR_START: '2020-11',
   TREASURER_FLAT: '401',
   PRESIDENT_FLAT: '102',
   LATE_FEE: 100,
@@ -91,6 +93,9 @@ export const DEFAULT_CONFIG = {
   APARTMENT_ADDRESS: 'PLNo 49&48&47, Road No 20, Alkapur, Neknampur, 500089',
   SAMPLE_DATA: 'N',
 };
+
+/** First live app month. History import and the Available-balance snapshot end the month before. */
+export const LIVE_APP_START = '2026-09';
 
 // ─── Google Drive Folder Names ──────────────────────────────────
 export const DRIVE_ROOT_FOLDER = 'TPT-AppartmentApp';
@@ -158,9 +163,10 @@ export const CONFIG_DESCRIPTIONS = {
   APARTMENT_NAME: 'Name of the apartment complex (shown on dashboard and PDF reports)',
   MONTHLY_MAINTENANCE: 'Monthly maintenance amount each flat pays (₹). Example: 3000',
   CORPUS_FUND: 'One-time corpus fund balance (₹). Edit here; the app reads this value.',
-  DEFICIT_LAST_YEAR: 'Cash handed over on 29 Aug 2026 (₹). Negative = deficit, positive = surplus. Set to 612.',
+  DEFICIT_LAST_YEAR: 'Do not add an extra opening amount. History from Summary and Exp-Detailed is already in Maintenance and Expenses.',
+  AVAILABLE_BALANCE: 'Available balance on the Summary tab as of 29 Aug 2026 (₹1,712.54). This is the final figure from that cell.',
   APARTMENT_ADDRESS: 'Postal address of the apartment',
-  FISCAL_YEAR_START: 'First month of the financial year as YYYY-MM. TPT uses 2026-09.',
+  FISCAL_YEAR_START: 'First month on the books as YYYY-MM. History starts 2020-11.',
   TREASURER_FLAT: 'Flat number of the current Treasurer (must match a row in the Flats tab)',
   PRESIDENT_FLAT: 'Flat number of the current President (must match a row in the Flats tab)',
   LATE_FEE: 'Late payment penalty in ₹ applied after LATE_FEE_AFTER_DAY',
@@ -261,7 +267,7 @@ export const ACTIVITY_TAB_HEADERS = {
 };
 
 // ─── Maintenance Constraints ───────────────────────────────────
-export const MAINTENANCE_MIN_DATE = '2026-09-01';
+export const MAINTENANCE_MIN_DATE = '2020-11-01';
 
 // ─── Expense Categories ─────────────────────────────────────────
 export const EXPENSE_CATEGORIES = [
