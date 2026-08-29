@@ -35,13 +35,13 @@ function roleOrDeny(email, entry) {
   return effectiveAppRole(email, entry);
 }
 
-function queueOwnerLoginBackup() {
+function queueLoginBackup() {
+  if (!FEATURES.LOGIN_BACKUP) return;
   if (sessionStorage.getItem(STORAGE_KEYS.LOGIN_BACKUP_DONE) === '1') return;
-  if (!localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID)) return;
+  if (!isValidSpreadsheetId(localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID))) return;
   sessionStorage.setItem(STORAGE_KEYS.LOGIN_BACKUP_DONE, '1');
-  createBackup().catch((err) => {
+  createBackup(null, { reason: 'login' }).catch((err) => {
     console.warn('Login backup skipped', err);
-    sessionStorage.removeItem(STORAGE_KEYS.LOGIN_BACKUP_DONE);
   });
 }
 
@@ -91,6 +91,7 @@ export function AuthProvider({ children }) {
               setAccessDenied(true);
             } else {
               setUser(userData);
+              if (setupComplete) queueLoginBackup();
             }
           } catch (aclErr) {
             setUser(userData);
@@ -151,10 +152,7 @@ export function AuthProvider({ children }) {
         }
       }
       setUser(userData);
-      const role = setupComplete ? roleOrDeny(userData.email, entry) : null;
-      if (FEATURES.LOGIN_BACKUP && role === 'Owner') {
-        queueOwnerLoginBackup();
-      }
+      if (setupComplete) queueLoginBackup();
       return userData;
     } catch (err) {
       if (!err.message?.startsWith('ACCESS_DENIED')) setError(err.message);

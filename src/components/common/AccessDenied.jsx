@@ -5,7 +5,8 @@
 
 import { ShieldOff, LogOut } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { FOUNDING_OWNER_EMAIL } from '../../config/accessPolicy';
+import { FOUNDING_OWNER_EMAIL, maskEmail } from '../../config/accessPolicy';
+import { SHEET_FILE_NAME } from '../../config/constants';
 
 export default function AccessDenied() {
     const { user, signOut } = useAuth();
@@ -33,8 +34,8 @@ export default function AccessDenied() {
                 </p>
 
                 <p className="access-denied-hint">
-                    Ask <strong>{FOUNDING_OWNER_EMAIL}</strong> to add you in Settings → Access Control
-                    (default role is Reader / view-only). Do not create a second TPT-MaintenanceTracker sheet.
+                    Ask <strong>{maskEmail(FOUNDING_OWNER_EMAIL)}</strong> to add you in Settings → Access Control
+                    (default role is Reader / view-only). Do not upload a second <strong>{SHEET_FILE_NAME}</strong>.
                 </p>
 
                 <button className="btn btn-secondary access-denied-signout" onClick={handleSignOut}>

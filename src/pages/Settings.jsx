@@ -16,18 +16,18 @@ import {
   getAccessControl, addAccessControl, removeAccessControl, updateAccessControlRole,
   getFlats, updateFlat, addAuditLog,
   getWatchmanDetails, addWatchmanDetail, updateWatchmanDetail, deleteWatchmanDetail,
-  archiveAndCreateFresh, addReminder, ensureFoundingOwnerEntry, seedSampleLiveData,
+  seedSampleLiveData,
   ensureSheetStructure,
 } from '../services/googleSheets';
 import {
   createBackup, listBackups,
   getSpreadsheetUrl, getRootFolderUrl,
-  shareSpreadsheet, shareFolder, removeSharing, setupFolderStructure,
+  shareSpreadsheet, shareFolder, removeSharing,
 } from '../services/googleDrive';
-import { DEFAULT_CONFIG, DEFAULT_REMINDERS, FEATURES, FLATS, STORAGE_KEYS, isSampleDataEnabled } from '../config/constants';
+import { DEFAULT_CONFIG, FEATURES, FLATS, STORAGE_KEYS, SHEET_FILE_NAME, isSampleDataEnabled } from '../config/constants';
 import { clearAppCachesAndReload } from '../utils/appCache';
 import { DRIVE_ROLE_BY_APP_ROLE, FOUNDING_OWNER_EMAIL, canGrantOwner, canRemoveUser, isFoundingOwner } from '../config/accessPolicy';
-import { formatDate, formatCurrency, isValidEmail, calculateNextDue, getLastDayOfCurrentMonth, getFirstDayOfNextMonth, bindSpreadsheet } from '../utils/helpers';
+import { formatDate, formatCurrency, isValidEmail } from '../utils/helpers';
 import { InfoBubble } from '../components/common/Tooltip';
 import { hashPin } from '../contexts/AuthContext';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -51,7 +51,6 @@ export default function Settings() {
   const [showWatchmanModal, setShowWatchmanModal] = useState(false);
   const [editingWatchman, setEditingWatchman] = useState(null);
   const [backingUp, setBackingUp] = useState(false);
-  const [creatingFresh, setCreatingFresh] = useState(false);
   const [seedingSample, setSeedingSample] = useState(false);
   const [refreshingLayout, setRefreshingLayout] = useState(false);
 
@@ -219,44 +218,6 @@ export default function Settings() {
       showToast(err.message || 'Could not update the sheet layout', 'error');
     } finally {
       setRefreshingLayout(false);
-    }
-  };
-
-  const handleCreateFreshSheet = async () => {
-    if (!isFoundingOwner(user?.email)) {
-      showToast('Only the founding owner can create a new society spreadsheet.', 'error');
-      return;
-    }
-    if (!window.confirm(
-      'Create an empty production sheet?\n\nThe current workbook will be renamed (kept in Drive as a SAMPLE archive). A new empty TPT-MaintenanceTracker will become the live source of truth.'
-    )) return;
-    try {
-      setCreatingFresh(true);
-      const folders = await setupFolderStructure();
-      const result = await archiveAndCreateFresh(folders.rootId, user.email);
-      bindSpreadsheet(result.spreadsheetId, user.email);
-      await ensureFoundingOwnerEntry(user.email);
-      for (const reminder of DEFAULT_REMINDERS) {
-        let nextDue;
-        if (reminder.nextDueType === 'end_of_month') nextDue = getLastDayOfCurrentMonth();
-        else if (reminder.nextDueType === 'start_of_month') nextDue = getFirstDayOfNextMonth();
-        else nextDue = calculateNextDue(null, reminder.frequency);
-        await addReminder({
-          title: reminder.title,
-          description: reminder.description,
-          frequency: reminder.frequency,
-          assignedTo: reminder.assignedTo || '',
-          nextDue,
-          createdBy: 'System',
-        });
-      }
-      await addAuditLog(user.email, 'FRESH_SHEET', `Created empty production sheet ${result.spreadsheetId}`);
-      showToast('Fresh production sheet created. Sample workbook was archived in Drive.', 'success');
-      fetchData();
-    } catch (err) {
-      showToast(err.message || 'Failed to create a fresh sheet', 'error');
-    } finally {
-      setCreatingFresh(false);
     }
   };
 
@@ -607,7 +568,8 @@ export default function Settings() {
               )}
             </div>
             <p className="text-muted text-sm mb-4">
-              Backups are copies of the spreadsheet saved to the backups folder in Google Drive.
+              Copies of <strong>{SHEET_FILE_NAME}</strong> go into Drive / TPT-AppartmentApp / backups.
+              The app also copies the file before first Setup and once on each Google sign-in.
             </p>
 
             {backups.length > 0 ? (
@@ -652,10 +614,9 @@ export default function Settings() {
           <div className="card mt-4">
             <h3 className="card-title mb-2">Refresh sheet layout</h3>
             <p className="text-muted text-sm mb-4">
-              Updates the existing workbook so a treasurer can use it without the app:
-              a Pending Dues tab (type a month in the yellow cell), Still Due formulas
-              on Maintenance, and live surplus/deficit formulas on Monthly Summary.
-              Does not delete your data.
+              Adds any missing app tabs to <strong>{SHEET_FILE_NAME}</strong> (Guide, Configuration,
+              Maintenance, Expenses, …). Leaves Summary, Exp - Detailed, Borewell Exp,
+              Motor repair oct, and Notes untouched. Does not create a new file.
             </p>
             <button
               className="btn btn-secondary"
@@ -673,7 +634,7 @@ export default function Settings() {
             <h3 className="card-title mb-2">Load sample data for testing</h3>
             <p className="text-muted text-sm mb-4">
               Writes pretend collections, expenses, contacts, and reminders into this
-              existing <strong>TPT-MaintenanceTracker</strong> (including the current month
+              existing <strong>{SHEET_FILE_NAME}</strong> (including the current month
               so the dashboard is not empty). Does not create another spreadsheet.
               Access Control is left as-is. Delete the sheet when you set up for real.
             </p>
@@ -684,25 +645,6 @@ export default function Settings() {
             >
               {seedingSample ? <RefreshCw size={14} className="animate-spin" /> : <FlaskConical size={14} />}
               {seedingSample ? 'Loading sample data…' : 'Load sample data'}
-            </button>
-          </div>
-        )}
-
-        {activeTab === 'backups' && isOwner && isFoundingOwner(user?.email) && (
-          <div className="card mt-4">
-            <h3 className="card-title mb-2">Create the handover workbook</h3>
-            <p className="text-muted text-sm mb-4">
-              Archives the current workbook in Drive and creates a new <strong>TPT-MaintenanceTracker</strong>
-              with the 29 Aug 2026 handover: opening surplus ₹612, I&amp;E history, payees, and empty live tabs from Sep-26.
-              Owner names are not written by the app.
-            </p>
-            <button
-              className="btn btn-secondary"
-              onClick={handleCreateFreshSheet}
-              disabled={creatingFresh}
-            >
-              {creatingFresh ? <RefreshCw size={14} className="animate-spin" /> : <Database size={14} />}
-              {creatingFresh ? 'Creating empty sheet…' : 'Create Fresh Production Sheet'}
             </button>
           </div>
         )}

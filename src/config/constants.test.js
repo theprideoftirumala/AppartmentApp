@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { APP_VERSION, DEFAULT_CONFIG, FEATURES, SOCIETY_DISCLAIMER, isSampleDataEnabled } from './constants';
+import { APP_VERSION, DEFAULT_CONFIG, FEATURES, SHEET_FILE_NAME, SOCIETY_DISCLAIMER, isSampleDataEnabled, isSocietySheetName } from './constants';
 
 describe('feature flags', () => {
   it('keeps late fee and misc funds off in the app', () => {
@@ -33,5 +33,15 @@ describe('society disclaimer', () => {
 describe('app version', () => {
   it('is a semver string', () => {
     expect(APP_VERSION).toMatch(/^\d+\.\d+\.\d+$/);
+  });
+});
+
+describe('society workbook name', () => {
+  it('accepts The Pride of Tirumala-APP with or without .xlsx', () => {
+    expect(SHEET_FILE_NAME).toBe('The Pride of Tirumala-APP');
+    expect(isSocietySheetName('The Pride of Tirumala-APP')).toBe(true);
+    expect(isSocietySheetName('The Pride of Tirumala-APP.xlsx')).toBe(true);
+    expect(isSocietySheetName('TPT-MaintenanceTracker')).toBe(false);
+    expect(isSocietySheetName('')).toBe(false);
   });
 });

@@ -3,7 +3,19 @@
  * Handles folder creation, file uploads, backups, and sharing
  */
 
-import { DRIVE_ROOT_FOLDER, DRIVE_EXPENSES_FOLDER, DRIVE_BACKUPS_FOLDER, DRIVE_ACTIVITY_FOLDER, STORAGE_KEYS, SHEET_FILE_NAME } from '../config/constants';
+import {
+  DRIVE_ROOT_FOLDER,
+  DRIVE_EXPENSES_FOLDER,
+  DRIVE_BACKUPS_FOLDER,
+  DRIVE_ACTIVITY_FOLDER,
+  STORAGE_KEYS,
+  SHEET_FILE_NAME,
+  SOCIETY_SHEET_ALIASES,
+  GOOGLE_SHEET_MIME,
+  EXCEL_SHEET_MIME,
+  isSocietySheetName,
+  isGoogleSpreadsheetMime,
+} from '../config/constants';
 import { gapiCall } from '../utils/gapi';
 import { FOUNDING_OWNER_EMAIL, isFoundingOwner } from '../config/accessPolicy';
 import { ensureValidToken, getCurrentUser } from './googleAuth';
@@ -28,7 +40,7 @@ function getRootFolderId() {
 // SPREADSHEET DISCOVERY
 // ═══════════════════════════════════════════════════════════════
 
-const TRACKER_FILE_FIELDS = 'id, name, webViewLink, owners(emailAddress), shared, capabilities(canEdit)';
+const TRACKER_FILE_FIELDS = 'id, name, mimeType, webViewLink, owners(emailAddress), shared, capabilities(canEdit)';
 
 /**
  * Optional published ID (GitHub Pages / public/sheet-config.json).
@@ -68,16 +80,26 @@ export function isPrivateCopyOwnedByUser(file, email) {
  * or a file shared with a member — never a stray personal copy.
  */
 export function isSocietyWorkbook(file, email) {
-  if (!file?.id || file.name !== SHEET_FILE_NAME) return false;
+  if (!file?.id || !isSocietySheetName(file.name)) return false;
   if (isFoundingOwner(email)) return true;
   if (isPrivateCopyOwnedByUser(file, email)) return false;
   const owners = ownerEmails(file);
   return owners.includes(normalizeEmail(FOUNDING_OWNER_EMAIL)) || file.shared === true;
 }
 
+function pickPreferredSocietyFile(files) {
+  const matches = (files || []).filter((file) => isSocietySheetName(file.name));
+  return matches.find((file) => isGoogleSpreadsheetMime(file.mimeType)) || matches[0] || null;
+}
+
 async function listTrackerFiles(extraQuery) {
-  const safeName = escapeDriveQuery(SHEET_FILE_NAME);
-  let query = `name='${safeName}' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`;
+  const nameClause = SOCIETY_SHEET_ALIASES
+    .map((name) => `name='${escapeDriveQuery(name)}'`)
+    .join(' or ');
+  const mimeClause = [GOOGLE_SHEET_MIME, EXCEL_SHEET_MIME]
+    .map((mime) => `mimeType='${mime}'`)
+    .join(' or ');
+  let query = `(${nameClause}) and (${mimeClause}) and trashed=false`;
   if (extraQuery) query += ` and ${extraQuery}`;
   const response = await window.gapi.client.drive.files.list({
     q: query,
@@ -113,27 +135,25 @@ export async function getSpreadsheetFileMeta(fileId) {
  */
 export async function findSocietySpreadsheet(email) {
   return withAuth(async () => {
+    if (isFoundingOwner(email)) {
+      const owned = pickPreferredSocietyFile(await listTrackerFiles("'me' in owners"));
+      if (owned) return owned;
+    }
+
+    const shared = pickPreferredSocietyFile(
+      (await listTrackerFiles('sharedWithMe=true')).filter((file) => isSocietyWorkbook(file, email)),
+    );
+    if (shared) return shared;
+
+    if (isFoundingOwner(email)) {
+      const any = pickPreferredSocietyFile(await listTrackerFiles(''));
+      if (any) return any;
+    }
+
     const published = await loadPublishedSpreadsheetId();
     if (published) {
       const meta = await getSpreadsheetFileMeta(published);
-      // Published ID is the society workbook. Reject only a private copy this user owns.
-      if (meta && !isPrivateCopyOwnedByUser(meta, email)) return meta;
-    }
-
-    if (isFoundingOwner(email)) {
-      const owned = await listTrackerFiles("'me' in owners");
-      const exact = owned.find((f) => f.name === SHEET_FILE_NAME);
-      if (exact) return exact;
-    }
-
-    // Members (and founder fallback): files shared with this account.
-    const shared = await listTrackerFiles('sharedWithMe=true');
-    const society = shared.find((f) => isSocietyWorkbook(f, email));
-    if (society) return society;
-
-    if (isFoundingOwner(email)) {
-      const any = await listTrackerFiles('');
-      return any.find((f) => f.name === SHEET_FILE_NAME) || null;
+      if (meta && isSocietySheetName(meta.name) && !isPrivateCopyOwnedByUser(meta, email)) return meta;
     }
 
     return null;
@@ -144,7 +164,7 @@ export async function findSocietySpreadsheet(email) {
 export async function findExistingSpreadsheet(name = SHEET_FILE_NAME) {
   const user = getCurrentUser();
   const found = await findSocietySpreadsheet(user?.email);
-  if (found && (!name || found.name === name || name === SHEET_FILE_NAME)) return found;
+  if (found && (!name || isSocietySheetName(found.name) || isSocietySheetName(name))) return found;
   return found;
 }
 
@@ -354,14 +374,18 @@ export async function uploadReceipt(file, yearMonth) {
 // ═══════════════════════════════════════════════════════════════
 
 /**
- * Create a backup of the spreadsheet
- * @returns {object} { id, name }
+ * Copy the society workbook into Drive/backups.
+ * Pass an id to back up before the first bind (pre-setup).
  */
-export async function createBackup() {
+export async function createBackup(spreadsheetId = null, options = {}) {
   return withAuth(async () => {
-    const spreadsheetId = localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID);
-    const rootId = getRootFolderId();
-    if (!isValidSpreadsheetId(spreadsheetId) || !rootId) throw new Error('Setup not complete');
+    const fileId = spreadsheetId || localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID);
+    let rootId = getRootFolderId();
+    if (!rootId) {
+      const folders = await setupFolderStructure();
+      rootId = folders.rootId;
+    }
+    if (!isValidSpreadsheetId(fileId) || !rootId) throw new Error('Spreadsheet is not connected.');
 
     let backupsId = await findFolder(DRIVE_BACKUPS_FOLDER, rootId);
     if (!backupsId) {
@@ -373,10 +397,11 @@ export async function createBackup() {
       .replace('T', '_')
       .replace(/[:.]/g, '')
       .slice(0, 15);
-    const backupName = `TPT-MaintenanceTracker_${timestamp}`;
+    const reason = options.reason ? `${options.reason}_` : '';
+    const backupName = `${SHEET_FILE_NAME}_${reason}${timestamp}`;
 
     const response = await gapiCall(window.gapi.client.drive.files.copy({
-      fileId: spreadsheetId,
+      fileId,
       resource: {
         name: backupName,
         parents: [backupsId],

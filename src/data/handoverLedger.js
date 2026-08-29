@@ -1,10 +1,10 @@
 /**
  * Figures copied from the society I&E workbook handed over on 29 Aug 2026.
- * Source: The Pride of Tirumala - I&E Summary.xlsx
+ * Source: The Pride of Tirumala-APP.xlsx (same ledger as the earlier I&E Summary file).
  * Flat owner names are intentionally omitted.
  */
 
-export const HANDOVER_SOURCE = 'The Pride of Tirumala - I&E Summary.xlsx';
+export const HANDOVER_SOURCE = 'The Pride of Tirumala-APP.xlsx';
 
 export const HANDOVER_PROPERTY = {
   name: 'The Pride of Tirumala',
@@ -1202,6 +1202,39 @@ export function handoverLifetimeTotals(rows = HANDOVER_MONTHS) {
     expenses,
     net: Math.round((collection - expenses) * 100) / 100,
   };
+}
+
+function optionalAmount(value) {
+  if (value === '' || value == null) return undefined;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+/** Turn Handover Summary sheet rows back into the objects the app page uses. */
+export function parseHandoverSummaryRows(rows = []) {
+  return (rows || [])
+    .filter((row) => String(row?.[0] || '').trim())
+    .map((row) => ({
+      label: String(row[0]).trim(),
+      carryIn: optionalAmount(row[1]) ?? null,
+      collection: Number(row[2] || 0),
+      expenses: Number(row[3] || 0),
+      surplus: Number(row[4] || 0),
+      byCategory: {
+        Cleaning: optionalAmount(row[5]),
+        Generator: optionalAmount(row[6]),
+        'Lift Service': optionalAmount(row[7]),
+        'Service charges': optionalAmount(row[8]),
+        Repairs: optionalAmount(row[9]),
+        Garbage: optionalAmount(row[10]),
+        Electricity: optionalAmount(row[11]),
+        Internet: optionalAmount(row[12]),
+        'Watchman salary': optionalAmount(row[13]),
+        Water: optionalAmount(row[14]),
+        'Pest Control': optionalAmount(row[15]),
+        Sundry: optionalAmount(row[16]),
+      },
+    }));
 }
 
 export function handoverSummaryRows(months = HANDOVER_MONTHS) {

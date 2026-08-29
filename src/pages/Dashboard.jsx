@@ -153,7 +153,7 @@ export default function Dashboard() {
             ) : (
               <p className="text-muted text-sm mt-3">
                 Only the founding owner can create or reconnect the society spreadsheet.
-                Ask that owner to add you as a Reader and share TPT-MaintenanceTracker as Viewer.
+                Ask that owner to add you as a Reader and share The Pride of Tirumala-APP as Viewer.
               </p>
             )}
           </div>

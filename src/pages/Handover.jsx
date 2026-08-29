@@ -1,8 +1,9 @@
 /**
- * Read-only view of the I&E Excel handed over on 29 Aug 2026.
- * Numbers only — no owner names.
+ * Read-only view of Nov 2020–Aug 2026 history.
+ * Prefers the Handover Summary / Society Notes / Contacts tabs so sheet edits show here.
  */
 
+import { useEffect, useState } from 'react';
 import { BookOpen } from 'lucide-react';
 import {
   HANDOVER_CASH_SURPLUS,
@@ -15,12 +16,42 @@ import {
   LATEST_RECURRING,
   handoverLifetimeTotals,
 } from '../data/handoverLedger';
+import { getEmergencyContacts, getHandoverSummary, getSocietyNotes } from '../services/googleSheets';
 import { formatCurrency } from '../utils/helpers';
 import Navbar from '../components/common/Navbar';
 
 export default function Handover() {
-  const totals = handoverLifetimeTotals();
-  const recent = HANDOVER_MONTHS.slice(-12);
+  const [months, setMonths] = useState(HANDOVER_MONTHS);
+  const [notes, setNotes] = useState(HANDOVER_NOTES);
+  const [contacts, setContacts] = useState(HANDOVER_CONTACTS);
+
+  useEffect(() => {
+    let mounted = true;
+    Promise.all([
+      getHandoverSummary().catch(() => []),
+      getSocietyNotes().catch(() => []),
+      getEmergencyContacts().catch(() => []),
+    ]).then(([sheetMonths, sheetNotes, sheetContacts]) => {
+      if (!mounted) return;
+      if (sheetMonths.length) setMonths(sheetMonths);
+      if (sheetNotes.length) setNotes(sheetNotes);
+      if (sheetContacts.length) {
+        setContacts(sheetContacts.map((row) => [
+          row.category || '',
+          row.name || '',
+          row.role || '',
+          row.phone || '',
+          row.altPhone || '',
+          row.address || '',
+          row.notes || '',
+        ]));
+      }
+    });
+    return () => { mounted = false; };
+  }, []);
+
+  const totals = handoverLifetimeTotals(months);
+  const recent = months.slice(-12);
 
   return (
     <div className="main-content">
@@ -29,7 +60,7 @@ export default function Handover() {
         <div>
           <h1 className="page-title">Handover summary</h1>
           <p className="page-subtitle">
-            Copied from {HANDOVER_SOURCE}. Live collections start Sep-26. Owner names are not stored in the app.
+            From {HANDOVER_SOURCE} and the Handover Summary tab. Edit that tab (or Society Notes / Emergency Contacts) and refresh to update this page. Live collections start Sep-26.
           </p>
         </div>
       </div>
@@ -71,12 +102,12 @@ export default function Handover() {
         </p>
         <p className="text-muted mt-2">
           The Excel running net was {formatCurrency(HANDOVER_META.sheetComputedNet)}.
-          The cash given at handover is {formatCurrency(HANDOVER_CASH_SURPLUS)} — that is the opening balance for Sep-26.
+          The cash given at handover is {formatCurrency(HANDOVER_CASH_SURPLUS)} — that is the opening balance for Sep-26 (Configuration DEFICIT_LAST_YEAR).
         </p>
       </div>
 
       <div className="card mt-6">
-        <h3 className="card-title">Last 12 months from the Excel</h3>
+        <h3 className="card-title">Last 12 months from the Handover Summary tab</h3>
         <div className="table-container">
           <table>
             <thead>
@@ -112,13 +143,13 @@ export default function Handover() {
       </div>
 
       <div className="card mt-6">
-        <h3 className="card-title">Notes and vendor phones from the Excel</h3>
+        <h3 className="card-title">Notes and vendor phones from the sheet</h3>
         <ul className="setup-checklist">
-          {HANDOVER_NOTES.map((row) => (
+          {notes.map((row) => (
             <li key={row[0]}><strong>{row[0]}:</strong> {row[2] || row[1]}</li>
           ))}
-          {HANDOVER_CONTACTS.map((row) => (
-            <li key={row[1]}><strong>{row[1]}:</strong> {row[3]}</li>
+          {contacts.map((row) => (
+            <li key={`${row[1]}-${row[3]}`}><strong>{row[1] || row[0]}:</strong> {row[3]}</li>
           ))}
         </ul>
       </div>

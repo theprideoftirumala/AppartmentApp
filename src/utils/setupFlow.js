@@ -1,9 +1,14 @@
 /**
- * When the founding owner should see the create-sheet cards.
- * Only after Drive search succeeds and confirms the workbook is missing.
- * A failed lookup or an already-bound ID must never look like "first-time setup".
+ * Setup never creates a second society workbook.
+ * The Pride of Tirumala-APP must already be in Drive as a Google Sheet.
  */
-export function shouldOfferSheetCreation({
+
+export function shouldOfferSheetCreation() {
+  return false;
+}
+
+/** Show upload / convert help when Drive search confirms the APP file is missing. */
+export function shouldShowMissingSheetHelp({
   searchConfirmedEmpty = false,
   lookupFailed = false,
   alreadyBound = false,

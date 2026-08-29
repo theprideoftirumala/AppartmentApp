@@ -11,9 +11,9 @@ import {
   STORAGE_KEYS,
   SHEET_FILE_NAME,
   CONFIG_DESCRIPTIONS,
+  LEGACY_SHEET_TABS,
 } from '../config/constants';
-import { ensureValidToken, getCurrentUser } from './googleAuth';
-import { isFoundingOwner } from '../config/accessPolicy';
+import { ensureValidToken } from './googleAuth';
 import { GUIDE_ROWS } from '../data/sampleSheetData';
 import {
   HANDOVER_CONTACTS,
@@ -21,7 +21,7 @@ import {
   HANDOVER_PAYEES,
   handoverSummaryRows,
 } from '../data/handoverLedger';
-import { isValidSpreadsheetId, bindSpreadsheet, getCurrentMonthLabel } from '../utils/helpers';
+import { isValidSpreadsheetId, getCurrentMonthLabel } from '../utils/helpers';
 import { gapiCall } from '../utils/gapi';
 import {
   maintenanceStillDueFormula,
@@ -50,6 +50,25 @@ function configRows() {
 
 function emptyFlatRows() {
   return FLATS.map((flat) => [flat, '', '', '', '', '', '', 'Member']);
+}
+
+/** Copy flat numbers and owner names from the existing Summary tab. Names stay in the sheet, not in app source. */
+async function flatsRowsFromLegacySummary(spreadsheetId) {
+  try {
+    const response = await window.gapi.client.sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: "'Summary'!B12:C21",
+    });
+    const byFlat = new Map();
+    for (const row of response.result.values || []) {
+      const flat = String(row[0] ?? '').trim().replace(/\.0$/, '');
+      const name = String(row[1] ?? '').trim();
+      if (FLATS.includes(flat) && name) byFlat.set(flat, name);
+    }
+    return FLATS.map((flat) => [flat, byFlat.get(flat) || '', '', '', '', '', '', 'Member']);
+  } catch {
+    return emptyFlatRows();
+  }
 }
 
 async function writeValues(spreadsheetId, data) {
@@ -238,66 +257,6 @@ function columnLetter(index) {
   return letters;
 }
 
-function headerFormatRequests(sheetIds) {
-  return sheetIds.map((sheetId) => ({
-    repeatCell: {
-      range: { sheetId, startRowIndex: 0, endRowIndex: 1 },
-      cell: {
-        userEnteredFormat: {
-          backgroundColor: { red: 0.15, green: 0.15, blue: 0.2 },
-          textFormat: {
-            bold: true,
-            foregroundColor: { red: 0.8, green: 0.85, blue: 0.95 },
-          },
-          wrapStrategy: 'WRAP',
-          verticalAlignment: 'MIDDLE',
-        },
-      },
-      fields: 'userEnteredFormat(backgroundColor,textFormat,wrapStrategy,verticalAlignment)',
-    },
-  }));
-}
-
-function columnWidthRequests(sheetId, headerCount) {
-  const width = headerCount <= 3 ? 280 : 140;
-  return [{
-    updateDimensionProperties: {
-      range: {
-        sheetId,
-        dimension: 'COLUMNS',
-        startIndex: 0,
-        endIndex: Math.max(headerCount, 1),
-      },
-      properties: { pixelSize: width },
-      fields: 'pixelSize',
-    },
-  }];
-}
-
-async function applyWorkbookPolish(spreadsheetId, sheetMeta) {
-  const requests = [];
-  sheetMeta.forEach(({ sheetId, headers }) => {
-    requests.push(...headerFormatRequests([sheetId]));
-    requests.push(...columnWidthRequests(sheetId, headers.length));
-    requests.push({
-      updateSheetProperties: {
-        properties: {
-          sheetId,
-          gridProperties: { frozenRowCount: 1 },
-        },
-        fields: 'gridProperties.frozenRowCount',
-      },
-    });
-  });
-
-  if (requests.length) {
-    await window.gapi.client.sheets.spreadsheets.batchUpdate({
-      spreadsheetId,
-      resource: { requests },
-    });
-  }
-}
-
 async function addSheetIfMissing(spreadsheetId, title) {
   const meta = await window.gapi.client.sheets.spreadsheets.get({
     spreadsheetId,
@@ -332,104 +291,26 @@ async function sheetIsEmpty(spreadsheetId, title) {
 }
 
 /**
- * Create the main spreadsheet with Guide, handover history, and empty live tabs.
- * @param {string} folderId
- * @param {{ mode?: 'sample' | 'fresh', title?: string }} [options]
+ * Disabled: the society workbook is The Pride of Tirumala-APP in Drive.
+ * Setup only connects and extends that file.
  */
-export async function createSpreadsheet(folderId, options = {}) {
-  return withAuth(async () => {
-    const actor = getCurrentUser();
-    // SECURITY: only the founding Google account may mint the society workbook.
-    if (!isFoundingOwner(actor?.email)) {
-      throw new Error('Only the society founding owner can create the society spreadsheet. Ask that account to share it with you as Viewer.');
-    }
-    const title = options.title || SHEET_FILE_NAME;
-    const sheetNames = Object.values(SHEET_NAMES);
-
-    const response = await window.gapi.client.sheets.spreadsheets.create({
-      resource: {
-        properties: { title },
-        sheets: sheetNames.map((name, index) => ({
-          properties: {
-            sheetId: index,
-            title: name,
-            index,
-            gridProperties: { frozenRowCount: 1 },
-          },
-        })),
-      },
-    });
-
-    const spreadsheetId = response.result.spreadsheetId;
-
-    await window.gapi.client.drive.files.update({
-      fileId: spreadsheetId,
-      addParents: folderId,
-      fields: 'id, parents',
-    });
-
-    const headerData = Object.entries(SHEET_HEADERS).map(([sheetName, headers]) => ({
-      range: `'${sheetName}'!A1`,
-      values: [headers],
-    }));
-    await writeValues(spreadsheetId, headerData);
-
-    const liveWrites = [
-      {
-        range: `'${SHEET_NAMES.GUIDE}'!A2`,
-        values: GUIDE_ROWS,
-      },
-      {
-        range: `'${SHEET_NAMES.CONFIGURATION}'!A2`,
-        values: configRows(),
-      },
-      {
-        range: `'${SHEET_NAMES.HANDOVER_SUMMARY}'!A2`,
-        values: handoverSummaryRows(),
-      },
-      {
-        range: `'${SHEET_NAMES.PAYEES}'!A2`,
-        values: HANDOVER_PAYEES,
-      },
-      {
-        range: `'${SHEET_NAMES.EMERGENCY_CONTACTS}'!A2`,
-        values: HANDOVER_CONTACTS,
-      },
-      {
-        range: `'${SHEET_NAMES.SOCIETY_NOTES}'!A2`,
-        values: HANDOVER_NOTES,
-      },
-      {
-        range: `'${SHEET_NAMES.FLATS}'!A2`,
-        values: emptyFlatRows(),
-      },
-    ];
-
-    await writeValues(spreadsheetId, liveWrites);
-
-    const sheetMeta = sheetNames.map((name, index) => ({
-      sheetId: index,
-      headers: SHEET_HEADERS[name] || ['A'],
-    }));
-    await applyWorkbookPolish(spreadsheetId, sheetMeta);
-    await applyMaintenanceStillDueFormulas(spreadsheetId);
-    await applyMonthlySummaryFormulas(spreadsheetId);
-    await writePendingDuesTemplate(spreadsheetId);
-
-    bindSpreadsheet(spreadsheetId);
-    return spreadsheetId;
-  });
+export async function createSpreadsheet() {
+  throw new Error(
+    `Do not create a new spreadsheet. Put "${SHEET_FILE_NAME}" in Drive (Open with Google Sheets if it is still an .xlsx) and run Setup again.`,
+  );
 }
 
 /**
- * Add Guide / Sample Data / any missing tabs to an older workbook.
- * Never overwrites existing data rows.
+ * Add app tabs to The Pride of Tirumala-APP. Never overwrites legacy history tabs
+ * (Summary, Exp - Detailed, Borewell Exp, Motor repair oct, Notes) or existing rows.
  */
 export async function ensureSheetStructure(spreadsheetId = getSpreadsheetId()) {
   return withAuth(async () => {
     if (!isValidSpreadsheetId(spreadsheetId)) return;
 
+    const legacy = new Set(LEGACY_SHEET_TABS);
     for (const title of Object.values(SHEET_NAMES)) {
+      if (legacy.has(title)) continue;
       await addSheetIfMissing(spreadsheetId, title);
       const headers = SHEET_HEADERS[title];
       if (!headers) continue;
@@ -437,7 +318,7 @@ export async function ensureSheetStructure(spreadsheetId = getSpreadsheetId()) {
         const values = [headers];
         if (title === SHEET_NAMES.GUIDE) values.push(...GUIDE_ROWS);
         if (title === SHEET_NAMES.CONFIGURATION) values.push(...configRows());
-        if (title === SHEET_NAMES.FLATS) values.push(...emptyFlatRows());
+        if (title === SHEET_NAMES.FLATS) values.push(...await flatsRowsFromLegacySummary(spreadsheetId));
         if (title === SHEET_NAMES.HANDOVER_SUMMARY) values.push(...handoverSummaryRows());
         if (title === SHEET_NAMES.PAYEES) values.push(...HANDOVER_PAYEES);
         if (title === SHEET_NAMES.EMERGENCY_CONTACTS) values.push(...HANDOVER_CONTACTS);
@@ -475,27 +356,11 @@ async function ensureConfigKeys(spreadsheetId) {
   });
 }
 
-/**
- * Archive the current (usually sample) workbook and create an empty production sheet.
- */
-export async function archiveAndCreateFresh(folderId, userEmail) {
-  return withAuth(async () => {
-    if (!isFoundingOwner(userEmail) && !isFoundingOwner(getCurrentUser()?.email)) {
-      throw new Error('Only the founding owner can archive the current sheet and create a new one.');
-    }
-    const currentId = getSpreadsheetId();
-    if (isValidSpreadsheetId(currentId)) {
-      const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      await window.gapi.client.drive.files.update({
-        fileId: currentId,
-        resource: { name: `${SHEET_FILE_NAME}-SAMPLE-${stamp}` },
-        fields: 'id, name',
-      });
-    }
-
-    const spreadsheetId = await createSpreadsheet(folderId, { mode: 'fresh', title: SHEET_FILE_NAME });
-    return { spreadsheetId, archivedId: currentId, ownerEmail: userEmail };
-  });
+/** Disabled: never archive-and-replace The Pride of Tirumala-APP. */
+export async function archiveAndCreateFresh() {
+  throw new Error(
+    `Do not create a replacement workbook. Use Settings → Backups to copy "${SHEET_FILE_NAME}", then Refresh sheet layout to add missing app tabs.`,
+  );
 }
 
 /**

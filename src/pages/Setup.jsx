@@ -1,27 +1,25 @@
 /**
  * Setup Wizard — founding owner only.
  *
- * SECURITY: Other Google accounts must never reach "create spreadsheet".
- * Members are added in Settings and receive a shared, read-only copy of the
- * one society workbook (TPT-MaintenanceTracker).
- *
- * Create cards appear only after Drive search confirms the workbook is missing.
+ * Connects The Pride of Tirumala-APP already in Drive. Never creates a
+ * second society workbook. Backs up that file, then adds empty app tabs
+ * beside the existing history tabs.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { FolderPlus, FileSpreadsheet, CheckCircle, Loader, Shield, ArrowRight, Search, FlaskConical, FilePlus, Copy } from 'lucide-react';
+import { FolderPlus, FileSpreadsheet, CheckCircle, Loader, Shield, ArrowRight, Search, Copy } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useApp } from '../contexts/AppContext';
-import { setupFolderStructure, findSocietySpreadsheet } from '../services/googleDrive';
+import { setupFolderStructure, findSocietySpreadsheet, createBackup } from '../services/googleDrive';
 import {
-  createSpreadsheet, addAuditLog, addReminder,
+  addAuditLog, addReminder, getReminders,
   parseApiError, ensureSheetStructure, ensureFoundingOwnerEntry,
 } from '../services/googleSheets';
-import { DEFAULT_REMINDERS, FEATURES, SHEET_FILE_NAME, STORAGE_KEYS, isSampleDataEnabled } from '../config/constants';
+import { DEFAULT_REMINDERS, GOOGLE_SHEET_MIME, SHEET_FILE_NAME, STORAGE_KEYS, isGoogleSpreadsheetMime } from '../config/constants';
 import { FOUNDING_OWNER_EMAIL, isFoundingOwner, maskEmail } from '../config/accessPolicy';
 import { calculateNextDue, getLastDayOfCurrentMonth, getFirstDayOfNextMonth, bindSpreadsheet, isValidSpreadsheetId } from '../utils/helpers';
-import { shouldOfferSheetCreation } from '../utils/setupFlow';
+import { shouldShowMissingSheetHelp } from '../utils/setupFlow';
 
 const STEPS = [
   { id: 'welcome', title: 'Welcome', icon: Shield },
@@ -32,22 +30,51 @@ const STEPS = [
 
 const OWNER_EMAIL_MASKED = maskEmail(FOUNDING_OWNER_EMAIL);
 
+async function backupThenExtend(spreadsheetId, userEmail, { reason = 'pre-setup' } = {}) {
+  let backedUp = false;
+  try {
+    await createBackup(spreadsheetId, { reason });
+    backedUp = true;
+  } catch (err) {
+    console.warn('Pre-setup backup skipped', err);
+  }
+  bindSpreadsheet(spreadsheetId, userEmail);
+  await ensureSheetStructure(spreadsheetId);
+  await ensureFoundingOwnerEntry(userEmail);
+  const reminders = await getReminders().catch(() => []);
+  if (!reminders.length) {
+    for (const reminder of DEFAULT_REMINDERS) {
+      let nextDue;
+      if (reminder.nextDueType === 'end_of_month') nextDue = getLastDayOfCurrentMonth();
+      else if (reminder.nextDueType === 'start_of_month') nextDue = getFirstDayOfNextMonth();
+      else nextDue = calculateNextDue(null, reminder.frequency);
+      await addReminder({
+        title: reminder.title,
+        description: reminder.description,
+        frequency: reminder.frequency,
+        assignedTo: reminder.assignedTo || '',
+        nextDue,
+        createdBy: 'System',
+      });
+    }
+  }
+  return backedUp;
+}
+
 export default function Setup() {
-  const { user, setAccessDenied } = useAuth();
+  const { user } = useAuth();
   const { completeSetup, isSetupComplete, showToast } = useApp();
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
-  const [processing, setProcessing] = useState(false);
   const [looking, setLooking] = useState(true);
   const [searchConfirmedEmpty, setSearchConfirmedEmpty] = useState(false);
   const [lookupFailed, setLookupFailed] = useState(false);
+  const [needsGoogleSheet, setNeedsGoogleSheet] = useState(false);
   const [error, setError] = useState(null);
-  const [results, setResults] = useState({ folderId: null, spreadsheetId: null, foundExisting: false, mode: 'fresh' });
-  const allowSampleCreate = FEATURES.SAMPLE_DATA && isSampleDataEnabled();
-  const [setupMode, setSetupMode] = useState(allowSampleCreate ? 'sample' : 'fresh');
+  const [results, setResults] = useState({ folderId: null, spreadsheetId: null, foundExisting: false, backedUp: false });
   const founder = isFoundingOwner(user?.email);
   const alreadyBound = isValidSpreadsheetId(localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID));
-  const showCreateCards = shouldOfferSheetCreation({
+  const showMissingHelp = shouldShowMissingSheetHelp({
     searchConfirmedEmpty,
     lookupFailed,
     alreadyBound,
@@ -70,12 +97,16 @@ export default function Setup() {
   };
 
   const reconnectExisting = useCallback(async (spreadsheetId, folderId = null) => {
-    bindSpreadsheet(spreadsheetId, user.email);
-    await ensureSheetStructure(spreadsheetId).catch(() => {});
-    await ensureFoundingOwnerEntry(user.email);
-    setResults({ folderId, spreadsheetId, foundExisting: true, mode: 'existing' });
+    const backedUp = await backupThenExtend(spreadsheetId, user.email);
+    setResults({ folderId, spreadsheetId, foundExisting: true, backedUp });
+    await addAuditLog(user.email, 'SETUP', `Connected ${SHEET_FILE_NAME}`).catch(() => {});
     completeSetup();
-    showToast('Connected to the existing society sheet.', 'success');
+    showToast(
+      backedUp
+        ? 'Backed up, then connected The Pride of Tirumala-APP. App tabs were added if they were missing.'
+        : 'Connected The Pride of Tirumala-APP. Backup was skipped — use Settings → Backups if needed.',
+      backedUp ? 'success' : 'info',
+    );
     navigate('/', { replace: true });
   }, [completeSetup, navigate, showToast, user?.email]);
 
@@ -88,14 +119,21 @@ export default function Setup() {
     setLooking(true);
     setLookupFailed(false);
     setSearchConfirmedEmpty(false);
+    setNeedsGoogleSheet(false);
     setError(null);
     try {
       const folders = await setupFolderStructure();
       const existing = await findSocietySpreadsheet(user.email);
       if (gen !== searchGen.current) return;
-      if (existing?.id) {
+      if (existing?.id && isGoogleSpreadsheetMime(existing.mimeType || GOOGLE_SHEET_MIME)) {
         setCurrentStep(2);
         await reconnectExisting(existing.id, folders?.rootId);
+        return;
+      }
+      if (existing?.id && !isGoogleSpreadsheetMime(existing.mimeType)) {
+        setNeedsGoogleSheet(true);
+        setSearchConfirmedEmpty(false);
+        setCurrentStep(0);
         return;
       }
       setSearchConfirmedEmpty(true);
@@ -119,65 +157,6 @@ export default function Setup() {
     lookForExistingSheet();
   }, [alreadyBound, founder, isSetupComplete, lookForExistingSheet, user?.email]);
 
-  const handleSetup = async () => {
-    if (!founder) {
-      setAccessDenied(true);
-      return;
-    }
-    setProcessing(true);
-    setError(null);
-
-    try {
-      setCurrentStep(1);
-      const folders = await setupFolderStructure();
-
-      setCurrentStep(2);
-      let spreadsheetId = null;
-      let foundExisting = false;
-
-      const existingSheet = await findSocietySpreadsheet(user.email);
-      if (existingSheet) {
-        spreadsheetId = existingSheet.id;
-        bindSpreadsheet(spreadsheetId, user.email);
-        foundExisting = true;
-        await ensureSheetStructure(spreadsheetId).catch(() => {});
-        await ensureFoundingOwnerEntry(user.email);
-      } else {
-        spreadsheetId = await createSpreadsheet(folders.rootId, { mode: setupMode });
-        bindSpreadsheet(spreadsheetId, user.email);
-        await ensureFoundingOwnerEntry(user.email);
-
-        for (const reminder of DEFAULT_REMINDERS) {
-          let nextDue;
-          if (reminder.nextDueType === 'end_of_month') nextDue = getLastDayOfCurrentMonth();
-          else if (reminder.nextDueType === 'start_of_month') nextDue = getFirstDayOfNextMonth();
-          else nextDue = calculateNextDue(null, reminder.frequency);
-
-          await addReminder({
-            title: reminder.title,
-            description: reminder.description,
-            frequency: reminder.frequency,
-            assignedTo: reminder.assignedTo || '',
-            nextDue,
-            createdBy: 'System',
-          });
-        }
-
-        await addAuditLog(user.email, 'SETUP', 'Initial society workbook setup completed');
-      }
-
-      setResults({ folderId: folders.rootId, spreadsheetId, foundExisting, mode: setupMode });
-      setCurrentStep(3);
-      completeSetup();
-      showToast(foundExisting ? 'Reconnected to the society spreadsheet.' : 'Society spreadsheet is ready. Add residents as Readers in Settings.', 'success');
-    } catch (err) {
-      console.error('Setup error:', err);
-      setError(parseApiError(err) || err.message || 'Setup failed. Please try again.');
-      setProcessing(false);
-      setCurrentStep(0);
-    }
-  };
-
   const copySheetId = async () => {
     if (!results.spreadsheetId) return;
     try {
@@ -188,7 +167,7 @@ export default function Setup() {
     }
   };
 
-  if (founder && isSetupComplete && alreadyBound && currentStep === 0 && !processing) {
+  if (founder && isSetupComplete && alreadyBound && currentStep === 0) {
     return <Navigate to="/" replace />;
   }
 
@@ -201,14 +180,14 @@ export default function Setup() {
               <div className="setup-logo">
                 <Shield size={48} />
               </div>
-              <h2>This account cannot create the tracker</h2>
+              <h2>This account cannot connect the tracker</h2>
               <p>
-                Only the society owner ({OWNER_EMAIL_MASKED}) may create the society Google Sheet.
+                Only the society owner ({OWNER_EMAIL_MASKED}) may connect <strong>{SHEET_FILE_NAME}</strong>.
                 Other residents get <strong>read-only</strong> access after that owner adds them in Settings.
               </p>
               <p className="text-muted mt-3">
                 Signed in as {user?.email ? maskEmail(user.email) : 'unknown'}. Ask the owner to add this email and share
-                {' '}<strong>{SHEET_FILE_NAME}</strong> as Viewer — do not create a second spreadsheet.
+                {' '}<strong>{SHEET_FILE_NAME}</strong> as Viewer — do not upload a second copy.
               </p>
             </div>
           </div>
@@ -240,61 +219,52 @@ export default function Setup() {
               <Loader size={48} className="animate-spin" />
               <h3>Looking for the society sheet…</h3>
               <p className="text-muted">
-                Searching Drive for an existing <strong>{SHEET_FILE_NAME}</strong>. Create is offered only if it is not found.
+                Searching Drive for <strong>{SHEET_FILE_NAME}</strong>. The app will not create a new file.
               </p>
             </div>
           )}
 
-          {showCreateCards && currentStep === 0 && (
+          {needsGoogleSheet && currentStep === 0 && (
             <div className="setup-welcome">
               <div className="setup-logo">
                 <Shield size={48} />
               </div>
-              <h2>Create the society sheet (first time)</h2>
+              <h2>Open the Excel file as a Google Sheet</h2>
               <p>
-                No <strong>{SHEET_FILE_NAME}</strong> workbook was found. Create the single society file now.
-                Residents you add later will share this file as Viewers — they will not get their own sheet.
+                Found <strong>{SHEET_FILE_NAME}.xlsx</strong> in Drive. Google Sheets API cannot use an Excel file until it is a Google Sheet.
               </p>
               <ul className="setup-checklist">
-                <li>Drive was searched for <strong>{SHEET_FILE_NAME}</strong> owned by {OWNER_EMAIL_MASKED}</li>
-                <li>Create it only because it does not already exist</li>
-                <li>Add residents from Settings → Access Control (default role: Reader)</li>
+                <li>In Drive, open the file → File → Save as Google Sheets</li>
+                <li>Keep the name <strong>{SHEET_FILE_NAME}</strong></li>
+                <li>Leave the original five history tabs as they are</li>
+                <li>Then search again. The app will back up the file and add empty app tabs beside those history tabs</li>
               </ul>
-
-              {allowSampleCreate ? (
-                <div className="setup-mode-grid">
-                  <button
-                    type="button"
-                    className={`setup-mode-card ${setupMode === 'sample' ? 'setup-mode-card-active' : ''}`}
-                    onClick={() => setSetupMode('sample')}
-                  >
-                    <FlaskConical size={22} />
-                    <strong>Test with sample data</strong>
-                    <span>Fills live tabs with pretend Sep–Oct 2026 data so you can click through the app.</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`setup-mode-card ${setupMode === 'fresh' ? 'setup-mode-card-active' : ''}`}
-                    onClick={() => setSetupMode('fresh')}
-                  >
-                    <FilePlus size={22} />
-                    <strong>Start fresh (production)</strong>
-                    <span>Empty live tabs for real collections. Guide + Sample Data stay as a readable template.</span>
-                  </button>
-                </div>
-              ) : (
-                <p className="text-muted">
-                  Live tabs start empty for real collections. Turn on sample data later from Settings → Configuration if you need pretend rows for testing.
-                </p>
-              )}
-
               <div className="setup-actions">
-                <button
-                  className="btn btn-primary btn-lg"
-                  onClick={handleSetup}
-                  disabled={processing}
-                >
-                  <Search size={18} /> {setupMode === 'sample' ? 'Create sample sheet' : 'Create empty sheet'} <ArrowRight size={18} />
+                <button className="btn btn-primary btn-lg" onClick={() => { autoSearchKey.current = ''; lookForExistingSheet(); }}>
+                  <Search size={18} /> Search again <ArrowRight size={18} />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {showMissingHelp && currentStep === 0 && (
+            <div className="setup-welcome">
+              <div className="setup-logo">
+                <Shield size={48} />
+              </div>
+              <h2>Put the society workbook in Drive</h2>
+              <p>
+                No <strong>{SHEET_FILE_NAME}</strong> Google Sheet was found. This app does not create a new society file.
+              </p>
+              <ul className="setup-checklist">
+                <li>Upload <strong>The Pride of Tirumala-APP.xlsx</strong> to the Drive of {OWNER_EMAIL_MASKED}</li>
+                <li>Open it with Google Sheets and keep the name <strong>{SHEET_FILE_NAME}</strong></li>
+                <li>Do not create TPT-MaintenanceTracker or any second workbook</li>
+                <li>Search again. Setup will copy a backup first, then add Guide, Configuration, Maintenance, Expenses, and the other app tabs</li>
+              </ul>
+              <div className="setup-actions">
+                <button className="btn btn-primary btn-lg" onClick={() => { autoSearchKey.current = ''; lookForExistingSheet(); }}>
+                  <Search size={18} /> Search again <ArrowRight size={18} />
                 </button>
               </div>
             </div>
@@ -307,7 +277,7 @@ export default function Setup() {
               <p className="text-muted">
                 {currentStep === 1
                   ? 'Setting up folder structure in Google Drive...'
-                  : 'Connecting the existing society spreadsheet...'}
+                  : 'Backing up, then adding missing app tabs to The Pride of Tirumala-APP...'}
               </p>
             </div>
           )}
@@ -319,16 +289,12 @@ export default function Setup() {
               </div>
               <h2>All Set</h2>
               <p>
-                {results.foundExisting
-                  ? 'Reconnected to the existing society workbook.'
-                  : results.mode === 'sample'
-                    ? 'Sample workbook is ready. Add residents as Readers from Settings before they sign in.'
-                    : 'Empty production workbook is ready. Add residents as Readers from Settings.'}
+                Connected <strong>{SHEET_FILE_NAME}</strong>. History tabs were left as they are. Add a row on Maintenance or Expenses and refresh the app to see it.
               </p>
 
               <div className="setup-summary card">
                 <p><strong>Google Drive:</strong> TPT-AppartmentApp folder ready</p>
-                <p><strong>Spreadsheet:</strong> {results.foundExisting ? 'Reconnected TPT-MaintenanceTracker' : `TPT-MaintenanceTracker created (${results.mode === 'sample' ? 'sample data' : 'fresh'})`}</p>
+                <p><strong>Spreadsheet:</strong> Reconnected {SHEET_FILE_NAME}{results.backedUp ? ' (backed up first)' : ''}</p>
                 <p><strong>Your role:</strong> Owner ({OWNER_EMAIL_MASKED})</p>
                 {results.spreadsheetId && (
                   <p className="sheet-id-row">
@@ -354,7 +320,7 @@ export default function Setup() {
               <p className="text-danger">{renderErrorMessage(error)}</p>
               <button
                 className="btn btn-secondary"
-                onClick={() => { setCurrentStep(0); setError(null); lookForExistingSheet(); }}
+                onClick={() => { setCurrentStep(0); setError(null); autoSearchKey.current = ''; lookForExistingSheet(); }}
               >
                 Search again
               </button>

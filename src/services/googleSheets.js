@@ -4,7 +4,7 @@
  * Google Sheet is the single source of truth / database
  */
 
-import { SHEET_NAMES, SHEET_HEADERS, DEFAULT_CONFIG, CONFIG_DESCRIPTIONS, FLATS, STORAGE_KEYS } from '../config/constants';
+import { SHEET_NAMES, SHEET_HEADERS, DEFAULT_CONFIG, CONFIG_DESCRIPTIONS, FLATS, STORAGE_KEYS, isSocietySheetName, isGoogleSpreadsheetMime } from '../config/constants';
 import { duplicateExpenseMessage, firstDuplicateExpense } from '../utils/expenseDuplicate';
 import {
   FOUNDING_OWNER_EMAIL,
@@ -30,6 +30,7 @@ import {
   unbindSpreadsheet,
 } from '../utils/helpers';
 import { gapiCall } from '../utils/gapi';
+import { parseHandoverSummaryRows } from '../data/handoverLedger';
 import {
   createSpreadsheet,
   ensureSheetStructure,
@@ -190,7 +191,8 @@ export async function resolveSpreadsheetForUser(email) {
     if (isValidSpreadsheetId(currentId) && !emailMismatch) {
       const meta = await getSpreadsheetFileMeta(currentId);
       const privateCopy = isPrivateCopyOwnedByUser(meta, email);
-      if (!privateCopy && await canReadSpreadsheet(currentId)) {
+      const societyName = !meta || isSocietySheetName(meta.name);
+      if (!privateCopy && societyName && await canReadSpreadsheet(currentId)) {
         bindSpreadsheet(currentId, email);
         return currentId;
       }
@@ -200,7 +202,13 @@ export async function resolveSpreadsheetForUser(email) {
     }
 
     const found = await findSocietySpreadsheet(email);
-    if (found?.id && !isPrivateCopyOwnedByUser(found, email) && await canReadSpreadsheet(found.id)) {
+    const foundIsGoogleSheet = !found?.mimeType || isGoogleSpreadsheetMime(found.mimeType);
+    if (
+      found?.id
+      && foundIsGoogleSheet
+      && !isPrivateCopyOwnedByUser(found, email)
+      && await canReadSpreadsheet(found.id)
+    ) {
       bindSpreadsheet(found.id, email);
       return found.id;
     }
@@ -1717,6 +1725,32 @@ export async function getAuditLogForMonth(monthLabel) {
     } catch {
       return [];
     }
+  });
+}
+
+export async function getHandoverSummary() {
+  return withAuth(async () => {
+    const spreadsheetId = getSpreadsheetId();
+    if (!spreadsheetId) return [];
+    const response = await window.gapi.client.sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `'${SHEET_NAMES.HANDOVER_SUMMARY}'!A2:Q200`,
+    }).catch(() => ({ result: { values: [] } }));
+    return parseHandoverSummaryRows(response.result.values || []);
+  });
+}
+
+export async function getSocietyNotes() {
+  return withAuth(async () => {
+    const spreadsheetId = getSpreadsheetId();
+    if (!spreadsheetId) return [];
+    const response = await window.gapi.client.sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `'${SHEET_NAMES.SOCIETY_NOTES}'!A2:C100`,
+    }).catch(() => ({ result: { values: [] } }));
+    return (response.result.values || [])
+      .filter((row) => row[0])
+      .map((row) => [row[0] || '', row[1] || '', row[2] || '']);
   });
 }
 

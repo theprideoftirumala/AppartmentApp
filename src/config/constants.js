@@ -11,9 +11,9 @@ export const GOOGLE_CLIENT_ID = '91050465180-vqn4p4qk0rq5ihstdquu95vjpegjcbld.ap
 
 export const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/spreadsheets',
-  // Files this app creates (receipts, backups, the society sheet for the founding owner).
+  // Receipts, backups, and copies of the society workbook this account can access.
   'https://www.googleapis.com/auth/drive.file',
-  // Lets members LIST a TPT-MaintenanceTracker that was shared with them (not create a second copy).
+  // Lets members LIST The Pride of Tirumala-APP when it was shared with them.
   'https://www.googleapis.com/auth/drive.metadata.readonly',
   'https://www.googleapis.com/auth/userinfo.email',
   'https://www.googleapis.com/auth/userinfo.profile',
@@ -27,7 +27,7 @@ export const DISCOVERY_DOCS = [
 // ─── Apartment Configuration ────────────────────────────────────
 export const APP_NAME = 'The Pride of Tirumala';
 export const APP_SHORT_NAME = 'TPT Tracker';
-export const APP_VERSION = '1.8.0';
+export const APP_VERSION = '1.8.1';
 
 /**
  * Bump this when GOOGLE_SCOPES change so existing sessions re-consent.
@@ -97,9 +97,39 @@ export const DRIVE_ROOT_FOLDER = 'TPT-AppartmentApp';
 export const DRIVE_EXPENSES_FOLDER = 'expenses-evidence';
 export const DRIVE_BACKUPS_FOLDER = 'backups';
 export const DRIVE_ACTIVITY_FOLDER = 'activity-funds';
-export const SHEET_FILE_NAME = 'TPT-MaintenanceTracker';
+/** Live society workbook in Drive. Do not create a second file. */
+export const SHEET_FILE_NAME = 'The Pride of Tirumala-APP';
+export const SOCIETY_SHEET_ALIASES = [
+  'The Pride of Tirumala-APP',
+  'The Pride of Tirumala-APP.xlsx',
+];
+export const GOOGLE_SHEET_MIME = 'application/vnd.google-apps.spreadsheet';
+export const EXCEL_SHEET_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+/** History tabs already in The Pride of Tirumala-APP.xlsx — never overwrite. */
+export const LEGACY_SHEET_TABS = [
+  'Summary',
+  'Exp - Detailed',
+  'Borewell Exp',
+  'Motor repair oct',
+  'Notes',
+];
 export const ACTIVITY_FILE_PREFIX = 'TPT-Activity-';
 export const SHEET_SAMPLE_SUFFIX = '-SAMPLE';
+
+export function normalizeSocietySheetName(name) {
+  return String(name || '').trim().toLowerCase().replace(/\.xlsx$/i, '');
+}
+
+/** True for The Pride of Tirumala-APP with or without .xlsx. */
+export function isSocietySheetName(name) {
+  const normalized = normalizeSocietySheetName(name);
+  if (!normalized) return false;
+  return SOCIETY_SHEET_ALIASES.some((alias) => normalizeSocietySheetName(alias) === normalized);
+}
+
+export function isGoogleSpreadsheetMime(mimeType) {
+  return mimeType === GOOGLE_SHEET_MIME;
+}
 
 // ─── Google Sheets Structure ────────────────────────────────────
 // Order here is the tab order in a newly created workbook.

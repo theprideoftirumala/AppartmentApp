@@ -5,6 +5,7 @@ import {
   HANDOVER_MONTHS,
   handoverLifetimeTotals,
   handoverSummaryRows,
+  parseHandoverSummaryRows,
 } from './handoverLedger';
 
 describe('handover ledger from the I&E Excel', () => {
@@ -39,5 +40,13 @@ describe('handover ledger from the I&E Excel', () => {
     expect(rows).toHaveLength(70);
     expect(rows[0][0]).toBe("Nov'20");
     expect(JSON.stringify(rows)).not.toMatch(/Rama|Pavan|Vijay|Nanaji|Veera|Pramod/i);
+  });
+
+  it('reads Handover Summary sheet rows back into month objects', () => {
+    const parsed = parseHandoverSummaryRows(handoverSummaryRows().slice(-1));
+    expect(parsed).toHaveLength(1);
+    expect(parsed[0].label).toBe("August '26");
+    expect(parsed[0].collection).toBe(30000);
+    expect(parsed[0].byCategory['Watchman salary']).toBe(8500);
   });
 });

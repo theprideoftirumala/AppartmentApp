@@ -28,18 +28,17 @@ All data is stored in a Google Sheet in your Google Drive — the sheet is the s
             },
             {
                 heading: 'Where is the data stored?',
-                text: `Your data lives in a Google Sheet named "TPT-MaintenanceTracker" in a Google Drive folder called "TPT-AppartmentApp".
+                text: `Your data lives in a Google Sheet named "The Pride of Tirumala-APP" in a Google Drive folder called "TPT-AppartmentApp".
 Open it anytime from Settings > Open Sheet. Start with the Guide tab — it explains every column in plain language.
 Use Pending Dues to see unpaid flats for any month, and Monthly Summary for surplus or deficit (those tabs use formulas, so they stay correct if you edit Maintenance by hand).
 The Handover Summary tab holds Nov 2020–Aug 2026 totals from the old I&E Excel. Live tabs start Sep-26.
-The first time only, setup creates empty live tabs for production. Later visits reconnect the existing sheet — you are not asked to create it again. Pretend test rows stay off until Settings → Configuration → Sample data is set to Y.
-After testing, Settings > Backups > Create Fresh Production Sheet archives the sample file and opens an empty live sheet.
-Backups (copies of the sheet) are stored in the "backups" subfolder.`,
+Setup connects The Pride of Tirumala-APP already in Drive, copies a backup first, then adds empty app tabs beside the five history tabs. It does not create a new society file.
+Backups (copies of the sheet) are stored in the "backups" subfolder. A copy is also taken on each Google sign-in.`,
             },
             {
                 heading: 'Who can access the app?',
-                text: `Only ${OWNER_EMAIL_MASKED} is the founding Owner and may create the society Google Sheet.
-Everyone else must be added in Settings → Access Control. New users default to Reader (view-only) and are shared the existing TPT-MaintenanceTracker as Viewer — they must not create a second sheet.
+                text: `Only ${OWNER_EMAIL_MASKED} is the founding Owner and may connect the society Google Sheet.
+Everyone else must be added in Settings → Access Control. New users default to Reader (view-only) and are shared the existing The Pride of Tirumala-APP as Viewer — they must not upload a second sheet.
 A second Owner can be granted only by the founding owner (max 2 owners). Unlisted Google accounts see Access Denied.`,
             },
         ],
@@ -132,10 +131,10 @@ This takes effect from the next time you initialize a new month.`,
             },
             {
                 heading: 'Lost access / new device',
-                text: `Sign in with Google. Residents are connected to the shared TPT-MaintenanceTracker (not a new file).
-Only ${OWNER_EMAIL_MASKED} may create the workbook, and only if Drive search finds none. Others who are not on Access Control see Access Denied.
+                text: `Sign in with Google. Residents are connected to the shared The Pride of Tirumala-APP (not a new file).
+Only ${OWNER_EMAIL_MASKED} may connect the workbook. The app never creates a second society file. Others who are not on Access Control see Access Denied.
 If the phone shows a Google API error, open Chrome or Safari (not WhatsApp/Instagram), allow pop-ups, then Settings → Appearance → Clear cache.
-Each Owner Google sign-in takes a Drive backup of the society sheet. Readers and Guest PIN logins do not.`,
+Each Google sign-in copies The Pride of Tirumala-APP into Drive/backups. Guest PIN sessions do not.`,
             },
         ],
     },
@@ -200,7 +199,7 @@ The next due date is automatically scheduled based on the frequency (e.g., Month
         content: [
             {
                 heading: '1. Opening and Navigating the Sheet',
-                text: `HOW TO OPEN:\n- In the app: Settings > Open Sheet (or the sidebar "Open Sheet" link)\n- Direct URL: once opened, bookmark it in your browser\n- Google Drive: drive.google.com > search "TPT-MaintenanceTracker"\n\nSHEET TABS (at the bottom of the screen):\nConfiguration | Flats | Maintenance | Expenses | Misc Funds | Emergency Contacts | Reminders | Access Control | Audit Log | Water Tanker Log | Monthly Summary | Watchman Details\n\nNAVIGATION TIPS:\n- Ctrl+End: jump to the last row with data\n- Ctrl+Home: jump to cell A1\n- Ctrl+F: search within the current sheet\n- Click any column header to sort by that column\n- Use the freeze row (row 1 is frozen) — scroll down and the header stays visible`,
+                text: `HOW TO OPEN:\n- In the app: Settings > Open Sheet (or the sidebar "Open Sheet" link)\n- Direct URL: once opened, bookmark it in your browser\n- Google Drive: drive.google.com > search "The Pride of Tirumala-APP"\n\nSHEET TABS (at the bottom of the screen):\nConfiguration | Flats | Maintenance | Expenses | Misc Funds | Emergency Contacts | Reminders | Access Control | Audit Log | Water Tanker Log | Monthly Summary | Watchman Details\n\nNAVIGATION TIPS:\n- Ctrl+End: jump to the last row with data\n- Ctrl+Home: jump to cell A1\n- Ctrl+F: search within the current sheet\n- Click any column header to sort by that column\n- Use the freeze row (row 1 is frozen) — scroll down and the header stays visible`,
             },
             {
                 heading: '2. Configuration Tab — Full Key Reference',
@@ -248,7 +247,7 @@ The next due date is automatically scheduled based on the frequency (e.g., Month
             },
             {
                 heading: '13. Backup, Recovery & Version History',
-                text: `APP BACKUP (Recommended):\n  Settings > Backups > Create Backup\n  This makes a COPY of the entire sheet saved in the "backups" subfolder in Google Drive\n  Backups are named: TPT-MaintenanceTracker_YYYYMMDD_HHMMSS\n  To restore: open the backup file, copy data back to the main sheet manually\n\nGOOGLE SHEETS VERSION HISTORY (Built-in):\n  File > Version history > See version history\n  Google automatically saves versions — you can restore to any past version\n  Click "Restore this version" to roll back to a previous state\n  This is your SAFETY NET if you accidentally delete data\n\nHOW TO RECOVER DELETED DATA:\n  1. Open Version History (File > Version history)\n  2. Browse to a version before the deletion\n  3. Find the deleted row(s)\n  4. Copy the data from the old version\n  5. Restore to current version\n  6. Paste the copied data back into the sheet\n\nIF THE APP LOSES THE SHEET:\n  The spreadsheet ID is stored in your browser's localStorage\n  If you clear browser data, run the app Setup again — it will search Google Drive and reconnect\n  No data is lost — the sheet is always in your Google Drive`,
+                text: `APP BACKUP (Recommended):\n  Settings > Backups > Create Backup\n  This makes a COPY of the entire sheet saved in the "backups" subfolder in Google Drive\n  Backups are named: The Pride of Tirumala-APP_YYYYMMDD_HHMMSS\n  To restore: open the backup file, copy data back to the main sheet manually\n\nGOOGLE SHEETS VERSION HISTORY (Built-in):\n  File > Version history > See version history\n  Google automatically saves versions — you can restore to any past version\n  Click "Restore this version" to roll back to a previous state\n  This is your SAFETY NET if you accidentally delete data\n\nHOW TO RECOVER DELETED DATA:\n  1. Open Version History (File > Version history)\n  2. Browse to a version before the deletion\n  3. Find the deleted row(s)\n  4. Copy the data from the old version\n  5. Restore to current version\n  6. Paste the copied data back into the sheet\n\nIF THE APP LOSES THE SHEET:\n  The spreadsheet ID is stored in your browser's localStorage\n  If you clear browser data, run the app Setup again — it will search Google Drive and reconnect\n  No data is lost — the sheet is always in your Google Drive`,
             },
         ],
     },
@@ -267,7 +266,7 @@ The next due date is automatically scheduled based on the frequency (e.g., Month
             },
             {
                 heading: 'How to add a new user (Google login)',
-                text: `1. Sign in as the founding owner (${OWNER_EMAIL_MASKED})\n2. Go to Settings > Access Control\n3. Click Add User\n4. Enter their Gmail (role defaults to Reader / view-only)\n5. Optionally grant Owner (founding owner only, max 2 owners)\n6. The app shares the existing society sheet as Viewer or Writer to match the role\n7. If OAuth is in Testing mode, also add them as a Test User in Google Cloud Console\n8. They sign in — they must not create another TPT-MaintenanceTracker`,
+                text: `1. Sign in as the founding owner (${OWNER_EMAIL_MASKED})\n2. Go to Settings > Access Control\n3. Click Add User\n4. Enter their Gmail (role defaults to Reader / view-only)\n5. Optionally grant Owner (founding owner only, max 2 owners)\n6. The app shares the existing society sheet as Viewer or Writer to match the role\n7. If OAuth is in Testing mode, also add them as a Test User in Google Cloud Console\n8. They sign in — they must not upload another The Pride of Tirumala-APP`,
             },
             {
                 heading: 'Guest PIN access (no Google account)',
@@ -275,7 +274,7 @@ The next due date is automatically scheduled based on the frequency (e.g., Month
             },
             {
                 heading: 'Reader vs Owner access',
-                text: `Founding Owner (${OWNER_EMAIL_MASKED} only, unless they grant Owner):\n• Creates the one society spreadsheet\n• Adds users (default Reader) and shares Drive as Viewer\n• Full write access\n\nReader (default for added residents):\n• View Dashboard, Maintenance, Expenses, Reports, Reminders, Contacts\n• Cannot add expenses, record payments, change settings, or add users\n• Google Sheet permission is Viewer\n\nMaximum 2 Owners. The founding owner cannot be removed.`,
+                text: `Founding Owner (${OWNER_EMAIL_MASKED} only, unless they grant Owner):\n• Connects the one society spreadsheet (The Pride of Tirumala-APP)\n• Adds users (default Reader) and shares Drive as Viewer\n• Full write access\n\nReader (default for added residents):\n• View Dashboard, Maintenance, Expenses, Reports, Reminders, Contacts\n• Cannot add expenses, record payments, change settings, or add users\n• Google Sheet permission is Viewer\n\nMaximum 2 Owners. The founding owner cannot be removed.`,
             },
         ],
     },
@@ -290,7 +289,7 @@ The next due date is automatically scheduled based on the frequency (e.g., Month
             },
             {
                 heading: 'What happens if I clear browser history/cache?',
-                text: `The app stores the Google Sheet ID in localStorage. If you clear storage you will be logged out.\nFounding owner: Setup reconnects the owned TPT-MaintenanceTracker and will not create a second file if one exists.\nResidents: you need to be on Access Control and have the sheet shared as Viewer — you cannot create a society sheet.\nGuest PIN is device-local and must be set again.`,
+                text: `The app stores the Google Sheet ID in localStorage. If you clear storage you will be logged out.\nFounding owner: Setup reconnects the owned The Pride of Tirumala-APP and will not create a second file if one exists.\nResidents: you need to be on Access Control and have the sheet shared as Viewer — you cannot create a society sheet.\nGuest PIN is device-local and must be set again.`,
             },
             {
                 heading: 'Can multiple users edit data at the same time?',
@@ -310,7 +309,7 @@ The next due date is automatically scheduled based on the frequency (e.g., Month
             },
             {
                 heading: 'The app shows "Not set up" after I already used it on another device',
-                text: `Each browser stores the spreadsheet ID locally.\nFounding owner: sign in and Setup will reconnect the owned TPT-MaintenanceTracker (it will not create a second file if one exists).\nResidents: you must already be added in Access Control and have the sheet shared as Viewer. You will not see a create-sheet wizard.`,
+                text: `Each browser stores the spreadsheet ID locally.\nFounding owner: sign in and Setup will reconnect the owned The Pride of Tirumala-APP (it will not create a second file if one exists).\nResidents: you must already be added in Access Control and have the sheet shared as Viewer. You will not see a create-sheet wizard.`,
             },
             {
                 heading: 'How to update the Opening Balance / Handover Deficit?',

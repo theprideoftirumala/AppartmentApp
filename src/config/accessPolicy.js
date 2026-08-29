@@ -8,7 +8,7 @@
  *
  * Rules:
  *  1. One founding owner (FOUNDING_OWNER_EMAIL below)
- *  2. One society workbook (TPT-MaintenanceTracker), created only by that owner
+ *  2. One society workbook (The Pride of Tirumala-APP), connected only by that owner
  *  3. New members default to Reader (view-only) until the founding owner promotes them
  *  4. The founding owner cannot be demoted or removed from Access Control
  *

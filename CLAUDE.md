@@ -69,13 +69,13 @@ The workbook is designed so a treasurer can understand every number without open
 
 Late fee and the old Misc Funds tab stay in the workbook for history. The app no longer collects them. Use **Activity Funds** for Ganesh, motor, or similar optional collections.
 
-Setup creates a **fresh** production workbook by default. Sample live-tab data is off until Settings → Configuration → SAMPLE_DATA is set to Y. After testing, Settings → Create Fresh Production Sheet archives the sample file in Drive.
+Setup **never creates** a society workbook. It connects **The Pride of Tirumala-APP** already in Drive (convert the .xlsx with Open with Google Sheets if needed), copies a backup first, then adds empty app tabs beside the five history tabs. Sample live-tab data stays off.
 
 ## Google Drive Structure
 
 ```
 TPT-AppartmentApp/
-├── TPT-MaintenanceTracker (Google Sheet)
+├── The Pride of Tirumala-APP (Google Sheet; history tabs + app tabs)
 ├── expenses-evidence/
 │   ├── 2026-09/
 │   └── ...
@@ -83,10 +83,11 @@ TPT-AppartmentApp/
 │   ├── TPT-Activity-ganesh-festival
 │   └── TPT-Activity-new-motor-fund
 └── backups/
-    └── TPT-MaintenanceTracker_YYYYMMDD_HHMMSS
+    └── The Pride of Tirumala-APP_pre-setup_YYYYMMDD_HHMMSS
+    └── The Pride of Tirumala-APP_login_YYYYMMDD_HHMMSS
 ```
 
-Owner Google sign-in copies the society sheet into `backups/`. Readers and Guest PIN sessions do not.
+A Drive copy is taken before first Setup and on every Google sign-in. Guest PIN sessions do not.
 
 ## Configuration
 
@@ -101,13 +102,13 @@ All configurable values are in `src/config/constants.js` and can be overridden a
 
 ## Security Model
 
-**One society sheet, one founding owner.** Do not “fix” access by letting each Google login create `TPT-MaintenanceTracker` in their own Drive — that made random accounts appear as Owner of a private copy.
+**One society sheet, one founding owner.** Do not “fix” access by letting each Google login create a private copy — that made random accounts appear as Owner of their own file.
 
 - Founding owner: `th***@gmail.com` (full address only in `src/config/accessPolicy.js`). Always Owner. Cannot be removed.
-- Only the founding owner may create or archive-and-recreate the workbook (`sheetSetup.js`).
+- The workbook is **The Pride of Tirumala-APP**. The app never mints `TPT-MaintenanceTracker` or any replacement file.
 - Manage users in the app: Settings → Access Control. New users default to **Reader**. Drive share is Viewer (`reader`) unless the founding owner grants Owner (`writer`).
 - Members must not hit Setup/create. Unlisted or unshared accounts get Access Denied.
-- Discovery: founding owner searches owned files; members search `sharedWithMe` plus optional `public/sheet-config.json`. Private copies owned by a non-founding user are ignored. A failed lookup must not wipe a bound workbook or reopen the create wizard — create is first-time only, after search confirms the sheet is missing.
+- Discovery: founding owner searches owned `The Pride of Tirumala-APP`; members search `sharedWithMe` plus optional `public/sheet-config.json`. Private copies and the old `TPT-MaintenanceTracker` name are ignored. A failed lookup must not wipe a bound workbook.
 - OAuth scopes include `drive.metadata.readonly` so shared files are listable. Bump `OAUTH_SCOPE_VERSION` when scopes change so GIS re-consents.
 - Write RPCs go through `withWriteAuth` (Access Control + founding-owner check), not UI hiding alone.
 - Google OAuth 2.0 — no passwords stored. Access tokens in `sessionStorage` only.
