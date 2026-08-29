@@ -27,7 +27,7 @@ export const DISCOVERY_DOCS = [
 // ─── Apartment Configuration ────────────────────────────────────
 export const APP_NAME = 'The Pride of Tirumala';
 export const APP_SHORT_NAME = 'TPT Tracker';
-export const APP_VERSION = '1.8.7';
+export const APP_VERSION = '1.8.8';
 
 /**
  * Bump this when GOOGLE_SCOPES change so existing sessions re-consent.
@@ -126,7 +126,15 @@ export function normalizeSocietySheetName(name) {
 export function isSocietySheetName(name) {
   const normalized = normalizeSocietySheetName(name);
   if (!normalized) return false;
+  if (normalized.endsWith('-old')) return false;
   return SOCIETY_SHEET_ALIASES.some((alias) => normalizeSocietySheetName(alias) === normalized);
+}
+
+/** Live Google Sheet only — not the .xlsx, not The Pride of Tirumala-APP-old. */
+export function isLiveSocietySheetName(name) {
+  const raw = String(name || '').trim();
+  if (!raw || /\.xlsx$/i.test(raw)) return false;
+  return normalizeSocietySheetName(raw) === normalizeSocietySheetName(SHEET_FILE_NAME);
 }
 
 export function isGoogleSpreadsheetMime(mimeType) {

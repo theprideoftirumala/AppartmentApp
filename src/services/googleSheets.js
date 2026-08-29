@@ -4,7 +4,7 @@
  * Google Sheet is the single source of truth / database
  */
 
-import { SHEET_NAMES, SHEET_HEADERS, DEFAULT_CONFIG, CONFIG_DESCRIPTIONS, FLATS, STORAGE_KEYS, SHEET_FILE_NAME, isSocietySheetName, isGoogleSpreadsheetMime } from '../config/constants';
+import { SHEET_NAMES, SHEET_HEADERS, DEFAULT_CONFIG, CONFIG_DESCRIPTIONS, FLATS, STORAGE_KEYS, SHEET_FILE_NAME, isLiveSocietySheetName, isGoogleSpreadsheetMime } from '../config/constants';
 import { isLiveAppMonth } from '../utils/legacySheetImport';
 import { isMissingSheetRangeError } from '../utils/sheetRangeError';
 import { duplicateExpenseMessage, firstDuplicateExpense } from '../utils/expenseDuplicate';
@@ -218,8 +218,12 @@ export async function resolveSpreadsheetForUser(email) {
     if (isValidSpreadsheetId(currentId) && !emailMismatch) {
       const meta = await getSpreadsheetFileMeta(currentId);
       const privateCopy = isPrivateCopyOwnedByUser(meta, email);
-      const societyName = !meta || isSocietySheetName(meta.name);
-      if (!privateCopy && societyName && await canReadSpreadsheet(currentId)) {
+      const liveSheet = Boolean(
+        meta
+        && isLiveSocietySheetName(meta.name)
+        && isGoogleSpreadsheetMime(meta.mimeType),
+      );
+      if (!privateCopy && liveSheet && await canReadSpreadsheet(currentId)) {
         bindSpreadsheet(currentId, email);
         return currentId;
       }
@@ -402,7 +406,12 @@ export async function getMaintenanceRecords(month = null) {
     const spreadsheetId = getSpreadsheetId();
     const user = getCurrentUser();
     if (isFoundingOwner(user?.email) && isValidSpreadsheetId(spreadsheetId)) {
-      await syncCollectionsFromSummary(spreadsheetId);
+      try {
+        await syncCollectionsFromSummary(spreadsheetId);
+      } catch (err) {
+        if (!isMissingSheetRangeError(err)) throw err;
+        await ensureSheetStructure(spreadsheetId);
+      }
     }
     const response = await window.gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId,
@@ -1294,7 +1303,7 @@ export async function getDashboardData() {
     }
 
     if (isFoundingOwner(user?.email)) {
-      await syncCollectionsFromSummary(spreadsheetId, { force: true });
+      await ensureSheetStructure(spreadsheetId);
     }
 
     const coreRanges = [

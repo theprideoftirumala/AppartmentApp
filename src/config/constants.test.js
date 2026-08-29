@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { APP_VERSION, DEFAULT_CONFIG, FEATURES, LIVE_APP_START, MAINTENANCE_MIN_DATE, SHEET_FILE_NAME, SOCIETY_DISCLAIMER, isSampleDataEnabled, isSocietySheetName } from './constants';
+import { APP_VERSION, DEFAULT_CONFIG, FEATURES, LIVE_APP_START, MAINTENANCE_MIN_DATE, SHEET_FILE_NAME, SOCIETY_DISCLAIMER, isLiveSocietySheetName, isSampleDataEnabled, isSocietySheetName } from './constants';
 
 describe('feature flags', () => {
   it('keeps late fee and misc funds off in the app', () => {
@@ -50,6 +50,10 @@ describe('society workbook name', () => {
     expect(isSocietySheetName('The Pride of Tirumala-APP')).toBe(true);
     expect(isSocietySheetName('The Pride of Tirumala-APP.xlsx')).toBe(true);
     expect(isSocietySheetName('TPT-MaintenanceTracker')).toBe(false);
+    expect(isSocietySheetName('The Pride of Tirumala-APP-old')).toBe(false);
     expect(isSocietySheetName('')).toBe(false);
+    expect(isLiveSocietySheetName('The Pride of Tirumala-APP')).toBe(true);
+    expect(isLiveSocietySheetName('The Pride of Tirumala-APP.xlsx')).toBe(false);
+    expect(isLiveSocietySheetName('The Pride of Tirumala-APP-old')).toBe(false);
   });
 });

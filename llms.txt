@@ -31,7 +31,7 @@ Track monthly maintenance collection (₹3,000/flat × 10 flats), log expenses w
 
 There is **one society workbook** named `The Pride of Tirumala-APP` and **one founding owner**.
 
-- File aliases: `The Pride of Tirumala-APP` and `The Pride of Tirumala-APP.xlsx`
+- File aliases: `The Pride of Tirumala-APP` and `The Pride of Tirumala-APP.xlsx`. Ignore `The Pride of Tirumala-APP-old` and `TPT-MaintenanceTracker`. Dashboard adds missing app tabs before syncing collections.
 - The app **never creates** `TPT-MaintenanceTracker` or any replacement society file
 - If Drive only has the `.xlsx`, the founding owner must convert it: Drive → Open with Google Sheets → File → Save as Google Sheets, keep the name `The Pride of Tirumala-APP`
 - Setup **backs up first**, then adds empty app tabs beside the five history tabs

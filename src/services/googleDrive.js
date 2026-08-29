@@ -14,6 +14,7 @@ import {
   GOOGLE_SHEET_MIME,
   EXCEL_SHEET_MIME,
   isSocietySheetName,
+  isLiveSocietySheetName,
   isGoogleSpreadsheetMime,
 } from '../config/constants';
 import { gapiCall } from '../utils/gapi';
@@ -89,6 +90,8 @@ export function isSocietyWorkbook(file, email) {
 
 function pickPreferredSocietyFile(files) {
   const matches = (files || []).filter((file) => isSocietySheetName(file.name));
+  const liveSheet = matches.find((file) => isLiveSocietySheetName(file.name) && isGoogleSpreadsheetMime(file.mimeType));
+  if (liveSheet) return liveSheet;
   return matches.find((file) => isGoogleSpreadsheetMime(file.mimeType)) || matches[0] || null;
 }
 
