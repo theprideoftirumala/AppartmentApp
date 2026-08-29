@@ -22,11 +22,18 @@ A **Progressive Web App (PWA)** for managing apartment maintenance finances, bui
 - **🔐 Secure** — Google OAuth 2.0, audit logging, role-based access; only the founding owner may create LIVE
 - **💸 Payees** — GPay / PhonePe from a 10-digit phone (optional UPI ID)
 
+## What's new in 1.9.3
+
+- Dashboard Collection, Expenses, and Available balance follow **Maintenance / Expenses** when Live Summary formulas still show 0. A yellow banner still lists the formula mismatch. Do not type amounts on Live Summary.
+- Live Summary `SUMIFS` match the month as text (`Aug-26`), so Sheets cannot turn the header into a date and hide collections.
+- Add next month fills the first gap after Aug-26 (it does not skip Sep-26 if that month is missing). Maintenance lists the months that are already on the sheet.
+- “Google Sheets API is not enabled” is only shown for the real not-enabled error, not every `sheets.googleapis.com` URL. PWA cache `tpt-v36`.
+
 ## What's new in 1.9.2
 
 - Live books start **August 2026**. Live Summary has Aug-26 only; Maintenance → Add next month appends Sep-26, then Oct-26, and so on. Unused placeholder columns on an existing LIVE file are dropped. Opening balance is still the APP Summary green cell — do not re-enter August if it is already in that cell.
 - Payees pay with a **phone number**. UPI ID is optional. Same phone or same UPI is a duplicate.
-- Month dropdowns list working months only (not a long fiscal list). PWA cache `tpt-v35`.
+- Month dropdowns list working months only (not a long fiscal list).
 
 ## 🏗️ Architecture
 

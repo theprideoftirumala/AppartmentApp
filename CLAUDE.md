@@ -43,7 +43,9 @@ src/
 ├── config/liveWorkbook.js   # Live Summary expense labels from the old Summary tab
 ├── data/handoverLedger.js   # Nov 2020–Aug 2026 totals (no owner names)
 ├── utils/gapi.js            # Promise.resolve wrapper for gapi thenables (never .catch on raw gapi)
-├── utils/sheetCorrections.js # Dashboard vs Live Summary / Still Due formula checks
+├── utils/sheetCorrections.js # Dashboard vs Live Summary / Still Due; prefer typed amounts when formulas disagree
+├── utils/googleApiError.js # Real API-not-enabled wording only (not every sheets.googleapis.com URL)
+├── hooks/useWorkingMonths.js # Live Summary headers + data months; sequential add
 ├── utils/setupFlow.js       # Setup never offers create
 ├── utils/legacySheetImport.js # Summary collections + expense categories / Exp-Detailed (no duplicate totals)
 ├── utils/voiceExpense.js    # On-device speech parse
@@ -82,7 +84,7 @@ Late fee and the old Misc Funds tab stay in the workbook for history. The app no
 
 Setup **never creates** The Pride of Tirumala-APP. It connects that file already in Drive (convert the .xlsx with Open with Google Sheets if needed), copies a backup first, then adds empty app tabs beside the five history tabs. Sample live-tab data stays off.
 
-**Dashboard** reads the active workbook (LIVE if bound, otherwise APP). Edit Maintenance/Expenses on that file, then refresh. If Live Summary formulas disagree with app totals, a correction banner lists what to fix. Do not type amounts on Live Summary.
+**Dashboard** reads the active workbook (LIVE if bound, otherwise APP). Edit Maintenance/Expenses on that file, then refresh. Cards show those typed amounts when Live Summary formulas still disagree (banner lists the mismatch). Do not type amounts on Live Summary. Live Summary `SUMIFS` use the month as text (`"Aug-26"`). Add next month fills the first gap after Aug-26.
 
 **Live books (Aug 2026+):** founding owner uses Settings → Backups → Create live books. That creates or reconnects **The Pride of Tirumala-LIVE** (never `TPT-MaintenanceTracker`, never a replacement APP file). It copies Configuration, Flats, Payees, Access Control, contacts, reminders, and watchman rows from APP. Opening available balance is the green Summary cell at create (already includes August as of that cell — do not re-enter August collections/expenses on LIVE if they are in that cell). History months are not copied. Live Summary starts with **Aug-26 only**; add the next month from Maintenance (sequential append). Formulas pull collections from Maintenance and expenses from Expenses (including Sundry line items; not a second Sundry total). Type amounts on Maintenance/Expenses (app or by hand), not on Live Summary. Payees: GPay/PhonePe use a 10-digit phone; UPI ID is optional. Old APP Summary (including surplus/deficit as typed) is read-only at `#/old`.
 

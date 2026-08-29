@@ -219,12 +219,14 @@ Optionally paste the Google Sheet ID into `public/sheet-config.json` after that 
 | Setup says convert the Excel file | In Drive: Open with Google Sheets → File → Save as Google Sheets. Name it The Pride of Tirumala-APP |
 | Old TPT-MaintenanceTracker still opens | The app ignores that name. Bind The Pride of Tirumala-APP; hard-refresh or clear cache |
 | History months missing in the app | Settings → Backups → Refresh sheet layout, then hard-refresh (cache `tpt-v36`) |
-| Payees: `.catch is not a function` | Hard-refresh v1.9.2. Google thenables must be wrapped with `gapiCall` |
+| Payees: `.catch is not a function` | Hard-refresh v1.9.3. Google thenables must be wrapped with `gapiCall` |
 | Dashboard ignores sheet edits | After LIVE exists, edit The Pride of Tirumala-LIVE, then Dashboard refresh. A correction banner appears if formulas disagree |
-| Bound to APP-old or the .xlsx | Hard-refresh v1.9.2. Retry as founding owner. The app uses only The Pride of Tirumala-APP (Google Sheet) for history |
-| Failed to create backup | Hard-refresh v1.9.2. Create Backup copies APP and LIVE (if connected); clones tabs if Drive copy is blocked. Wait up to a minute. |
+| Bound to APP-old or the .xlsx | Hard-refresh v1.9.3. Retry as founding owner. The app uses only The Pride of Tirumala-APP (Google Sheet) for history |
+| Failed to create backup | Hard-refresh v1.9.3. Create Backup copies APP and LIVE (if connected); clones tabs if Drive copy is blocked. Wait up to a minute. |
 | Need Aug 2026+ books like the old Summary | Founding owner: Settings → Backups → Create live books (`The Pride of Tirumala-LIVE`). Live Summary starts at Aug-26; add later months from Maintenance. Old Summary stays at `#/old` |
-| Live Summary still has a year of empty months | Hard-refresh v1.9.2, then Settings → Backups → Refresh sheet layout. Unused columns are dropped; Aug-26 is kept. |
+| Live Summary still has a year of empty months | Hard-refresh v1.9.3 (`tpt-v36`), then Settings → Backups → Refresh sheet layout. Unused columns are dropped; Aug-26 is kept. |
+| Dashboard Collection is ₹0 while Maintenance is paid | Hard-refresh v1.9.3. Cards follow Maintenance/Expenses if Live Summary formulas still read 0. Then Refresh sheet layout so formulas use text month labels. |
+| False “Sheets API is not enabled” | Hard-refresh v1.9.3. That message is only for the real not-enabled error. Retry; a 403/429 is not a disabled API. |
 | Expenses listed twice | Refresh sheet layout. Exp-Detailed lines win. Summary Sundry totals are removed from Expenses |
 | Collected amounts do not match Summary | Founding owner: Settings → Backups → Refresh sheet layout. The app updates Maintenance from the Summary grid |
 | Unable to parse range Configuration | The converted sheet still has only history tabs. Founding owner: Retry — the app adds Configuration and the other app tabs. Or Settings → Backups → Refresh sheet layout |
