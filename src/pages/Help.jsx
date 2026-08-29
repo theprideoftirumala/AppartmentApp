@@ -330,6 +330,10 @@ ADDING MONTHS BY HAND:
                 text: `Yes, but with caution. Multiple Owners can be logged in simultaneously. However, if two people edit the same row (same flat, same month), one might overwrite the other. Google Sheets handles concurrent edits, but the app does not have conflict resolution. Best practice: only one Owner records payments at a time.`,
             },
             {
+                heading: 'Dashboard does not match the Google Sheet',
+                text: `After LIVE exists, Dashboard reads The Pride of Tirumala-LIVE (Maintenance, Expenses, Live Summary formulas). Edit that file, then tap refresh on Dashboard.\n\nIf a yellow “Sheet correction needed” banner appears, the app total does not match a formula cell. The sheet is the source of truth. Fix month labels (Sep-26) and amounts on Maintenance/Expenses. Do not type over Live Summary formulas. Then refresh.\n\nOld APP Summary remains at #/old.`,
+            },
+            {
                 heading: 'The balance looks wrong — how is it calculated?',
                 text: `After live books exist: Dashboard uses Live Summary running available balance (opening + monthly surplus/deficit formulas).\nBefore live books: Current Balance = Available balance from the APP Summary green cell + Sep 2026+ collections − Sep 2026+ expenses.\nOld surplus/deficit as typed on APP Summary is at #/old. Those rows are not imported as extra money.\n\nIf the balance seems off:\n1. Open Live Summary on The Pride of Tirumala-LIVE (do not type over formulas)\n2. Check Maintenance and Expenses month labels (Sep-26 onward)\n3. Settings → Backups → Refresh sheet layout, then refresh the app\n4. Compare #/old for history only`,
             },

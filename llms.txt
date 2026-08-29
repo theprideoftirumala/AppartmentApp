@@ -78,7 +78,8 @@ Policy helpers live in `src/config/accessPolicy.js` and must be reused rather th
 - `src/services/sheetFormulas.js` — Still Due and Monthly Summary formulas (app UI does not use surplus/deficit)
 - `src/services/pdfExport.js` — Monthly + activity PDFs
 - `src/services/activityFunds.js` — Optional named funds; one Drive spreadsheet per activity
-- `src/utils/gapi.js` — Wrap gapi thenables so `.catch` works on phones
+- `src/utils/gapi.js` — Wrap gapi thenables so `.catch` works on phones (`gapiCall` / `gapiCallSafe`). Never call `.catch` on a raw gapi thenable.
+- `src/utils/sheetCorrections.js` — Dashboard banner when Live Summary / Still Due formulas disagree with app totals
 - `src/utils/voiceExpense.js` — Web Speech + local parse; never auto-submits
 - `src/utils/receiptOcr.js` — Local Tesseract; user must review before save
 - `docs/architecture.png` — High-level architecture PNG

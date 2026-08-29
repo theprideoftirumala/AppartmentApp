@@ -164,3 +164,27 @@ export function liveSummaryColumnForMonth(headersRow, monthLabel) {
   const index = headers.findIndex((cell) => String(cell || '').trim() === String(monthLabel || '').trim());
   return index >= 0 ? index : -1;
 }
+
+export function parseLiveSummarySnapshot(rows, monthLabel) {
+  const grid = rows || [];
+  const col = liveSummaryColumnForMonth(grid[4], monthLabel);
+  const opening = Number(grid[1]?.[1]);
+  if (col < 0) {
+    return {
+      opening: Number.isFinite(opening) ? opening : 0,
+      month: monthLabel,
+      collection: null,
+      expenses: null,
+      surplus: null,
+      running: null,
+    };
+  }
+  return {
+    opening: Number.isFinite(opening) ? opening : 0,
+    month: monthLabel,
+    collection: Number(grid[15]?.[col]) || 0,
+    expenses: Number(grid[30]?.[col]) || 0,
+    surplus: Number(grid[31]?.[col]) || 0,
+    running: Number(grid[32]?.[col]) || 0,
+  };
+}

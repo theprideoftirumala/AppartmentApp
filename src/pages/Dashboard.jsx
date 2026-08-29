@@ -12,7 +12,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useApp } from '../contexts/AppContext';
-import { getDashboardData, getAccessControl, parseApiError, seedSampleLiveData, ensureSheetStructure, getLiveSummarySnapshot } from '../services/googleSheets';
+import { getDashboardData, getAccessControl, parseApiError, seedSampleLiveData, ensureSheetStructure } from '../services/googleSheets';
 import { STORAGE_KEYS, isSampleDataEnabled } from '../config/constants';
 import { effectiveAppRole, isFoundingOwner } from '../config/accessPolicy';
 import { formatCurrency, getCurrentMonthLabel, getCollectionPercentage, daysUntil, getRelativeTime, groupExpensesByCategory, parseJsonSafe, normalizeEmail, sheetAvailableBalance } from '../utils/helpers';
@@ -76,8 +76,7 @@ export default function Dashboard() {
       setDashboardData(data);
       setConfig(data.config);
       setLastSync(new Date().toISOString());
-      const snap = await getLiveSummarySnapshot(getCurrentMonthLabel()).catch(() => null);
-      setLiveSnap(snap);
+      setLiveSnap(data.liveSnapshot || null);
 
       // Determine user role from Access Control sheet
       const userEmail = user?.email;
@@ -174,6 +173,8 @@ export default function Dashboard() {
   const currentMonthExpenses = (data?.expenses || []).filter(e => e.month === currentMonth);
   const currentMonthExpenseTotal = currentMonthExpenses.reduce((s, e) => s + e.amount, 0);
   const currentMonthCollection = currentMonthMaintenance.reduce((s, m) => s + m.amountPaid, 0);
+  const sheetCollection = liveSnap?.collection != null ? liveSnap.collection : currentMonthCollection;
+  const sheetExpenses = liveSnap?.expenses != null ? liveSnap.expenses : currentMonthExpenseTotal;
 
   // Upcoming reminders
   const upcomingReminders = (data?.reminders || [])
@@ -254,6 +255,23 @@ export default function Dashboard() {
       )}
 
       {/* Page Header */}
+      {(data?.corrections || []).length > 0 && (
+        <div className="guest-banner" role="status">
+          <AlertCircle size={16} />
+          <div>
+            <strong>Sheet correction needed</strong>
+            <ul className="mb-0 mt-2" style={{ paddingLeft: '1.2rem' }}>
+              {data.corrections.map((message) => (
+                <li key={message}>{message}</li>
+              ))}
+            </ul>
+            <p className="text-muted text-sm mt-2 mb-0">
+              After you fix Maintenance or Expenses in the Google Sheet, tap refresh. The sheet is the source of truth.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="page-header">
         <div>
           <h1 className="page-title">Dashboard</h1>
@@ -300,7 +318,7 @@ export default function Dashboard() {
               <IndianRupee size={20} />
             </div>
           </div>
-          <div className="stat-card-value">{formatCurrency(currentMonthCollection)}</div>
+          <div className="stat-card-value">{formatCurrency(sheetCollection)}</div>
           <div className="stat-card-trend">
             <span className="text-success">{collectionPct}%</span> collected
           </div>
@@ -314,7 +332,7 @@ export default function Dashboard() {
               <TrendingDown size={20} />
             </div>
           </div>
-          <div className="stat-card-value">{formatCurrency(currentMonthExpenseTotal)}</div>
+          <div className="stat-card-value">{formatCurrency(sheetExpenses)}</div>
           <div className="stat-card-trend">
             {currentMonthExpenses.length} transactions
           </div>

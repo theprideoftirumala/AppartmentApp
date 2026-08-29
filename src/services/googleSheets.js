@@ -36,8 +36,11 @@ import {
   getHistorySpreadsheetIdFromStorage,
   getLiveSpreadsheetIdFromStorage,
   bindLiveSpreadsheet,
+  getCurrentMonthLabel,
 } from '../utils/helpers';
-import { gapiCall } from '../utils/gapi';
+import { gapiCall, gapiCallSafe } from '../utils/gapi';
+import { parseLiveSummarySnapshot } from '../utils/liveSummaryLayout';
+import { dashboardCorrectionMessages } from '../utils/sheetCorrections';
 import { parseHandoverSummaryRows } from '../data/handoverLedger';
 import {
   createSpreadsheet,
@@ -208,10 +211,10 @@ export function isPermissionError(error) {
 async function canReadSpreadsheet(spreadsheetId) {
   if (!isValidSpreadsheetId(spreadsheetId)) return false;
   try {
-    await window.gapi.client.sheets.spreadsheets.get({
+    await gapiCall(window.gapi.client.sheets.spreadsheets.get({
       spreadsheetId,
       fields: 'spreadsheetId',
-    });
+    }));
     return true;
   } catch (err) {
     return false;
@@ -1323,12 +1326,14 @@ export async function getMonthlySummaries() {
 export async function getDashboardData() {
   return withAuth(async () => {
     const user = getCurrentUser();
-    const spreadsheetId = await resolveSpreadsheetForUser(user?.email);
-    if (!spreadsheetId) {
+    const historyId = await resolveSpreadsheetForUser(user?.email);
+    if (!historyId) {
       const err = new Error('SHEET_NOT_ACCESSIBLE');
       err.code = 'SHEET_NOT_ACCESSIBLE';
       throw err;
     }
+    await resolveLiveWorkbookForUser(user?.email).catch(() => null);
+    const spreadsheetId = getSpreadsheetId() || historyId;
 
     if (isFoundingOwner(user?.email)) {
       await ensureSheetStructure(spreadsheetId);
@@ -1336,7 +1341,7 @@ export async function getDashboardData() {
 
     const coreRanges = [
       `'${SHEET_NAMES.CONFIGURATION}'!A2:C100`,
-      `'${SHEET_NAMES.MAINTENANCE}'!A2:J5000`,
+      `'${SHEET_NAMES.MAINTENANCE}'!A2:K5000`,
       `'${SHEET_NAMES.EXPENSES}'!A2:K5000`,
       `'${SHEET_NAMES.REMINDERS}'!A2:J200`,
       `'${SHEET_NAMES.EMERGENCY_CONTACTS}'!A2:G200`,
@@ -1408,6 +1413,9 @@ export async function getDashboardData() {
       status: row[7] || 'PENDING',
       lateFee: Number(row[8]) || 0,
       remarks: row[9] || '',
+      stillDue: row[10] === '' || row[10] == null
+        ? Math.max(0, (Number(row[2]) || 0) - (Number(row[3]) || 0))
+        : Number(row[10]) || 0,
     }));
 
     // Parse expenses
@@ -1478,6 +1486,40 @@ export async function getDashboardData() {
     const liveExpenseAmount = expenses.filter((e) => isLiveAppMonth(e.month)).reduce((sum, e) => sum + e.amount, 0);
     const opening = sheetAvailableBalance(config);
     const currentBalance = opening + liveCollected + liveMiscFunds - liveExpenseAmount + (Number(config.CORPUS_FUND) || 0);
+    const monthLabel = getCurrentMonthLabel();
+    const monthMaintenance = maintenance.filter((row) => row.month === monthLabel);
+    const monthExpenses = expenses.filter((row) => row.month === monthLabel);
+    const monthCollection = monthMaintenance.reduce((sum, row) => sum + row.amountPaid, 0);
+    const monthExpenseTotal = monthExpenses.reduce((sum, row) => sum + row.amount, 0);
+    const computedStillDue = monthMaintenance.reduce(
+      (sum, row) => sum + Math.max(0, (Number(row.amountDue) || 0) - (Number(row.amountPaid) || 0)),
+      0,
+    );
+    const sheetStillDue = monthMaintenance.reduce((sum, row) => sum + (Number(row.stillDue) || 0), 0);
+
+    const liveId = getLiveSpreadsheetId();
+    let liveSnapshot = null;
+    if (liveId) {
+      const liveResponse = await gapiCallSafe(
+        window.gapi.client.sheets.spreadsheets.values.get({
+          spreadsheetId: liveId,
+          range: `'${SHEET_NAMES.LIVE_SUMMARY}'!A1:N33`,
+          valueRenderOption: 'UNFORMATTED_VALUE',
+        }),
+        { result: { values: [] } },
+      );
+      liveSnapshot = parseLiveSummarySnapshot(liveResponse.result.values || [], monthLabel);
+    }
+
+    const corrections = dashboardCorrectionMessages({
+      liveSnap: liveSnapshot,
+      appBalance: currentBalance,
+      monthCollection,
+      monthExpenses: monthExpenseTotal,
+      sheetStillDue,
+      computedStillDue,
+      monthLabel,
+    });
 
     // Cache dashboard data
     const dashboardData = {
@@ -1489,6 +1531,8 @@ export async function getDashboardData() {
       flats,
       summaries,
       miscFunds,
+      liveSnapshot,
+      corrections,
       totals: {
         totalCollected,
         totalMiscFunds,
@@ -1834,10 +1878,10 @@ export async function getHandoverSummary() {
   return withAuth(async () => {
     const spreadsheetId = getHistorySpreadsheetId() || getSpreadsheetId();
     if (!spreadsheetId) return [];
-    const response = await window.gapi.client.sheets.spreadsheets.values.get({
+    const response = await gapiCallSafe(window.gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId,
       range: `'${SHEET_NAMES.HANDOVER_SUMMARY}'!A2:Q200`,
-    }).catch(() => ({ result: { values: [] } }));
+    }), { result: { values: [] } });
     return parseHandoverSummaryRows(response.result.values || []);
   });
 }
@@ -1846,10 +1890,10 @@ export async function getSocietyNotes() {
   return withAuth(async () => {
     const spreadsheetId = getHistorySpreadsheetId() || getSpreadsheetId();
     if (!spreadsheetId) return [];
-    const response = await window.gapi.client.sheets.spreadsheets.values.get({
+    const response = await gapiCallSafe(window.gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId,
       range: `'${SHEET_NAMES.SOCIETY_NOTES}'!A2:C100`,
-    }).catch(() => ({ result: { values: [] } }));
+    }), { result: { values: [] } });
     return (response.result.values || [])
       .filter((row) => row[0])
       .map((row) => [row[0] || '', row[1] || '', row[2] || '']);
@@ -1860,10 +1904,10 @@ export async function getPayees() {
   return withAuth(async () => {
     const spreadsheetId = getSpreadsheetId();
     if (!spreadsheetId) return [];
-    const response = await window.gapi.client.sheets.spreadsheets.values.get({
+    const response = await gapiCallSafe(window.gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId,
       range: `'${SHEET_NAMES.PAYEES}'!A2:G100`,
-    }).catch(() => ({ result: { values: [] } }));
+    }), { result: { values: [] } });
     return (response.result.values || []).filter((row) => row[0] || row[2]).map((row) => ({
       key: row[0] || '',
       category: row[1] || '',
@@ -1889,7 +1933,7 @@ export async function addPayee(payee) {
       throw new Error('Enter a display name or a UPI ID from the payee — do not invent one.');
     }
     const key = sheetText(payee.key || `payee-${Date.now()}`, 40);
-    await window.gapi.client.sheets.spreadsheets.values.append({
+    await gapiCall(window.gapi.client.sheets.spreadsheets.values.append({
       spreadsheetId,
       range: `'${SHEET_NAMES.PAYEES}'!A:G`,
       valueInputOption: 'RAW',
@@ -1905,7 +1949,7 @@ export async function addPayee(payee) {
           sheetText(payee.notes, 200),
         ]],
       },
-    });
+    }));
     return key;
   });
 }
@@ -1920,7 +1964,7 @@ export async function updatePayee(index, payee) {
     if (duplicate) {
       throw new Error('That payee already exists (same UPI ID or same name and phone).');
     }
-    await window.gapi.client.sheets.spreadsheets.values.update({
+    await gapiCall(window.gapi.client.sheets.spreadsheets.values.update({
       spreadsheetId,
       range: `'${SHEET_NAMES.PAYEES}'!A${index + 2}:G${index + 2}`,
       valueInputOption: 'RAW',
@@ -1935,7 +1979,7 @@ export async function updatePayee(index, payee) {
           sheetText(payee.notes, 200),
         ]],
       },
-    });
+    }));
   });
 }
 
@@ -1943,11 +1987,11 @@ export async function getHistorySummaryGrid() {
   return withAuth(async () => {
     const spreadsheetId = getHistorySpreadsheetId();
     if (!spreadsheetId) return [];
-    const response = await window.gapi.client.sheets.spreadsheets.values.get({
+    const response = await gapiCallSafe(window.gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId,
       range: "'Summary'!A1:BZ50",
       valueRenderOption: 'FORMATTED_VALUE',
-    }).catch(() => ({ result: { values: [] } }));
+    }), { result: { values: [] } });
     return response.result.values || [];
   });
 }
@@ -1956,31 +2000,11 @@ export async function getLiveSummarySnapshot(monthLabel) {
   return withAuth(async () => {
     const spreadsheetId = getLiveSpreadsheetId();
     if (!spreadsheetId) return null;
-    const response = await window.gapi.client.sheets.spreadsheets.values.get({
+    const response = await gapiCallSafe(window.gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId,
       range: `'${SHEET_NAMES.LIVE_SUMMARY}'!A1:N33`,
       valueRenderOption: 'UNFORMATTED_VALUE',
-    }).catch(() => ({ result: { values: [] } }));
-    const rows = response.result.values || [];
-    const headers = rows[4] || [];
-    const col = headers.findIndex((cell) => String(cell || '').trim() === String(monthLabel || '').trim());
-    if (col < 0) {
-      return {
-        opening: Number(rows[1]?.[1]) || 0,
-        month: monthLabel,
-        collection: null,
-        expenses: null,
-        surplus: null,
-        running: null,
-      };
-    }
-    return {
-      opening: Number(rows[1]?.[1]) || 0,
-      month: monthLabel,
-      collection: Number(rows[15]?.[col]) || 0,
-      expenses: Number(rows[30]?.[col]) || 0,
-      surplus: Number(rows[31]?.[col]) || 0,
-      running: Number(rows[32]?.[col]) || 0,
-    };
+    }), { result: { values: [] } });
+    return parseLiveSummarySnapshot(response.result.values || [], monthLabel);
   });
 }

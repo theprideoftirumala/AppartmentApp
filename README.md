@@ -76,7 +76,7 @@ There are two society files. The app never creates `TPT-MaintenanceTracker`.
 
 **The Pride of Tirumala-LIVE** (from Sep 2026) — founding owner: Settings → Backups → Create live books. Copies Flats, Payees, Access Control, and related tabs from APP. Opening balance is the green Summary cell at create. **Live Summary** uses formulas (collections from Maintenance, expenses from Expenses, monthly surplus/deficit, running available balance). Type amounts on Maintenance and Expenses in the app or by hand — not on Live Summary. Same expense or same payee (UPI or name+phone) is blocked.
 
-Add a row on Maintenance or Expenses and refresh the app — the sheet is what the website shows.
+Add a row on Maintenance or Expenses (app or Google Sheet) and refresh the Dashboard — the sheet is what the website shows. After LIVE exists, edit **The Pride of Tirumala-LIVE**. A correction banner appears if Live Summary formulas disagree with those tabs.
 
 1. **Guide** — How to read and edit the workbook
 2. **Configuration** — App settings (key / value / description)

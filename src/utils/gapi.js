@@ -5,3 +5,8 @@
 export function gapiCall(thenable) {
   return Promise.resolve(thenable);
 }
+
+/** Same wrap, with a fallback when the sheet tab is missing or the call fails. */
+export function gapiCallSafe(thenable, fallback) {
+  return gapiCall(thenable).catch(() => fallback);
+}

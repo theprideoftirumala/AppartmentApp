@@ -5,6 +5,7 @@ import {
   columnLetter,
   liveMonthHeaders,
   liveSummaryStaticAndFormulaGrid,
+  parseLiveSummarySnapshot,
 } from './liveSummaryLayout';
 
 describe('liveMonthHeaders', () => {
@@ -44,5 +45,21 @@ describe('liveSummaryStaticAndFormulaGrid', () => {
     });
     expect(serviceCell).toBeTruthy();
     expect(Object.values(formulas).some((f) => f.includes('Sundry'))).toBe(true);
+  });
+});
+
+describe('parseLiveSummarySnapshot', () => {
+  it('reads collection, surplus, and running from the formula rows', () => {
+    const rows = [];
+    rows[1] = ['Opening', 100];
+    rows[4] = ['Flat', 'Owner', 'Sep-26'];
+    rows[15] = ['Collection total', '', 30000];
+    rows[30] = ['Total expenses', '', 10000];
+    rows[31] = ['Monthly surplus (deficit)', '', 20000];
+    rows[32] = ['Running available balance', '', 20100];
+    const snap = parseLiveSummarySnapshot(rows, 'Sep-26');
+    expect(snap.collection).toBe(30000);
+    expect(snap.surplus).toBe(20000);
+    expect(snap.running).toBe(20100);
   });
 });
