@@ -32,6 +32,7 @@ import {
 } from '../utils/legacySheetImport';
 import {
   liveMonthHeaders,
+  liveSummaryNeedsFormulaRepair,
   liveSummaryStaticAndFormulaGrid,
   nextSequentialMonthLabel,
   plannedLiveMonths,
@@ -257,10 +258,10 @@ async function writeFormulas(spreadsheetId, data) {
  * Fill Maintenance column K with Still Due formulas for every used row.
  */
 export async function applyMaintenanceStillDueFormulas(spreadsheetId) {
-  const header = await window.gapi.client.sheets.spreadsheets.values.get({
+  const header = await gapiCall(window.gapi.client.sheets.spreadsheets.values.get({
     spreadsheetId,
     range: `'${SHEET_NAMES.MAINTENANCE}'!A1:K1`,
-  });
+  }));
   const headers = header.result.values?.[0] || [];
   if (!headers[10]) {
     await writeValues(spreadsheetId, [{
@@ -269,10 +270,10 @@ export async function applyMaintenanceStillDueFormulas(spreadsheetId) {
     }]);
   }
 
-  const response = await window.gapi.client.sheets.spreadsheets.values.get({
+  const response = await gapiCall(window.gapi.client.sheets.spreadsheets.values.get({
     spreadsheetId,
     range: `'${SHEET_NAMES.MAINTENANCE}'!A2:A5000`,
-  });
+  }));
   const n = (response.result.values || []).length;
   if (n === 0) return;
   const values = Array.from({ length: n }, (_, i) => [maintenanceStillDueFormula(i + 2)]);
@@ -472,8 +473,18 @@ export async function readLiveSummaryState(spreadsheetId) {
   return {
     opening: Number.isFinite(opening) ? opening : 0,
     months: sortMonthLabels((rows[4] || []).slice(2)),
+    version: String(rows[3]?.[0] || '').trim(),
     rows,
   };
+}
+
+async function readLiveSummarySampleFormulas(spreadsheetId) {
+  const response = await gapiCallSafe(window.gapi.client.sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${SHEET_NAMES.LIVE_SUMMARY}'!C6:AZ16`,
+    valueRenderOption: 'FORMULA',
+  }), { result: { values: [] } });
+  return (response.result.values || []).flat();
 }
 
 async function dataMonthLabels(spreadsheetId) {
@@ -520,16 +531,20 @@ export async function writeLiveSummaryTab(spreadsheetId, openingBalance, months)
   return monthList;
 }
 
-/** Rebuild Live Summary to Aug-26 plus months that already have data. Drops unused placeholder columns. */
-export async function syncLiveSummaryMonths(spreadsheetId) {
+/** Rebuild Live Summary months and rewrite formulas when they still point at C$5 or lack the version stamp. */
+export async function syncLiveSummaryMonths(spreadsheetId, { forceFormulas = false } = {}) {
   await addSheetIfMissing(spreadsheetId, SHEET_NAMES.LIVE_SUMMARY);
   const state = await readLiveSummaryState(spreadsheetId);
   const planned = plannedLiveMonths(await dataMonthLabels(spreadsheetId));
-  if (sameMonthList(state.months, planned) && planned.length) {
+  const sampleFormulas = await readLiveSummarySampleFormulas(spreadsheetId);
+  const stale = liveSummaryNeedsFormulaRepair(sampleFormulas, state.version);
+  if (!forceFormulas && sameMonthList(state.months, planned) && planned.length && !stale) {
     return { months: planned, rewritten: false };
   }
-  await writeLiveSummaryTab(spreadsheetId, state.opening, planned);
-  return { months: planned, rewritten: true };
+  await writeLiveSummaryTab(spreadsheetId, state.opening, planned.length ? planned : state.months);
+  await applyMaintenanceStillDueFormulas(spreadsheetId);
+  await applyMonthlySummaryFormulas(spreadsheetId, planned);
+  return { months: planned.length ? planned : state.months, rewritten: true };
 }
 
 export async function appendNextLiveMonthColumn(spreadsheetId) {
@@ -538,6 +553,8 @@ export async function appendNextLiveMonthColumn(spreadsheetId) {
   const next = nextSequentialMonthLabel(current);
   const months = sortMonthLabels([...current, next]);
   await writeLiveSummaryTab(spreadsheetId, state.opening, months);
+  await applyMaintenanceStillDueFormulas(spreadsheetId);
+  await applyMonthlySummaryFormulas(spreadsheetId, months);
   return { month: next, months };
 }
 
@@ -603,7 +620,7 @@ export async function ensureSheetStructure(spreadsheetId = getSpreadsheetId(), {
       if (await sheetIsEmpty(spreadsheetId, SHEET_NAMES.LIVE_SUMMARY)) {
         await writeLiveSummaryTab(spreadsheetId, opening || 0);
       } else {
-        await syncLiveSummaryMonths(spreadsheetId);
+        await syncLiveSummaryMonths(spreadsheetId, { forceFormulas: true });
       }
     }
   });

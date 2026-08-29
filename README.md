@@ -22,6 +22,12 @@ A **Progressive Web App (PWA)** for managing apartment maintenance finances, bui
 - **🔐 Secure** — Google OAuth 2.0, audit logging, role-based access; only the founding owner may create LIVE
 - **💸 Payees** — GPay / PhonePe from a 10-digit phone (optional UPI ID)
 
+## What's new in 1.9.4
+
+- Live Summary formulas are rewritten when they still look up the month from a header cell (`C$5`). Sep-26 now sums Sep-26, not August. A version stamp `tpt-live-v2` on the tab makes this repair run once, then only when formulas go stale again.
+- Maintenance column K (Still Due) and Monthly Summary B–I are rewritten in the same pass so Sep-26 pending flats show due − paid, and Reports Year-to-Date sums Maintenance/Expenses.
+- Open Dashboard or Settings → Refresh sheet layout once, then hard-refresh. Sidebar must show **v1.9.4** (cache `tpt-v37`).
+
 ## What's new in 1.9.3
 
 - Dashboard Collection, Expenses, and Available balance follow **Maintenance / Expenses** when Live Summary formulas still show 0. A yellow banner still lists the formula mismatch. Do not type amounts on Live Summary.

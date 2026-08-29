@@ -331,7 +331,7 @@ ADDING MONTHS:
             },
             {
                 heading: 'Dashboard does not match the Google Sheet',
-                text: `After LIVE exists, Dashboard reads The Pride of Tirumala-LIVE (Maintenance, Expenses, Live Summary formulas). Edit that file, then tap refresh on Dashboard.\n\nIf a yellow “Sheet correction needed” banner appears, Live Summary formulas do not match Maintenance/Expenses. The cards show the typed tabs. Do not type over Live Summary formulas. Settings → Backups → Refresh sheet layout, then refresh. Month labels must be text Aug-26 (not a date).\n\nOld APP Summary remains at #/old.`,
+                text: `After LIVE exists, Dashboard reads The Pride of Tirumala-LIVE (Maintenance, Expenses, Live Summary formulas). Edit that file, then tap refresh on Dashboard.\n\nIf a yellow “Sheet correction needed” banner appears, Live Summary formulas do not match Maintenance/Expenses. The cards show the typed tabs. Do not type over Live Summary formulas. Settings → Backups → Refresh sheet layout (sidebar must show v1.9.4). A Sep-26 cell must not use C$5 — it must sum "Sep-26". Cell A4 on Live Summary should read tpt-live-v2.\n\nOld APP Summary remains at #/old.`,
             },
             {
                 heading: 'The balance looks wrong — how is it calculated?',

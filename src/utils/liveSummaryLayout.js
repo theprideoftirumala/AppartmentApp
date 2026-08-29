@@ -40,6 +40,9 @@ export function liveMonthHeaders(startYm = LIVE_APP_START, count = 1) {
   return out.filter((label) => monthLabelToYearMonth(label) >= LIVE_APP_START);
 }
 
+/** Bump when Live Summary SUMIFS shape changes so existing files are rewritten. */
+export const LIVE_SUMMARY_FORMULA_VERSION = 'tpt-live-v2';
+
 export const LIVE_SUMMARY_LAYOUT = {
   titleRow: 1,
   openingLabelRow: 2,
@@ -76,7 +79,10 @@ export function liveSummaryStaticAndFormulaGrid(openingBalance, months = liveMon
   rows[layout.helpRow - 1] = [
     'Grey formula cells update from Maintenance (collections) and Expenses (line items). Type those tabs in the app or in this Google Sheet. Do not type collection or expense amounts on this tab. Add the next month in the app (Maintenance → Add next month). Do not pre-fill a year of empty columns.',
   ];
-  rows[3] = [];
+  rows[3] = [
+    LIVE_SUMMARY_FORMULA_VERSION,
+    'Formula version. The app rewrites Live Summary formulas when this is missing or old. Do not type amounts on this tab.',
+  ];
 
   const header = ['Flat', 'Owner', ...months];
   rows[layout.headerRow - 1] = header;
@@ -246,6 +252,21 @@ export function liveSummaryColumnForMonth(headersRow, monthLabel) {
   const want = coerceMonthLabel(monthLabel) || String(monthLabel || '').trim();
   const index = (headersRow || []).findIndex((cell) => coerceMonthLabel(cell) === want);
   return index >= 0 ? index : -1;
+}
+
+/** True when a cell still looks up the month from a header like C$5 instead of "Aug-26". */
+export function liveSummaryFormulaUsesHeaderCell(formula) {
+  const text = String(formula || '');
+  return /SUMIFS/i.test(text) && /[A-Z]+\$5/.test(text);
+}
+
+export function liveSummaryNeedsFormulaRepair(sampleFormulas = [], versionCell = '') {
+  if (String(versionCell || '').trim() !== LIVE_SUMMARY_FORMULA_VERSION) return true;
+  const list = (sampleFormulas || []).map((cell) => String(cell || '')).filter(Boolean);
+  if (!list.length) return true;
+  if (list.some((formula) => liveSummaryFormulaUsesHeaderCell(formula))) return true;
+  const sumifs = list.filter((formula) => /SUMIFS/i.test(formula));
+  return sumifs.some((formula) => !/"[A-Za-z]{3}-\d{2}"/.test(formula));
 }
 
 export function parseLiveSummarySnapshot(rows, monthLabel) {

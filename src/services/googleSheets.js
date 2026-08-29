@@ -1262,7 +1262,7 @@ function parseMonthlySummaryRow(row) {
     || /SURPLUS|DEFICIT/i.test(String(row[8] || ''));
   if (looksNew) {
     return {
-      month: row[0] || '',
+      month: coerceMonthLabel(row[0]) || String(row[0] || '').trim(),
       totalCollection: sheetAmount(row[1]),
       totalMiscFunds: sheetAmount(row[2]),
       totalExpenses: sheetAmount(row[3]),
@@ -1274,7 +1274,7 @@ function parseMonthlySummaryRow(row) {
     };
   }
   return {
-    month: row[0] || '',
+    month: coerceMonthLabel(row[0]) || String(row[0] || '').trim(),
     totalCollection: sheetAmount(row[1]),
     totalMiscFunds: 0,
     totalExpenses: sheetAmount(row[2]),

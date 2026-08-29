@@ -4,7 +4,9 @@ import { LIVE_SUMMARY_EXPENSE_ROWS } from '../config/liveWorkbook';
 import {
   columnLetter,
   liveMonthHeaders,
+  liveSummaryNeedsFormulaRepair,
   liveSummaryStaticAndFormulaGrid,
+  LIVE_SUMMARY_FORMULA_VERSION,
   nextSequentialMonthLabel,
   parseLiveSummarySnapshot,
   coerceMonthLabel,
@@ -62,6 +64,9 @@ describe('liveSummaryStaticAndFormulaGrid', () => {
     expect(formulas.C6).toMatch(/SUMIFS\(Maintenance!D:D/);
     expect(formulas.C6).toContain('"Sep-26"');
     expect(formulas.C6).not.toMatch(/C\$5/);
+    expect(formulas.D6).toContain('"Oct-26"');
+    expect(formulas.D6).not.toMatch(/C\$5/);
+    expect(values[3][0]).toBe(LIVE_SUMMARY_FORMULA_VERSION);
     expect(formulas.C32).toMatch(/C16/);
     expect(formulas.C33).toMatch(/\$B\$2/);
     expect(formulas.D33).toMatch(/C33/);
@@ -91,5 +96,25 @@ describe('parseLiveSummarySnapshot', () => {
     expect(snap.collection).toBe(30000);
     expect(snap.surplus).toBe(20000);
     expect(snap.running).toBe(20100);
+  });
+});
+
+describe('liveSummaryNeedsFormulaRepair', () => {
+  it('repairs the Sep-26 column that still points at C$5', () => {
+    expect(liveSummaryNeedsFormulaRepair([
+      '=IFERROR(SUMIFS(Maintenance!D:D,Maintenance!A:A,C$5,Maintenance!B:B,$A15),0)',
+    ], LIVE_SUMMARY_FORMULA_VERSION)).toBe(true);
+  });
+
+  it('leaves text-month SUMIFS alone when the version stamp is present', () => {
+    expect(liveSummaryNeedsFormulaRepair([
+      '=IFERROR(SUMIFS(Maintenance!D:D,Maintenance!A:A,"Aug-26",Maintenance!B:B,$A6),0)',
+    ], LIVE_SUMMARY_FORMULA_VERSION)).toBe(false);
+  });
+
+  it('repairs when the version stamp is missing', () => {
+    expect(liveSummaryNeedsFormulaRepair([
+      '=IFERROR(SUMIFS(Maintenance!D:D,Maintenance!A:A,"Aug-26",Maintenance!B:B,$A6),0)',
+    ], '')).toBe(true);
   });
 });

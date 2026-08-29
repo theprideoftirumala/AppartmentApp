@@ -22,10 +22,11 @@ export function monthlySummaryFormulaRow(row) {
     ? `N(E${row})+${opening}`
     : `N(E${row})+N(F${row - 1})`;
 
+  const monthKey = `IF(ISNUMBER(A${row}),TEXT(A${row},"MMM-YY"),TRIM(""&A${row}))`;
   return [
-    `=IF(A${row}="","",SUMIF(Maintenance!A:A,A${row},Maintenance!D:D))`,
-    `=IF(A${row}="","",SUMIF('Misc Funds'!C:C,A${row},'Misc Funds'!E:E))`,
-    `=IF(A${row}="","",SUMIF(Expenses!C:C,A${row},Expenses!F:F))`,
+    `=IF(A${row}="","",SUMIF(Maintenance!A:A,${monthKey},Maintenance!D:D))`,
+    `=IF(A${row}="","",SUMIF('Misc Funds'!C:C,${monthKey},'Misc Funds'!E:E))`,
+    `=IF(A${row}="","",SUMIF(Expenses!C:C,${monthKey},Expenses!F:F))`,
     `=IF(A${row}="","",N(B${row})+N(C${row})-N(D${row}))`,
     `=IF(A${row}="","",${cumulative})`,
     `=IF(A${row}="","",IFERROR(TEXT(COUNTIFS(Maintenance!A:A,A${row},Maintenance!H:H,"PAID")/MAX(COUNTIF(Maintenance!A:A,A${row}),1),"0%"),"0%"))`,

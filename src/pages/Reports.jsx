@@ -27,6 +27,7 @@ import { downloadReport, shareReport } from '../services/pdfExport';
 import { formatCurrency, formatDate, getCurrentMonthLabel, groupExpensesByCategory, sheetAvailableBalance } from '../utils/helpers';
 import { useWorkingMonths } from '../hooks/useWorkingMonths';
 import { pickDefaultWorkingMonth } from '../utils/liveSummaryLayout';
+import { ytdRowsFromTabs } from '../utils/ytdFromTabs';
 import StatusBadge from '../components/common/StatusBadge';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Navbar from '../components/common/Navbar';
@@ -126,8 +127,16 @@ export default function Reports() {
 
   const loadSummaries = useCallback(async () => {
     try {
-      const data = await getMonthlySummaries();
-      setSummaries(data);
+      const [maintenance, expenses] = await Promise.all([
+        getMaintenanceRecords(),
+        getExpenses(),
+      ]);
+      const fromTabs = ytdRowsFromTabs(maintenance, expenses);
+      if (fromTabs.length) {
+        setSummaries(fromTabs);
+        return;
+      }
+      setSummaries(await getMonthlySummaries());
     } catch (err) {
       console.error('Failed to load summaries:', err);
     }
