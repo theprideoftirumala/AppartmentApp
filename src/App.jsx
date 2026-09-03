@@ -40,6 +40,7 @@ import Help from './pages/Help';
 import ActivityFunds from './pages/ActivityFunds';
 import Payees from './pages/Payees';
 import OldReport from './pages/OldReport';
+import ImportedSheet from './pages/ImportedSheet';
 
 function AccessBootstrap() {
   const { user, isGuest, setAccessDenied } = useAuth();
@@ -186,6 +187,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <OldReport />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/importedsheet"
+          element={
+            <ProtectedRoute>
+              <ImportedSheet />
             </ProtectedRoute>
           }
         />

@@ -38,6 +38,7 @@ There is **one history workbook** named `The Pride of Tirumala-APP` and **one fo
 - History tabs (never overwrite): Summary, Exp - Detailed, Borewell Exp, Motor repair oct, Notes
 - A Drive copy is taken before first Setup, before creating LIVE, and on every Google sign-in (APP and LIVE if bound; not Guest PIN)
 - `#/old` is a read-only view of the APP Summary grid (including surplus/deficit as stored) plus handover totals
+- `#/importedsheet` browses a Drive Google Sheet (manually kept I&E) and reads it only. It never binds APP/LIVE and never writes. Export selected-month expenses as CSV or PDF.
 - LIVE Live Summary: formulas from Maintenance and Expenses. Starts with Aug-26 only; append the first missing month after Aug-26 (do not skip a gap). Maintenance month/flat are text. A stale tab is deleted and rewritten (`tpt-live-v5` `SUMIFS` + `TO_TEXT`). Unused `Sheet1` is removed. Never a header cell like `C$5`. Do not type collection/expense amounts there. Opening available balance is the APP Summary green cell at create. Dashboard cards and Reports YTD use Maintenance/Expenses when formula cells still read 0. Maintenance K is `due − paid`. Do not create a second LIVE file.
 - Available balance on APP is the green Summary cell, copied into Configuration. It is not a `DEFAULT_CONFIG` number. Old surplus/deficit rows are not imported as collections.
 - `public/sheet-config.json` holds the published APP spreadsheet ID. Do not invent a LIVE id in source.

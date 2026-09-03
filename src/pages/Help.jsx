@@ -350,6 +350,10 @@ ADDING MONTHS:
                 text: `Each browser stores the spreadsheet ID locally.\nFounding owner: sign in and Setup will reconnect the owned The Pride of Tirumala-APP (it will not create a second file if one exists).\nResidents: you must already be added in Access Control and have the sheet shared as Viewer. You will not see a create-sheet wizard.`,
             },
             {
+                heading: 'How do I open the manually kept I&E sheet?',
+                text: `Open Imported sheet (#/importedsheet). Browse Google Sheets in Drive or paste a link. The app only reads that file — it does not become APP or LIVE and nothing is written back.\n\nAfter import you see available balance, collections, and expenses. The month list comes from the Summary headers (including August 2026 and later if you added columns). Pick a month and export that month’s expenses as CSV or PDF.`,
+            },
+            {
                 heading: 'How do I pay the watchman or a vendor with GPay / PhonePe?',
                 text: `Open Payees. Owners can add a row (or add it on the Payees tab in the sheet). Enter a 10-digit phone. GPay and PhonePe both pay number@ybl (PhonePe's own mobile handle — UPI is interoperable). On Android, GPay opens with an Intent to the GPay app (not the old tez:// link). A UPI ID is optional and overrides the phone if the payee gave you one — the app never invents a bank UPI ID. Same phone or same UPI ID is blocked as a duplicate. Readers can pay if a phone or UPI ID is already on the sheet.`,
             },

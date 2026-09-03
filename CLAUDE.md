@@ -40,6 +40,7 @@ src/
 │   └── pdfExport.js         # Monthly + activity PDFs
 ├── pages/ActivityFunds.jsx  # Start / view optional activity funds
 ├── pages/OldReport.jsx      # #/old — read-only APP Summary + handover
+├── pages/ImportedSheet.jsx  # #/importedsheet — browse Drive I&E file, read-only, never bind APP/LIVE
 ├── config/liveWorkbook.js   # Live Summary expense labels from the old Summary tab
 ├── data/handoverLedger.js   # Nov 2020–Aug 2026 totals (no owner names)
 ├── utils/gapi.js            # Promise.resolve wrapper for gapi thenables (never .catch on raw gapi)

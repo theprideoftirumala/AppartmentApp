@@ -22,6 +22,10 @@ A **Progressive Web App (PWA)** for managing apartment maintenance finances, bui
 - **🔐 Secure** — Google OAuth 2.0, audit logging, role-based access; only the founding owner may create LIVE
 - **💸 Payees** — GPay / PhonePe from a 10-digit phone (optional UPI ID)
 
+## What's new in 1.9.9
+
+- **Imported sheet** (`#/importedsheet`) browses a Google Sheet in Drive and reads it only. Use the manually kept I&E Summary. APP and LIVE are not bound or written. Export the selected month’s expenses as CSV or PDF. Sidebar **v1.9.9** (cache `tpt-v42`).
+
 ## What's new in 1.9.8
 
 - Live Summary is recreated when it is still on `tpt-live-v2` SUMIFS. Maintenance month and flat are locked as text so `"Aug-26"` matches, and unused `Sheet1` is removed. Opening 612 is kept. Cell A4 must read `tpt-live-v5`.
