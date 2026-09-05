@@ -10,7 +10,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { initGoogleAuth, signIn as googleSignIn, signOut as googleSignOut } from '../services/googleAuth';
 import { FEATURES, STORAGE_KEYS } from '../config/constants';
-import { getAccessControl, resolveSpreadsheetForUser, isPermissionError, resolveLiveWorkbookForUser } from '../services/googleSheets';
+import { getAccessControl, resolveSpreadsheetForUser, isPermissionError } from '../services/googleSheets';
 import { backupAllWorkbooks } from '../services/googleDrive';
 import { effectiveAppRole, isFoundingOwner } from '../config/accessPolicy';
 import { normalizeEmail, parseJsonSafe, isValidSpreadsheetId } from '../utils/helpers';
@@ -83,7 +83,7 @@ export function AuthProvider({ children }) {
                 setLoading(false);
                 return;
               }
-              await resolveLiveWorkbookForUser(userData.email).catch(() => null);
+             
             }
             const entry = await fetchAccessEntry(userData.email);
             const role = roleOrDeny(userData.email, entry);
@@ -131,7 +131,6 @@ export function AuthProvider({ children }) {
           }
           return userData;
         }
-        await resolveLiveWorkbookForUser(userData.email).catch(() => null);
         try {
           entry = await fetchAccessEntry(userData.email);
         } catch (aclErr) {

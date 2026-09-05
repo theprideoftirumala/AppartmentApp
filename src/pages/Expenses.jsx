@@ -11,7 +11,7 @@ import { getExpenses, addExpenses, deleteExpense, addAuditLog } from '../service
 import { uploadReceipt } from '../services/googleDrive';
 import { formatCurrency, formatDate, getCurrentMonthLabel, getCurrentYearMonth } from '../utils/helpers';
 import { useWorkingMonths } from '../hooks/useWorkingMonths';
-import { pickDefaultWorkingMonth } from '../utils/liveSummaryLayout';
+import { pickDefaultWorkingMonth } from '../utils/months';
 import { EXPENSE_CATEGORIES, PAYMENT_MODES, FEATURES } from '../config/constants';
 import { createSpeechRecognizer, parseExpensesFromSpeech, speechSupported } from '../utils/voiceExpense';
 import { parseReceiptText, recognizeReceiptImage } from '../utils/receiptOcr';

@@ -7,16 +7,16 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   TrendingDown, IndianRupee, Users, AlertCircle,
   RefreshCw, Calendar, Bell, Phone, ArrowRight,
-  PieChart, Wallet, Plus, Building2, Info, FlaskConical, Table2
+  PieChart, Wallet, Plus, Building2, Info, Table2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useApp } from '../contexts/AppContext';
-import { getDashboardData, getAccessControl, parseApiError, seedSampleLiveData, ensureSheetStructure } from '../services/googleSheets';
-import { preferEnteredWhenSheetDisagrees } from '../utils/sheetCorrections';
-import { STORAGE_KEYS, isSampleDataEnabled } from '../config/constants';
+import { getDashboardData, getAccessControl, parseApiError, ensureSheetStructure } from '../services/googleSheets';
+import { STORAGE_KEYS } from '../config/constants';
 import { effectiveAppRole, isFoundingOwner } from '../config/accessPolicy';
-import { formatCurrency, getCurrentMonthLabel, getCollectionPercentage, daysUntil, getRelativeTime, groupExpensesByCategory, parseJsonSafe, normalizeEmail, sheetAvailableBalance } from '../utils/helpers';
+import { formatCurrency, getCurrentMonthLabel, getCollectionPercentage, daysUntil, getRelativeTime, groupExpensesByCategory, parseJsonSafe, normalizeEmail } from '../utils/helpers';
+import { cashStatus } from '../utils/ledgerMath';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Navbar from '../components/common/Navbar';
 
@@ -26,12 +26,10 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(!dashboardData);
   const [refreshing, setRefreshing] = useState(false);
   const [accessError, setAccessError] = useState(null);
-  const [seedingSample, setSeedingSample] = useState(false);
   const [sheetUpgrade, setSheetUpgrade] = useState(
-    sessionStorage.getItem('tpt_sheet_layout_v15') ? 'done' : null
+    sessionStorage.getItem('tpt_sheet_layout_v20') ? 'done' : null
   );
   const [upgradingSheet, setUpgradingSheet] = useState(false);
-  const [liveSnap, setLiveSnap] = useState(null);
   const navigate = useNavigate();
 
   const applySheetLayout = useCallback(async () => {
@@ -39,9 +37,9 @@ export default function Dashboard() {
     setSheetUpgrade('pending');
     try {
       await ensureSheetStructure();
-      sessionStorage.setItem('tpt_sheet_layout_v15', '1');
+      sessionStorage.setItem('tpt_sheet_layout_v20', '1');
       setSheetUpgrade('done');
-      showToast('Google Sheet layout updated. If live books exist, Live Summary formulas stay on The Pride of Tirumala-LIVE.', 'success');
+      showToast('Google Sheet tabs and Balance formulas are up to date.', 'success');
     } catch (err) {
       setSheetUpgrade('error');
       showToast(err.message || 'Could not update the Google Sheet layout', 'error');
@@ -77,7 +75,6 @@ export default function Dashboard() {
       setDashboardData(data);
       setConfig(data.config);
       setLastSync(new Date().toISOString());
-      setLiveSnap(data.liveSnapshot || null);
 
       // Determine user role from Access Control sheet
       const userEmail = user?.email;
@@ -88,7 +85,7 @@ export default function Dashboard() {
           const role = effectiveAppRole(userEmail, userAccess);
           if (role) {
             setUserRole(role);
-            if (role === 'Owner' && !sessionStorage.getItem('tpt_sheet_layout_v15')) {
+            if (role === 'Owner' && !sessionStorage.getItem('tpt_sheet_layout_v20')) {
               await applySheetLayout();
             }
           } else {
@@ -156,7 +153,7 @@ export default function Dashboard() {
             ) : (
               <p className="text-muted text-sm mt-3">
                 Only the founding owner can create or reconnect the society spreadsheet.
-                Ask that owner to add you as a Reader and share The Pride of Tirumala-APP as Viewer.
+                Ask that owner to add you as a Reader and share APP-TPT-Tracker as Viewer.
               </p>
             )}
           </div>
@@ -174,8 +171,11 @@ export default function Dashboard() {
   const currentMonthExpenses = (data?.expenses || []).filter(e => e.month === currentMonth);
   const currentMonthExpenseTotal = currentMonthExpenses.reduce((s, e) => s + e.amount, 0);
   const currentMonthCollection = currentMonthMaintenance.reduce((s, m) => s + m.amountPaid, 0);
-  const sheetCollection = preferEnteredWhenSheetDisagrees(liveSnap?.collection, currentMonthCollection);
-  const sheetExpenses = preferEnteredWhenSheetDisagrees(liveSnap?.expenses, currentMonthExpenseTotal);
+  const sheetCollection = currentMonthCollection;
+  const sheetExpenses = currentMonthExpenseTotal;
+  const monthNet = sheetCollection - sheetExpenses;
+  const monthStatus = cashStatus(monthNet);
+  const availableStatus = totals.availableStatus || cashStatus(totals.currentBalance);
 
   // Upcoming reminders
   const upcomingReminders = (data?.reminders || [])
@@ -200,35 +200,6 @@ export default function Dashboard() {
     <div className="main-content">
       <Navbar onRefresh={() => fetchData(true)} refreshing={refreshing} />
 
-      {/* Guest mode banner */}
-      {isFoundingOwner(user?.email) && isSampleDataEnabled(config) && (data?.maintenance || []).length === 0 && (data?.expenses || []).length === 0 && (
-        <div className="guest-banner">
-          <FlaskConical size={16} />
-          <span>
-            <strong>Test the app</strong> — this sheet has no live rows yet. Load pretend data
-            (this month plus Sep–Oct) without creating another spreadsheet. Delete the sheet later for production.
-          </span>
-          <button
-            className="btn btn-primary btn-sm"
-            disabled={seedingSample}
-            onClick={async () => {
-              try {
-                setSeedingSample(true);
-                await seedSampleLiveData();
-                showToast('Sample data loaded. Refreshing dashboard…', 'success');
-                await fetchData(true);
-              } catch (err) {
-                showToast(err.message || 'Failed to load sample data', 'error');
-              } finally {
-                setSeedingSample(false);
-              }
-            }}
-          >
-            {seedingSample ? 'Loading…' : 'Load sample data'}
-          </button>
-        </div>
-      )}
-
       {isGuest && (
         <div className="guest-banner">
           <Info size={16} />
@@ -246,8 +217,7 @@ export default function Dashboard() {
         <div className="guest-banner">
           <Table2 size={16} />
           <span>
-            <strong>Update the Google Sheet</strong> — adds Pending Dues (type a month in the yellow cell)
-            and copies history from Summary and Exp-Detailed. Does not delete your numbers.
+            <strong>Update the Google Sheet</strong> — adds the Balance tab and formulas so anyone can see surplus or deficit in Drive.
           </span>
           <button className="btn btn-primary btn-sm" disabled={upgradingSheet} onClick={applySheetLayout}>
             {upgradingSheet || sheetUpgrade === 'pending' ? 'Updating…' : 'Update sheet'}
@@ -256,23 +226,6 @@ export default function Dashboard() {
       )}
 
       {/* Page Header */}
-      {(data?.corrections || []).length > 0 && (
-        <div className="guest-banner" role="status">
-          <AlertCircle size={16} />
-          <div>
-            <strong>Sheet correction needed</strong>
-            <ul className="mb-0 mt-2" style={{ paddingLeft: '1.2rem' }}>
-              {data.corrections.map((message) => (
-                <li key={message}>{message}</li>
-              ))}
-            </ul>
-            <p className="text-muted text-sm mt-2 mb-0">
-              After you fix Maintenance or Expenses in the Google Sheet, tap refresh. The sheet is the source of truth.
-            </p>
-          </div>
-        </div>
-      )}
-
       <div className="page-header">
         <div>
           <h1 className="page-title">Dashboard</h1>
@@ -300,13 +253,13 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="stat-card-value">
-            {formatCurrency(preferEnteredWhenSheetDisagrees(liveSnap?.running, totals.currentBalance || 0))}
+            {formatCurrency(totals.currentBalance || 0)}
           </div>
           <div className="stat-card-trend">
-            <span className="text-muted">
-              Opening (Live Summary B2) plus live Maintenance collections minus live Expenses.
-              If Live Summary formulas still show a different running total, the typed tabs win until those formulas recalculate.
+            <span className={availableStatus === 'DEFICIT' ? 'text-danger' : 'text-success'}>
+              {availableStatus}
             </span>
+            <span className="text-muted"> — opening ₹{Number(totals.openingSurplus || 612).toLocaleString('en-IN')} + collected − spent</span>
           </div>
         </div>
 
@@ -365,17 +318,15 @@ export default function Dashboard() {
           <strong className="widget-value">{formatCurrency(stillDueThisMonth)}</strong>
           <span className="widget-hint">{pendingFlats.length} flat(s) pending</span>
         </div>
-        {liveSnap && liveSnap.surplus != null && (
-          <div className="widget-card">
-            <span className="widget-label">Surplus / deficit ({currentMonth})</span>
-            <strong className="widget-value">{formatCurrency(liveSnap.surplus)}</strong>
-            <span className="widget-hint">Live Summary formula: collection − expenses for this month</span>
-          </div>
-        )}
+        <div className="widget-card">
+          <span className="widget-label">This month ({currentMonth})</span>
+          <strong className="widget-value">{formatCurrency(monthNet)}</strong>
+          <span className="widget-hint">{monthStatus} — collected minus spent</span>
+        </div>
         <div className="widget-card">
           <span className="widget-label">Available balance</span>
-          <strong className="widget-value">{formatCurrency(liveSnap?.running != null ? liveSnap.running : (Number.isFinite(totals.currentBalance) ? totals.currentBalance : sheetAvailableBalance(config)))}</strong>
-          <span className="widget-hint">{liveSnap?.running != null ? 'Live Summary running balance (formulas). Edit Maintenance and Expenses, not Live Summary amounts.' : 'Green Available balance cell on Summary, then new collections minus new expenses'}</span>
+          <strong className="widget-value">{formatCurrency(Number.isFinite(totals.currentBalance) ? totals.currentBalance : 612)}</strong>
+          <span className="widget-hint">{availableStatus} — same figure as the Balance tab in the Google Sheet</span>
         </div>
         <div className="widget-card">
           <span className="widget-label">Reminders due soon</span>

@@ -1,118 +1,85 @@
 # llms.txt — LLM-Readable Project Description
 
-> This file provides context for Large Language Models working with this codebase.
+> Context for models working on this codebase.
 
 ## Project
 
-The Pride of Tirumala (TPT) Apartment Expense Tracker — a Progressive Web App for managing apartment maintenance finances.
+The Pride of Tirumala (TPT) Apartment Expense Tracker — a Progressive Web App for apartment maintenance finances.
 
 ## Stack
 
-- React 19 + Vite 8 (frontend framework)
-- Google Sheets API v4 (database — no backend server)
-- Google Drive API v3 (file storage for receipts and backups)
-- Google Identity Services (OAuth 2.0 authentication)
-- jsPDF (client-side PDF report generation)
-- Tesseract.js v5 `eng` (on-device receipt OCR; no cloud, no API key)
-- Web Speech API (on-device voice fill; Chrome/Safari; no cloud model)
-- vite-plugin-pwa (service worker for offline support)
-- Vitest (unit tests)
-- Vanilla CSS with custom properties (design system)
-- Lucide React (icon library)
-- React Router with HashRouter (routing)
+- React 19 + Vite 8
+- Google Sheets API v4 (database — no backend)
+- Google Drive API v3 (receipts, backups, activity funds)
+- Google Identity Services (OAuth 2.0)
+- jsPDF
+- Tesseract.js v5 `eng` (on-device OCR)
+- Web Speech API
+- vite-plugin-pwa
+- Vitest
+- Vanilla CSS
+- Lucide React
+- HashRouter
 
 ## Purpose
 
-Track monthly maintenance collection (₹3,000/flat × 10 flats), log expenses with receipt uploads, voice or camera fill, generate monthly PDF reports, manage emergency contacts and recurring reminders. Optional Activity Funds each have their own reusable Google Sheet.
+Track monthly maintenance (₹3,000 × 10 flats) from **Sep 2026**, log expenses, generate PDFs that show surplus/deficit/available balance. Opening surplus is **₹612**.
 
-**The Google Sheet is the single source of truth.** Adding a row on Maintenance, Expenses, Configuration, Payees, or Handover Summary and refreshing the app must show that change. The app never invents owner names or UPI IDs.
+**The Google Sheet is the source of truth.** Adding a row on Maintenance or Expenses and refreshing the app must show that change.
 
 ## Society workbook (critical)
 
-There is **one history workbook** named `The Pride of Tirumala-APP` and **one founding owner**. From Aug 2026 the working cash book is a second file, `The Pride of Tirumala-LIVE`, created only by that owner.
+There is **one** workbook: `APP-TPT-Tracker` in Drive folder `TPT-APP-Tracker`.
 
-- File aliases for history: `The Pride of Tirumala-APP` and `The Pride of Tirumala-APP.xlsx`. Ignore `The Pride of Tirumala-APP-old` and `TPT-MaintenanceTracker`.
-- The app **never creates** `TPT-MaintenanceTracker` or any replacement APP file. LIVE is additive.
-- If Drive only has the `.xlsx`, convert: Drive → Open with Google Sheets → File → Save as Google Sheets, keep the name `The Pride of Tirumala-APP`
-- Setup **backs up first**, then adds empty app tabs beside the five history tabs
-- History tabs (never overwrite): Summary, Exp - Detailed, Borewell Exp, Motor repair oct, Notes
-- A Drive copy is taken before first Setup, before creating LIVE, and on every Google sign-in (APP and LIVE if bound; not Guest PIN)
-- `#/old` is a read-only view of the APP Summary grid (including surplus/deficit as stored) plus handover totals
-- `#/importedsheet` browses a Drive Google Sheet (manually kept I&E) and reads it only. It never binds APP/LIVE and never writes. Export selected-month expenses as CSV or PDF.
-- LIVE Live Summary: formulas from Maintenance and Expenses. Starts with Aug-26 only; append the first missing month after Aug-26 (do not skip a gap). Maintenance month/flat are text. A stale tab is deleted and rewritten (`tpt-live-v5` `SUMIFS` + `TO_TEXT`). Unused `Sheet1` is removed. Never a header cell like `C$5`. Do not type collection/expense amounts there. Opening available balance is the APP Summary green cell at create. Dashboard cards and Reports YTD use Maintenance/Expenses when formula cells still read 0. Maintenance K is `due − paid`. Do not create a second LIVE file.
-- Available balance on APP is the green Summary cell, copied into Configuration. It is not a `DEFAULT_CONFIG` number. Old surplus/deficit rows are not imported as collections.
-- `public/sheet-config.json` holds the published APP spreadsheet ID. Do not invent a LIVE id in source.
-- Sample live-tab data is compile-time off (`FEATURES.SAMPLE_DATA`)
-- Payees: add in the app or on the Payees tab. GPay and PhonePe pay `number@ybl` from a 10-digit phone (Android GPay uses an Intent to the GPay app). UPI ID is optional and overrides the phone. Duplicates (same phone or same UPI) are rejected. Expenses with the same date, description, and amount are rejected.
-- Maintenance: Record Payment defaults to PAID. Several flats can be marked paid in one save. Late fee is not collected (column can stay for history; the app writes 0).
+- Founding owner may **create** it if Drive search finds none
+- If it already exists, Setup connects it (backup first when reconnecting)
+- Do not create `TPT-MaintenanceTracker`, `The Pride of Tirumala-APP`, or a LIVE twin
+- Balance tab formulas: opening 612 + collected − spent = available; SURPLUS / DEFICIT / BALANCED
+- Monthly Summary formulas: per month collected, spent, month result, running balance, status
+- First month label: `Sep-26`
+- `public/sheet-config.json` may list a published id after create. Do not invent one in source
+- Payees: GPay/PhonePe `number@ybl`; optional UPI overrides. Duplicates rejected
+- Expenses with same date + description + amount are rejected
+- Maintenance Record Payment defaults to PAID; several flats at once; no late fee
 
 ## Access model (critical)
 
 - Founding owner email: `th***@gmail.com` (full value only in `src/config/accessPolicy.js`)
-- Only that account may **connect and extend** the APP spreadsheet and **create The Pride of Tirumala-LIVE**
-- Other Google accounts must **never** be auto-promoted to Owner and must **never** upload a second tracker
-- Creating LIVE shares it with Active Access Control emails from APP. Adding a user shares **both** files.
-- The founding owner adds users in **Settings → Access Control**. Default role is **Reader**
-- Readers are shared the existing sheet as Google Drive **Viewer** (`reader`). Owners (if granted) get **writer**
-- The founding owner cannot be removed or demoted
-- Max 20 users, max 2 Owners (founding + at most one additional, granted only by the founding owner)
-- Members discover the sheet via Drive `sharedWithMe` (scope includes `drive.metadata.readonly`)
-- Optional published ID: `public/sheet-config.json` `{ "spreadsheetId": "..." }` — only if that file is named The Pride of Tirumala-APP
-- App write APIs use `withWriteAuth` so Readers cannot mutate through the UI even if Drive still has leftover writer
-- Private copies a non-founding user created in their own Drive are **ignored**
-- Bound files named `TPT-MaintenanceTracker` are unbound so the APP file can be found
+- Only that account may create/connect `APP-TPT-Tracker` and grant Owner
+- New users default to Reader
+- Drive share: Viewer for Reader, Writer for Owner
+- Founding owner cannot be removed
+- Max 20 users, max 2 Owners
+- Members discover via `sharedWithMe` plus optional `sheet-config.json`
+- Writes use `withWriteAuth`
+- Private copies owned by a non-founder are ignored
 
-Policy helpers live in `src/config/accessPolicy.js` and must be reused rather than copying role checks.
+Policy helpers live in `src/config/accessPolicy.js`.
 
-## Key Files
+## Key files
 
-- `src/config/accessPolicy.js` — Founding owner, default Reader, grant rules
-- `src/config/constants.js` — Sheet name, aliases, feature flags, OAuth scopes. No LATE_FEE / LATE_FEE_AFTER_DAY / EMERGENCY_RESERVE / AVAILABLE_BALANCE defaults.
-- `src/utils/setupFlow.js` — `shouldOfferSheetCreation` is always false
-- `src/utils/sheetRangeError.js` — Detect missing-tab Sheets errors so Dashboard can add app tabs and retry
-- `src/utils/legacySheetImport.js` — Parse Summary collections + expense categories and Exp-Detailed into app rows. Summary Sundry totals are not copied (already on Exp-Detailed). Matching totals are not imported twice.
-- `src/utils/helpers.js` — `sheetAvailableBalance` reads Configuration (sheet copy of the Summary cell)
-- `src/data/handoverLedger.js` — Nov 2020–Aug 2026 totals (no owner names; not a live balance default)
-- `src/services/googleAuth.js` — OAuth 2.0 authentication (re-consent when scopes bump)
-- `src/services/googleSheets.js` — All CRUD operations (the "backend")
-- `src/services/googleDrive.js` — Discovery of The Pride of Tirumala-APP, backups (Drive copy, then Sheets clone if drive.file blocks copy), sharing
-- `src/services/sheetSetup.js` — `ensureSheetStructure` adds missing app tabs; `syncCollectionsFromSummary` updates Maintenance + Monthly Summary from Summary; `createSpreadsheet` throws
-- `src/services/sheetFormulas.js` — Still Due and Monthly Summary formulas (app UI does not use surplus/deficit)
-- `src/services/pdfExport.js` — Monthly + activity PDFs
-- `src/services/activityFunds.js` — Optional named funds; one Drive spreadsheet per activity
-- `src/utils/gapi.js` — Wrap gapi thenables so `.catch` works on phones (`gapiCall` / `gapiCallSafe`). Never call `.catch` on a raw gapi thenable.
-- `src/utils/sheetCorrections.js` — Dashboard banner when Live Summary / Still Due formulas disagree; prefer typed amounts on the cards
-- `src/utils/googleApiError.js` — Only the real API-not-enabled wording (not every sheets.googleapis.com URL)
-- `src/hooks/useWorkingMonths.js` — Working month list for Maintenance / Expenses / Reports
-- `src/utils/voiceExpense.js` — Web Speech + local parse; never auto-submits
-- `src/utils/receiptOcr.js` — Local Tesseract; user must review before save
-- `docs/architecture.png` — High-level architecture PNG
-- `src/contexts/AuthContext.jsx` — Auth state; Google sign-in triggers a Drive backup once per session
-- `src/pages/Setup.jsx` — Founding-owner connect wizard + Drive convert steps
-- `src/pages/Handover.jsx` — Handover totals; also embedded on `#/old`
-- `src/pages/OldReport.jsx` — Read-only APP Summary grid
-- `src/services/liveSheetSetup.js` — Create/connect The Pride of Tirumala-LIVE
-- `src/config/liveWorkbook.js` — Old Summary expense labels for Live Summary
-- `vite.config.js` — Build config with PWA and chunk splitting
+- `src/config/accessPolicy.js`
+- `src/config/constants.js` — `DRIVE_ROOT_FOLDER`, `SHEET_FILE_NAME`, `OPENING_SURPLUS`, `FIRST_APP_MONTH_LABEL`
+- `src/utils/ledgerMath.js` — opening + collected − spent
+- `src/utils/months.js` — Sep-26 sequence
+- `src/utils/workbookCsv.js` — local CSV workbook for tests
+- `src/services/sheetSetup.js` — create/connect + formulas
+- `src/services/sheetFormulas.js`
+- `src/services/googleSheets.js`
+- `src/services/googleDrive.js`
+- `src/services/pdfExport.js`
+- `Architecture.md`
 
 ## Constraints
 
-- Max 20 users, max 2 owners
 - 10 flats: 101, 102, 201, 202, 301, 302, 401, 402, 501, 502
-- No backend server — fully client-side static hosting. Drive file ACL is the real write barrier
-- Must be deployable to GitHub Pages and Azure Static Web Apps
-- PWA installable on iOS, Android, and desktop
-- Fiscal year: September to August
-- Indian Rupee (₹) currency formatting in the app and in generated PDFs
-- PDF reports mask emails and phone numbers
-- Existing workbooks can be upgraded (Settings → Backups → Refresh sheet layout)
-- UI must remain usable on mobile (hamburger + bottom nav, stacked cards, 44px tap targets)
-- Do not hardcode owner names from the Excel into JS source. Runtime copy from Summary → Flats is allowed
+- No backend. Deployable to GitHub Pages (`/AppartmentApp/`) and Azure SWA
+- Indian Rupee. PDFs mask emails and phones
+- Mobile: hamburger + bottom nav, 44px targets
+- Do not hardcode owner names into JS source
 
 ## Deployment
 
-- GitHub Pages: Push to main → auto-deployed via GitHub Actions
-- Azure Static Web Apps: Connected to GitHub, auto-deploys
-- Base path: `/AppartmentApp/` for GitHub Pages
-- After connecting the society sheet, optionally paste the ID into `public/sheet-config.json`
-- After deploy: hard-refresh or Settings → Appearance → Clear cache so the new PWA cache loads
+- Push to `main` → GitHub Actions Pages
+- After create, optionally paste the sheet id into `public/sheet-config.json`
+- Hard-refresh or Settings → Clear cache after deploy (PWA `tpt-v50`)

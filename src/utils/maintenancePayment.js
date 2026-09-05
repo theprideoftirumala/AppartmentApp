@@ -3,7 +3,7 @@
  * Late fee is not collected in the app. New saves default to PAID.
  */
 
-import { coerceMonthLabel } from './liveSummaryLayout';
+import { coerceMonthLabel } from './months';
 import { sheetNumber, sheetText } from './helpers';
 
 export function paidPaymentDefaults(config = {}, today = new Date().toISOString().split('T')[0]) {

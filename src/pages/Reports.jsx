@@ -24,20 +24,16 @@ import {
   getMiscFunds, parseApiError,
 } from '../services/googleSheets';
 import { downloadReport, shareReport } from '../services/pdfExport';
-import { formatCurrency, formatDate, getCurrentMonthLabel, groupExpensesByCategory, sheetAvailableBalance } from '../utils/helpers';
+import { formatCurrency, formatDate, getCurrentMonthLabel, groupExpensesByCategory, sheetOpeningSurplus } from '../utils/helpers';
 import { useWorkingMonths } from '../hooks/useWorkingMonths';
-import { pickDefaultWorkingMonth } from '../utils/liveSummaryLayout';
+import { pickDefaultWorkingMonth } from '../utils/months';
 import { ytdRowsFromTabs } from '../utils/ytdFromTabs';
+import { buildLedger, pdfMoneySummary } from '../utils/ledgerMath';
 import StatusBadge from '../components/common/StatusBadge';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Navbar from '../components/common/Navbar';
 import { FEATURES } from '../config/constants';
-import { isLiveAppMonth } from '../utils/legacySheetImport';
 import { maskEmail, maskEmailsInText } from '../config/accessPolicy';
-
-function monthRunningBalance(netBalance, monthLabel, config) {
-  return isLiveAppMonth(monthLabel) ? sheetAvailableBalance(config) + netBalance : netBalance;
-}
 
 export default function Reports() {
   const { showToast } = useApp();
@@ -69,9 +65,9 @@ export default function Reports() {
   const loadReport = useCallback(async () => {
     try {
       setLoading(true);
-      const [maintenance, expenses, config, flats, watchman, activities, reminders, miscFunds] = await Promise.all([
-        getMaintenanceRecords(selectedMonth),
-        getExpenses(selectedMonth),
+      const [allMaintenance, allExpenses, config, flats, watchman, activities, reminders, miscFunds] = await Promise.all([
+        getMaintenanceRecords(),
+        getExpenses(),
         getConfiguration(),
         getFlats(),
         getWatchmanDetails(),
@@ -79,11 +75,19 @@ export default function Reports() {
         getReminders().catch(() => []),
         FEATURES.MISC_FUNDS ? getMiscFunds(selectedMonth).catch(() => []) : Promise.resolve([]),
       ]);
+      const maintenance = allMaintenance.filter((row) => row.month === selectedMonth);
+      const expenses = allExpenses.filter((row) => row.month === selectedMonth);
 
-      const totalCollection = maintenance.reduce((s, r) => s + r.amountPaid, 0);
-      const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
+      const ledger = buildLedger({
+        opening: sheetOpeningSurplus(config),
+        maintenance: allMaintenance,
+        expenses: allExpenses,
+      });
+      const money = pdfMoneySummary(ledger, selectedMonth);
+      const totalCollection = money.monthCollection;
+      const totalExpenses = money.monthExpenses;
       const totalMiscFunds = miscFunds.reduce((s, f) => s + f.amount, 0);
-      const netBalance = totalCollection + totalMiscFunds - totalExpenses;
+      const netBalance = money.monthNet;
 
       // Find reminders completed in this month
       const remindersCompleted = reminders.filter(r => {
@@ -115,7 +119,11 @@ export default function Reports() {
         totalExpenses,
         totalMiscFunds,
         netBalance,
-        cumulativeBalance: monthRunningBalance(netBalance, selectedMonth, config),
+        cumulativeBalance: money.availableBalance,
+        openingSurplus: money.openingSurplus,
+        monthStatus: money.monthStatus,
+        availableStatus: money.availableStatus,
+        ledger,
       });
     } catch (err) {
       showToast(parseApiError(err) || 'Failed to load report data', 'error');
@@ -127,11 +135,12 @@ export default function Reports() {
 
   const loadSummaries = useCallback(async () => {
     try {
-      const [maintenance, expenses] = await Promise.all([
+      const [maintenance, expenses, config] = await Promise.all([
         getMaintenanceRecords(),
         getExpenses(),
+        getConfiguration(),
       ]);
-      const fromTabs = ytdRowsFromTabs(maintenance, expenses);
+      const fromTabs = ytdRowsFromTabs(maintenance, expenses, sheetOpeningSurplus(config));
       if (fromTabs.length) {
         setSummaries(fromTabs);
         return;
@@ -176,9 +185,9 @@ export default function Reports() {
 
   // Load data for any month without changing the viewed report, then export
   async function fetchMonthData(month) {
-    const [maintenance, expenses, config, flats, watchman, activities, reminders, miscFunds] = await Promise.all([
-      getMaintenanceRecords(month),
-      getExpenses(month),
+    const [allMaintenance, allExpenses, config, flats, watchman, activities, reminders, miscFunds] = await Promise.all([
+      getMaintenanceRecords(),
+      getExpenses(),
       getConfiguration(),
       getFlats(),
       getWatchmanDetails(),
@@ -186,10 +195,14 @@ export default function Reports() {
       getReminders().catch(() => []),
       FEATURES.MISC_FUNDS ? getMiscFunds(month).catch(() => []) : Promise.resolve([]),
     ]);
-    const totalCollection = maintenance.reduce((s, r) => s + r.amountPaid, 0);
-    const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
-    const totalMiscFunds = miscFunds.reduce((s, f) => s + f.amount, 0);
-    const netBalance = totalCollection + totalMiscFunds - totalExpenses;
+    const maintenance = allMaintenance.filter((row) => row.month === month);
+    const expenses = allExpenses.filter((row) => row.month === month);
+    const ledger = buildLedger({
+      opening: sheetOpeningSurplus(config),
+      maintenance: allMaintenance,
+      expenses: allExpenses,
+    });
+    const money = pdfMoneySummary(ledger, month);
     return {
       month,
       apartmentName: config.APARTMENT_NAME || 'The Pride of Tirumala',
@@ -201,11 +214,15 @@ export default function Reports() {
       watchman: watchman.filter(w => w.status === 'Active'),
       activities,
       remindersCompleted: [],
-      totalCollection,
-      totalExpenses,
-      totalMiscFunds,
-      netBalance,
-      cumulativeBalance: monthRunningBalance(netBalance, month, config),
+      totalCollection: money.monthCollection,
+      totalExpenses: money.monthExpenses,
+      totalMiscFunds: miscFunds.reduce((s, f) => s + f.amount, 0),
+      netBalance: money.monthNet,
+      cumulativeBalance: money.availableBalance,
+      openingSurplus: money.openingSurplus,
+      monthStatus: money.monthStatus,
+      availableStatus: money.availableStatus,
+      ledger,
     };
   }
 

@@ -182,17 +182,15 @@ The Google Client ID is in `src/config/constants.js`. This is intentionally publ
 
 ## First-time society workbook
 
-Do **not** create `TPT-MaintenanceTracker`. Use the existing Excel:
+The founding owner signs in and runs Setup.
 
-1. Upload `The Pride of Tirumala-APP.xlsx` to the founding owner’s Google Drive
-2. Right-click → **Open with → Google Sheets**
-3. **File → Save as Google Sheets**
-4. Keep the name **The Pride of Tirumala-APP** (no `.xlsx`)
-5. Hard-refresh the live app and sign in as the founding owner
-6. Setup copies the file into `TPT-AppartmentApp/backups/`, then adds empty app tabs beside the five history tabs
-7. Settings → Backups → Refresh sheet layout copies Summary collections into Maintenance, and Exp-Detailed plus Summary expense categories into Expenses. Summary Sundry totals are not copied (already on Exp-Detailed). Matching totals are not added twice. Surplus/deficit and late-fee rows are skipped. Available balance is copied from the green Summary cell into Configuration.
+1. Setup creates Drive folder **TPT-APP-Tracker**
+2. If **APP-TPT-Tracker** is missing, Setup creates it (opening surplus ₹612, first month Sep-26)
+3. If it already exists, Setup connects that file and refreshes Balance / Monthly Summary formulas
+4. Open the **Balance** tab in Google Sheets — available balance and SURPLUS/DEFICIT are formulas
+5. Optionally paste the spreadsheet ID into `public/sheet-config.json` after create
 
-Optionally paste the Google Sheet ID into `public/sheet-config.json` after that connect.
+Do **not** create `TPT-MaintenanceTracker`, `The Pride of Tirumala-APP`, or a second LIVE file.
 
 ---
 
@@ -216,21 +214,11 @@ Optionally paste the Google Sheet ID into `public/sheet-config.json` after that 
 | API quota exceeded | Google Sheets API has 300 requests/min — this is plenty for 10-20 users |
 | PWA not installable | Ensure HTTPS (GitHub Pages provides this automatically) |
 | Blank page after deploy | Check `base` in `vite.config.js` matches your deployment path |
-| Setup says convert the Excel file | In Drive: Open with Google Sheets → File → Save as Google Sheets. Name it The Pride of Tirumala-APP |
-| Old TPT-MaintenanceTracker still opens | The app ignores that name. Bind The Pride of Tirumala-APP; hard-refresh or clear cache |
-| History months missing in the app | Settings → Backups → Refresh sheet layout, then hard-refresh (cache `tpt-v41`) |
-| Payees: `.catch is not a function` | Hard-refresh v1.9.3. Google thenables must be wrapped with `gapiCall` |
-| Dashboard ignores sheet edits | After LIVE exists, edit The Pride of Tirumala-LIVE, then Dashboard refresh. A correction banner appears if formulas disagree |
-| Bound to APP-old or the .xlsx | Hard-refresh v1.9.3. Retry as founding owner. The app uses only The Pride of Tirumala-APP (Google Sheet) for history |
-| Failed to create backup | Hard-refresh v1.9.3. Create Backup copies APP and LIVE (if connected); clones tabs if Drive copy is blocked. Wait up to a minute. |
-| Need Aug 2026+ books like the old Summary | Founding owner: Settings → Backups → Create live books (`The Pride of Tirumala-LIVE`). Live Summary starts at Aug-26; add later months from Maintenance. Old Summary stays at `#/old` |
-| Live Summary still has a year of empty months | Hard-refresh v1.9.3 (`tpt-v36`), then Settings → Backups → Refresh sheet layout. Unused columns are dropped; Aug-26 is kept. |
-| Dashboard Collection is ₹0 while Maintenance is paid | Hard-refresh until the sidebar shows v1.9.6. Open Dashboard or Settings → Refresh sheet layout so Live Summary uses `ARRAYFORMULA` lookups. Then refresh again. |
-| Live Summary Sep-26 all zeros / formula has C$5 | v1.9.4 rewrites those formulas to `"Sep-26"`. Confirm cell A4 is `tpt-live-v2` or newer. |
-| Live Summary formulas say `"Aug-26"` but every cell is still 0 | Hard-refresh v1.9.8. Open Dashboard or Refresh sheet layout. A4 must be `tpt-live-v5`. Maintenance A/B become text; Live Summary is recreated on the same LIVE file (not a new workbook). |
-| False “Sheets API is not enabled” | Hard-refresh v1.9.3. That message is only for the real not-enabled error. Retry; a 403/429 is not a disabled API. |
-| Expenses listed twice | Refresh sheet layout. Exp-Detailed lines win. Summary Sundry totals are removed from Expenses |
-| Collected amounts do not match Summary | Founding owner: Settings → Backups → Refresh sheet layout. The app updates Maintenance from the Summary grid |
-| Unable to parse range Configuration | The converted sheet still has only history tabs. Founding owner: Retry — the app adds Configuration and the other app tabs. Or Settings → Backups → Refresh sheet layout |
-| Balance does not match the Summary tab | Check the green Available balance cell, then Refresh sheet layout. Surplus/deficit and late-fee rows are ignored |
-| GPay does nothing while PhonePe opens | Hard-refresh v1.9.7. GPay now uses `number@ybl` and an Android Intent to the GPay app, not a bare phone on `tez://`. |
+| Setup cannot find the sheet | Sign in as the founding owner. Setup creates **APP-TPT-Tracker** in **TPT-APP-Tracker** if none exists |
+| Old TPT-MaintenanceTracker or The Pride of Tirumala-APP still opens | Clear cache. This app binds only **APP-TPT-Tracker** |
+| Balance looks wrong | Open the Balance tab. Available = OPENING_SURPLUS (612) + Maintenance paid − Expenses. Fix typed rows, not formula cells |
+| Unable to parse range Configuration | Founding owner: Setup or Settings → Refresh sheet layout |
+| Payees: `.catch is not a function` | Settings → Clear cache. Google thenables must be wrapped with `gapiCall` |
+| Failed to create backup | Create Backup copies APP-TPT-Tracker; clones tabs if Drive copy is blocked |
+| False “Sheets API is not enabled” | That message is only for the real not-enabled error. A 403/429 is not a disabled API |
+| GPay does nothing while PhonePe opens | GPay uses `number@ybl` and an Android Intent, not a bare phone on `tez://` |

@@ -14,12 +14,12 @@ import { useApp } from '../contexts/AppContext';
 import { setupFolderStructure, findSocietySpreadsheet, createBackup } from '../services/googleDrive';
 import {
   addAuditLog, addReminder, getReminders,
-  parseApiError, ensureSheetStructure, ensureFoundingOwnerEntry,
+  parseApiError, ensureSheetStructure, ensureFoundingOwnerEntry, createSpreadsheet,
 } from '../services/googleSheets';
-import { DEFAULT_REMINDERS, GOOGLE_SHEET_MIME, SHEET_FILE_NAME, STORAGE_KEYS, isGoogleSpreadsheetMime } from '../config/constants';
+import { DEFAULT_REMINDERS, DRIVE_ROOT_FOLDER, GOOGLE_SHEET_MIME, SHEET_FILE_NAME, STORAGE_KEYS, isGoogleSpreadsheetMime } from '../config/constants';
 import { FOUNDING_OWNER_EMAIL, isFoundingOwner, maskEmail } from '../config/accessPolicy';
 import { calculateNextDue, getLastDayOfCurrentMonth, getFirstDayOfNextMonth, bindSpreadsheet, isValidSpreadsheetId } from '../utils/helpers';
-import { shouldShowMissingSheetHelp } from '../utils/setupFlow';
+import { shouldOfferSheetCreation, shouldShowMissingSheetHelp } from '../utils/setupFlow';
 
 const STEPS = [
   { id: 'welcome', title: 'Welcome', icon: Shield },
@@ -31,36 +31,35 @@ const STEPS = [
 const OWNER_EMAIL_MASKED = maskEmail(FOUNDING_OWNER_EMAIL);
 const DRIVE_HOME = 'https://drive.google.com';
 
-function ConvertWorkbookHelp({ foundXlsx, onSearch }) {
+function CreateWorkbookHelp({ foundXlsx, creating, onSearch, onCreate }) {
   return (
     <div className="setup-welcome">
       <div className="setup-logo">
         <Shield size={48} />
       </div>
-      <h2>{foundXlsx ? 'Convert the Excel file to a Google Sheet' : 'Put the society workbook in Drive'}</h2>
+      <h2>{foundXlsx ? 'Convert that Excel file first' : `Create ${SHEET_FILE_NAME}`}</h2>
       <p>
         {foundXlsx
-          ? <>Found <strong>{SHEET_FILE_NAME}.xlsx</strong>. The app can only read a Google Sheet, not an Excel file.</>
-          : <>No <strong>{SHEET_FILE_NAME}</strong> Google Sheet was found. The app does not create a second society file.</>}
+          ? <>Found an Excel file named like <strong>{SHEET_FILE_NAME}</strong>. Convert it to a Google Sheet, or create a fresh tracker.</>
+          : <>No <strong>{SHEET_FILE_NAME}</strong> was found. Create it in Drive folder <strong>{DRIVE_ROOT_FOLDER}</strong>. Books start Sep-26 with opening surplus ₹612.</>}
       </p>
-      <ol className="setup-steps">
-        <li>Open <a href={DRIVE_HOME} target="_blank" rel="noreferrer">Google Drive</a> as {OWNER_EMAIL_MASKED}.</li>
-        {!foundXlsx && (
-          <li>Upload <strong>The Pride of Tirumala-APP.xlsx</strong> (New → File upload).</li>
-        )}
-        <li>Right-click the file → <strong>Open with → Google Sheets</strong>.</li>
-        <li>In the opened file: <strong>File → Save as Google Sheets</strong>.</li>
-        <li>Name it exactly <strong>{SHEET_FILE_NAME}</strong> (no .xlsx).</li>
-        <li>Leave Summary, Exp - Detailed, Borewell Exp, Motor repair oct, and Notes unchanged.</li>
-        <li>Return here and tap Search again. The app copies a backup, then adds empty app tabs beside those history tabs.</li>
-      </ol>
-      <p className="text-muted">Keep the original .xlsx. The app uses only the Google Sheet. Do not upload a second workbook.</p>
+      {foundXlsx && (
+        <ol className="setup-steps">
+          <li>Open <a href={DRIVE_HOME} target="_blank" rel="noreferrer">Google Drive</a>.</li>
+          <li>Right-click the file → <strong>Open with → Google Sheets</strong>.</li>
+          <li><strong>File → Save as Google Sheets</strong> and name it <strong>{SHEET_FILE_NAME}</strong>.</li>
+          <li>Return here and tap Search again.</li>
+        </ol>
+      )}
       <div className="setup-actions">
         <a className="btn btn-secondary btn-lg setup-drive-link" href={DRIVE_HOME} target="_blank" rel="noreferrer">
           <ExternalLink size={18} /> Open Drive
         </a>
-        <button className="btn btn-primary btn-lg" type="button" onClick={onSearch}>
-          <Search size={18} /> Search again <ArrowRight size={18} />
+        <button className="btn btn-secondary btn-lg" type="button" onClick={onSearch}>
+          <Search size={18} /> Search again
+        </button>
+        <button className="btn btn-primary btn-lg" type="button" disabled={creating} onClick={onCreate}>
+          <FileSpreadsheet size={18} /> {creating ? 'Creating…' : `Create ${SHEET_FILE_NAME}`} <ArrowRight size={18} />
         </button>
       </div>
     </div>
@@ -108,10 +107,17 @@ export default function Setup() {
   const [lookupFailed, setLookupFailed] = useState(false);
   const [needsGoogleSheet, setNeedsGoogleSheet] = useState(false);
   const [error, setError] = useState(null);
+  const [creating, setCreating] = useState(false);
   const [results, setResults] = useState({ folderId: null, spreadsheetId: null, foundExisting: false, backedUp: false });
   const founder = isFoundingOwner(user?.email);
   const alreadyBound = isValidSpreadsheetId(localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID));
   const showMissingHelp = shouldShowMissingSheetHelp({
+    searchConfirmedEmpty,
+    lookupFailed,
+    alreadyBound,
+  });
+  const canCreate = shouldOfferSheetCreation({
+    isFounder: founder,
     searchConfirmedEmpty,
     lookupFailed,
     alreadyBound,
@@ -140,8 +146,8 @@ export default function Setup() {
     completeSetup();
     showToast(
       backedUp
-        ? 'Backed up, then connected The Pride of Tirumala-APP. App tabs were added if they were missing.'
-        : 'Connected The Pride of Tirumala-APP. Backup was skipped — use Settings → Backups if needed.',
+        ? `Backed up, then connected ${SHEET_FILE_NAME}. Balance formulas start at Sep-26 with opening surplus ₹612.`
+        : `Connected ${SHEET_FILE_NAME}. Backup was skipped — use Settings → Backups if needed.`,
       backedUp ? 'success' : 'info',
     );
     navigate('/', { replace: true });
@@ -193,6 +199,46 @@ export default function Setup() {
     autoSearchKey.current = key;
     lookForExistingSheet();
   }, [alreadyBound, founder, isSetupComplete, lookForExistingSheet, user?.email]);
+
+  const createFreshWorkbook = async () => {
+    if (!canCreate) return;
+    setCreating(true);
+    setError(null);
+    setCurrentStep(2);
+    try {
+      const folders = await setupFolderStructure();
+      const spreadsheetId = await createSpreadsheet();
+      bindSpreadsheet(spreadsheetId, user.email);
+      await ensureFoundingOwnerEntry(user.email);
+      const reminders = await getReminders().catch(() => []);
+      if (!reminders.length) {
+        for (const reminder of DEFAULT_REMINDERS) {
+          let nextDue;
+          if (reminder.nextDueType === 'end_of_month') nextDue = getLastDayOfCurrentMonth();
+          else if (reminder.nextDueType === 'start_of_month') nextDue = getFirstDayOfNextMonth();
+          else nextDue = calculateNextDue(null, reminder.frequency);
+          await addReminder({
+            title: reminder.title,
+            description: reminder.description,
+            frequency: reminder.frequency,
+            assignedTo: reminder.assignedTo || '',
+            nextDue,
+            createdBy: 'System',
+          });
+        }
+      }
+      setResults({ folderId: folders?.rootId || null, spreadsheetId, foundExisting: false, backedUp: false });
+      await addAuditLog(user.email, 'SETUP', `Created ${SHEET_FILE_NAME}`).catch(() => {});
+      completeSetup();
+      showToast(`${SHEET_FILE_NAME} is ready in ${DRIVE_ROOT_FOLDER}. Opening surplus ₹612. First month Sep-26.`, 'success');
+      setCurrentStep(3);
+    } catch (err) {
+      setCurrentStep(0);
+      setError(parseApiError(err) || err.message || 'Could not create the workbook.');
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const copySheetId = async () => {
     if (!results.spreadsheetId) return;
@@ -256,15 +302,17 @@ export default function Setup() {
               <Loader size={48} className="animate-spin" />
               <h3>Looking for the society sheet…</h3>
               <p className="text-muted">
-                Searching Drive for <strong>{SHEET_FILE_NAME}</strong>. The app will not create a new file.
+                Searching Drive for <strong>{SHEET_FILE_NAME}</strong> in <strong>{DRIVE_ROOT_FOLDER}</strong>.
               </p>
             </div>
           )}
 
           {(needsGoogleSheet || showMissingHelp) && currentStep === 0 && (
-            <ConvertWorkbookHelp
+            <CreateWorkbookHelp
               foundXlsx={needsGoogleSheet}
+              creating={creating}
               onSearch={() => { autoSearchKey.current = ''; lookForExistingSheet(); }}
+              onCreate={createFreshWorkbook}
             />
           )}
 
@@ -275,7 +323,7 @@ export default function Setup() {
               <p className="text-muted">
                 {currentStep === 1
                   ? 'Setting up folder structure in Google Drive...'
-                  : 'Backing up, then adding missing app tabs to The Pride of Tirumala-APP...'}
+                  : `Connecting ${SHEET_FILE_NAME} and writing Balance formulas...`}
               </p>
             </div>
           )}
@@ -287,12 +335,12 @@ export default function Setup() {
               </div>
               <h2>All Set</h2>
               <p>
-                Connected <strong>{SHEET_FILE_NAME}</strong>. History tabs were left as they are. Add a row on Maintenance or Expenses and refresh the app to see it.
+                Connected <strong>{SHEET_FILE_NAME}</strong> in <strong>{DRIVE_ROOT_FOLDER}</strong>. Open the Balance tab to see surplus or deficit. First month is Sep-26. Opening surplus is ₹612.
               </p>
 
               <div className="setup-summary card">
-                <p><strong>Google Drive:</strong> TPT-AppartmentApp folder ready</p>
-                <p><strong>Spreadsheet:</strong> Reconnected {SHEET_FILE_NAME}{results.backedUp ? ' (backed up first)' : ''}</p>
+                <p><strong>Google Drive:</strong> {DRIVE_ROOT_FOLDER} folder ready</p>
+                <p><strong>Spreadsheet:</strong> {results.foundExisting ? 'Reconnected' : 'Created'} {SHEET_FILE_NAME}{results.backedUp ? ' (backed up first)' : ''}</p>
                 <p><strong>Your role:</strong> Owner ({OWNER_EMAIL_MASKED})</p>
                 {results.spreadsheetId && (
                   <p className="sheet-id-row">

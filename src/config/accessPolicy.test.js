@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  canCreateLiveWorkbook,
+  canCreateSocietySpreadsheet,
   canGrantOwner,
   DEFAULT_MEMBER_ROLE,
   effectiveAppRole,
@@ -46,9 +46,9 @@ describe('normalizeRequestedRole', () => {
   });
 });
 
-describe('canCreateLiveWorkbook', () => {
+describe('canCreateSocietySpreadsheet', () => {
   it('is only the founding owner', () => {
-    expect(canCreateLiveWorkbook('resident@example.com')).toBe(false);
+    expect(canCreateSocietySpreadsheet('resident@example.com')).toBe(false);
     expect(canGrantOwner('resident@example.com')).toBe(false);
   });
 });

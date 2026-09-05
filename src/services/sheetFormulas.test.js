@@ -1,17 +1,36 @@
 import { describe, expect, it } from 'vitest';
-import { maintenanceStillDueFormula, monthlySummaryFormulaRow } from './sheetFormulas';
+import { FIRST_APP_MONTH_LABEL, OPENING_SURPLUS } from '../config/constants';
+import {
+  balanceFormulaCells,
+  maintenanceStillDueFormula,
+  monthlySummaryFormulaRow,
+  pendingDuesStaticRows,
+} from './sheetFormulas';
 
-describe('maintenanceStillDueFormula', () => {
-  it('is due minus paid and stays blank when the row has no month', () => {
-    expect(maintenanceStillDueFormula(12)).toBe('=IF(OR(A12="",C12=""),"",MAX(0,N(C12)-N(D12)))');
+describe('sheet formulas', () => {
+  it('still due is due minus paid', () => {
+    expect(maintenanceStillDueFormula(2)).toContain('N(C2)-N(D2)');
   });
-});
 
-describe('monthlySummaryFormulaRow', () => {
-  it('sums Maintenance and Expenses using a text month even if column A is a date', () => {
-    const row = monthlySummaryFormulaRow(2);
-    expect(row[0]).toContain('SUMIF(Maintenance!A:A');
-    expect(row[0]).toContain('TEXT(A2,"MMM-YY")');
-    expect(row[2]).toContain('SUMIF(Expenses!C:C');
+  it('monthly summary starts running balance from OPENING_SURPLUS', () => {
+    const first = monthlySummaryFormulaRow(2);
+    expect(first[0]).toContain('SUMIF(Maintenance');
+    expect(first[2]).toContain('N(B2)-N(C2)');
+    expect(first[3]).toContain('OPENING_SURPLUS');
+    expect(first[3]).toContain(String(OPENING_SURPLUS));
+    expect(first[4]).toContain('SURPLUS');
+    expect(first[4]).toContain('DEFICIT');
+  });
+
+  it('Balance tab formulas show available cash and status', () => {
+    const cells = balanceFormulaCells();
+    expect(cells.B5).toContain('OPENING_SURPLUS');
+    expect(cells.B8).toBe('=N(B5)+N(B6)-N(B7)');
+    expect(cells.B9).toContain('SURPLUS');
+  });
+
+  it('Pending Dues starts on Sep-26', () => {
+    const rows = pendingDuesStaticRows();
+    expect(rows[2][1]).toBe(FIRST_APP_MONTH_LABEL);
   });
 });

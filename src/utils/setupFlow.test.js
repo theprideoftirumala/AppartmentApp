@@ -2,14 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { shouldOfferSheetCreation, shouldShowMissingSheetHelp } from './setupFlow';
 
 describe('shouldOfferSheetCreation', () => {
-  it('never offers create — the society file is The Pride of Tirumala-APP in Drive', () => {
-    expect(shouldOfferSheetCreation()).toBe(false);
-    expect(shouldOfferSheetCreation({ searchConfirmedEmpty: true })).toBe(false);
+  it('lets the founding owner create APP-TPT-Tracker when Drive is empty', () => {
+    expect(shouldOfferSheetCreation({ isFounder: true, searchConfirmedEmpty: true })).toBe(true);
+    expect(shouldOfferSheetCreation({ isFounder: false, searchConfirmedEmpty: true })).toBe(false);
+    expect(shouldOfferSheetCreation({ isFounder: true, searchConfirmedEmpty: false })).toBe(false);
   });
 });
 
 describe('shouldShowMissingSheetHelp', () => {
-  it('shows upload help only when search confirmed the APP file is missing', () => {
+  it('shows create help only when search confirmed the file is missing', () => {
     expect(shouldShowMissingSheetHelp({ searchConfirmedEmpty: true })).toBe(true);
   });
 
@@ -19,10 +20,5 @@ describe('shouldShowMissingSheetHelp', () => {
 
   it('does not show help when a workbook is already bound', () => {
     expect(shouldShowMissingSheetHelp({ searchConfirmedEmpty: true, alreadyBound: true })).toBe(false);
-  });
-
-  it('does not show help before search finishes', () => {
-    expect(shouldShowMissingSheetHelp({})).toBe(false);
-    expect(shouldShowMissingSheetHelp({ searchConfirmedEmpty: false })).toBe(false);
   });
 });

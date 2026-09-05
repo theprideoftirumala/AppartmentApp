@@ -13,7 +13,7 @@
 import jsPDF from 'jspdf';
 import { maskEmail, maskEmailsInText } from '../config/accessPolicy';
 import { FEATURES, SOCIETY_DISCLAIMER } from '../config/constants';
-import { maskIdNumber, maskPhone, sheetAvailableBalance } from '../utils/helpers';
+import { maskIdNumber, maskPhone } from '../utils/helpers';
 
 const PDF_FONT = 'NotoSans';
 let cachedFontBase64 = null;
@@ -331,6 +331,9 @@ export async function generateMonthlyReport(reportData) {
     totalMiscFunds,
     netBalance,
     cumulativeBalance,
+    openingSurplus,
+    monthStatus,
+    availableStatus,
     flats,
     watchman,
     activities,
@@ -348,11 +351,16 @@ export async function generateMonthlyReport(reportData) {
   });
   y = 58;
 
+  const opening = Number.isFinite(Number(openingSurplus)) ? Number(openingSurplus) : 612;
+  const available = Number.isFinite(Number(cumulativeBalance)) ? Number(cumulativeBalance) : opening + Number(netBalance || 0);
+  const thisMonthStatus = monthStatus || (netBalance > 0 ? 'SURPLUS' : netBalance < 0 ? 'DEFICIT' : 'BALANCED');
+  const runningStatus = availableStatus || (available > 0 ? 'SURPLUS' : available < 0 ? 'DEFICIT' : 'BALANCED');
+
   const summaryCards = [
-    { label: 'Total Collection', value: formatCurrency(totalCollection), color: [40, 167, 69], bg: [235, 250, 240] },
-    ...(FEATURES.MISC_FUNDS ? [{ label: 'Misc Funds', value: formatCurrency(totalMiscFunds || 0), color: [50, 80, 200], bg: [230, 240, 255] }] : []),
-    { label: 'Total Expenses', value: formatCurrency(totalExpenses), color: [220, 53, 69], bg: [255, 235, 238] },
-    { label: 'Net Balance', value: formatCurrency(netBalance), color: netBalance >= 0 ? [40, 167, 69] : [220, 53, 69], bg: netBalance >= 0 ? [235, 250, 240] : [255, 235, 238] },
+    { label: 'Opening surplus', value: formatCurrency(opening), color: [50, 80, 200], bg: [230, 240, 255] },
+    { label: 'Collected this month', value: formatCurrency(totalCollection), color: [40, 167, 69], bg: [235, 250, 240] },
+    { label: 'Spent this month', value: formatCurrency(totalExpenses), color: [220, 53, 69], bg: [255, 235, 238] },
+    { label: 'Available balance', value: formatCurrency(available), color: available >= 0 ? [40, 167, 69] : [220, 53, 69], bg: available >= 0 ? [235, 250, 240] : [255, 235, 238] },
   ];
   y = drawSummaryCards(doc, summaryCards, y, margin, contentWidth);
 
@@ -362,7 +370,7 @@ export async function generateMonthlyReport(reportData) {
   doc.setFontSize(7.5);
   pdfFont(doc, 'normal');
   doc.setTextColor(80, 80, 80);
-  doc.text(`Monthly Maintenance: ${formatCurrency(config?.MONTHLY_MAINTENANCE || 3000)} per flat  |  Total Flats: 10  |  Expected: ${formatCurrency((config?.MONTHLY_MAINTENANCE || 3000) * 10)}  |  Available balance (Summary): ${formatCurrency(sheetAvailableBalance(config))}`, margin + 4, y + 6);
+  doc.text(`Monthly Maintenance: ${formatCurrency(config?.MONTHLY_MAINTENANCE || 3000)} per flat  |  Total Flats: 10  |  Expected: ${formatCurrency((config?.MONTHLY_MAINTENANCE || 3000) * 10)}  |  Opening surplus: ${formatCurrency(opening)}`, margin + 4, y + 6);
 
   const paidCount = (maintenance || []).filter(r => r.status === 'PAID').length;
   const pendingCount = (maintenance || []).filter(r => r.status === 'PENDING').length;
@@ -376,16 +384,20 @@ export async function generateMonthlyReport(reportData) {
   const bgColor = isDeficit ? [255, 240, 240] : [235, 250, 240];
   const textColor = isDeficit ? [180, 40, 40] : [30, 130, 60];
   doc.setFillColor(...bgColor);
-  doc.roundedRect(margin, y, contentWidth, 12, 2, 2, 'F');
+  doc.roundedRect(margin, y, contentWidth, 18, 2, 2, 'F');
   doc.setFontSize(8.5);
   pdfFont(doc, 'bold');
   doc.setTextColor(...textColor);
-  const balanceLabel = isDeficit ? 'NET THIS MONTH (SHORT)' : 'NET THIS MONTH';
-  doc.text(`${balanceLabel}: ${formatCurrency(Math.abs(netBalance))}`, margin + 4, y + 5);
+  doc.text(`THIS MONTH ${thisMonthStatus}: ${formatCurrency(netBalance)}  (collected − spent)`, margin + 4, y + 5.5);
+  doc.setFontSize(8);
+  pdfFont(doc, 'bold');
+  doc.setTextColor(...(available < 0 ? [180, 40, 40] : [30, 130, 60]));
+  doc.text(`AVAILABLE BALANCE ${runningStatus}: ${formatCurrency(available)}`, margin + 4, y + 11);
   doc.setFontSize(7);
   pdfFont(doc, 'normal');
-  doc.text(`(Collection ${formatCurrency(totalCollection)} + Misc ${formatCurrency(totalMiscFunds || 0)}) - Expenses ${formatCurrency(totalExpenses)} = ${formatCurrency(netBalance)}`, margin + 4, y + 9.5);
-  y += 16;
+  doc.setTextColor(80, 80, 80);
+  doc.text(`Opening ${formatCurrency(opening)} + collected ${formatCurrency(totalCollection)} − spent ${formatCurrency(totalExpenses)} = ${formatCurrency(available)}`, margin + 4, y + 15.5);
+  y += 22;
 
   // ═══════════════════════════════════════════════════════
   // SECTION 1: RECEIVED PAYMENT SUMMARY

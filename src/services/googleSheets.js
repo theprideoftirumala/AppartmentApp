@@ -4,8 +4,7 @@
  * Google Sheet is the single source of truth / database
  */
 
-import { FIRST_LIVE_MONTH_LABEL, SHEET_NAMES, SHEET_HEADERS, DEFAULT_CONFIG, CONFIG_DESCRIPTIONS, FLATS, STORAGE_KEYS, SHEET_FILE_NAME, isLiveSocietySheetName, isGoogleSpreadsheetMime } from '../config/constants';
-import { isLiveAppMonth } from '../utils/legacySheetImport';
+import { CONFIG_DESCRIPTIONS, FIRST_APP_MONTH_LABEL, SHEET_NAMES, DEFAULT_CONFIG, FLATS, STORAGE_KEYS, SHEET_FILE_NAME, isSocietySheetName, isGoogleSpreadsheetMime } from '../config/constants';
 import { isMissingSheetRangeError } from '../utils/sheetRangeError';
 import { duplicateExpenseMessage, firstDuplicateExpense } from '../utils/expenseDuplicate';
 import { firstDuplicatePayee } from '../utils/payeeDuplicate';
@@ -20,7 +19,7 @@ import {
   normalizeRequestedRole,
 } from '../config/accessPolicy';
 import { ensureValidToken, getCurrentUser } from './googleAuth';
-import { findSocietySpreadsheet, findLiveWorkbook, getSpreadsheetFileMeta, isPrivateCopyOwnedByUser } from './googleDrive';
+import { findSocietySpreadsheet, getSpreadsheetFileMeta, isPrivateCopyOwnedByUser } from './googleDrive';
 import {
   sanitizeForSheet,
   truncateForSheet,
@@ -31,20 +30,15 @@ import {
   isValidSpreadsheetId,
   bindSpreadsheet,
   unbindSpreadsheet,
-  sheetAvailableBalance,
+  sheetOpeningSurplus,
   getActiveSpreadsheetIdFromStorage,
-  getHistorySpreadsheetIdFromStorage,
-  getLiveSpreadsheetIdFromStorage,
-  bindLiveSpreadsheet,
   getCurrentMonthLabel,
-  getFiscalMonthOptions,
 } from '../utils/helpers';
 import { gapiCall, gapiCallSafe } from '../utils/gapi';
 import { isGoogleApiNotEnabledMessage } from '../utils/googleApiError';
-import { coerceMonthLabel, parseLiveSummarySnapshot, sortMonthLabels } from '../utils/liveSummaryLayout';
+import { coerceMonthLabel, workingMonthsFromRows } from '../utils/months';
+import { buildLedger } from '../utils/ledgerMath';
 import { maintenancePaymentRow, sameMaintenanceKey, uniqueFlats } from '../utils/maintenancePayment';
-import { dashboardCorrectionMessages } from '../utils/sheetCorrections';
-import { parseHandoverSummaryRows } from '../data/handoverLedger';
 import {
   createSpreadsheet,
   ensureSheetStructure,
@@ -53,9 +47,7 @@ import {
   applyMonthlySummaryFormulas,
   applyMaintenanceStillDueFormulas,
   upgradeWorkbookLayout,
-  syncCollectionsFromSummary,
-  syncLiveSummaryMonths,
-  appendNextLiveMonthColumn,
+  appendNextMonthColumn,
 } from './sheetSetup';
 
 export {
@@ -64,10 +56,8 @@ export {
   archiveAndCreateFresh,
   seedSampleLiveData,
   applyMonthlySummaryFormulas,
-  syncCollectionsFromSummary,
   applyMaintenanceStillDueFormulas,
   upgradeWorkbookLayout,
-  syncLiveSummaryMonths,
 };
 
 /**
@@ -78,11 +68,7 @@ function getSpreadsheetId() {
 }
 
 export function getHistorySpreadsheetId() {
-  return getHistorySpreadsheetIdFromStorage();
-}
-
-export function getLiveSpreadsheetId() {
-  return getLiveSpreadsheetIdFromStorage();
+  return getActiveSpreadsheetIdFromStorage();
 }
 
 /**
@@ -138,7 +124,7 @@ async function assertCanManageUsers() {
  */
 export function parseApiError(error) {
   if (error?.code === 'SHEET_NOT_ACCESSIBLE' || error?.message === 'SHEET_NOT_ACCESSIBLE') {
-    return 'This browser is pointing at a Google Sheet your account cannot open. If you are a resident, ask the society Owner to add you and share The Pride of Tirumala-APP as Viewer. The app does not create a second workbook.';
+    return 'This browser is pointing at a Google Sheet your account cannot open. If you are a resident, ask the society Owner to add you and share APP-TPT-Tracker as Viewer.';
   }
   if (!navigator.onLine) {
     return 'You appear to be offline. Please check your internet connection.';
@@ -162,7 +148,7 @@ export function parseApiError(error) {
     }
 
     if (/Unable to parse range/i.test(msg)) {
-      return 'The society workbook is missing an app tab (such as Configuration). Sign in as the founding owner and click Retry — the app will add the missing tabs beside the history tabs. If the file is still Excel, convert it in Drive first (Open with Google Sheets → Save as Google Sheets).';
+      return 'The society workbook is missing a tab (such as Configuration). Sign in as the founding owner and click Retry — the app will add the missing tabs.';
     }
 
     switch (code) {
@@ -193,7 +179,7 @@ async function addMissingAppTabsOrThrow(spreadsheetId) {
   const meta = await getSpreadsheetFileMeta(spreadsheetId);
   if (meta?.mimeType && !isGoogleSpreadsheetMime(meta.mimeType)) {
     throw new Error(
-      `This file is still Excel. In Drive: Open with Google Sheets → File → Save as Google Sheets. Keep the name ${SHEET_FILE_NAME}, then Reconnect society sheet.`,
+      `This file is still Excel. In Drive: Open with Google Sheets → File → Save as Google Sheets. Keep the name ${SHEET_FILE_NAME}.`,
     );
   }
   try {
@@ -239,12 +225,12 @@ export async function resolveSpreadsheetForUser(email) {
     if (isValidSpreadsheetId(currentId) && !emailMismatch) {
       const meta = await getSpreadsheetFileMeta(currentId);
       const privateCopy = isPrivateCopyOwnedByUser(meta, email);
-      const liveSheet = Boolean(
+      const namedSheet = Boolean(
         meta
-        && isLiveSocietySheetName(meta.name)
+        && isSocietySheetName(meta.name)
         && isGoogleSpreadsheetMime(meta.mimeType),
       );
-      if (!privateCopy && liveSheet && await canReadSpreadsheet(currentId)) {
+      if (!privateCopy && namedSheet && await canReadSpreadsheet(currentId)) {
         bindSpreadsheet(currentId, email);
         return currentId;
       }
@@ -269,19 +255,8 @@ export async function resolveSpreadsheetForUser(email) {
   });
 }
 
-export async function resolveLiveWorkbookForUser(email) {
-  return withAuth(async () => {
-    const currentLive = getLiveSpreadsheetIdFromStorage();
-    if (isValidSpreadsheetId(currentLive) && await canReadSpreadsheet(currentLive)) {
-      return currentLive;
-    }
-    const found = await findLiveWorkbook(email);
-    if (found?.id && await canReadSpreadsheet(found.id)) {
-      bindLiveSpreadsheet(found.id);
-      return found.id;
-    }
-    return null;
-  });
+export async function resolveLiveWorkbookForUser() {
+  return getSpreadsheetId();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -440,20 +415,6 @@ export async function updateFlat(flatNumber, data) {
 export async function getMaintenanceRecords(month = null) {
   return withAuth(async () => {
     const spreadsheetId = getSpreadsheetId();
-    const user = getCurrentUser();
-    const liveId = getLiveSpreadsheetId();
-    if (
-      isFoundingOwner(user?.email)
-      && isValidSpreadsheetId(spreadsheetId)
-      && spreadsheetId !== liveId
-    ) {
-      try {
-        await syncCollectionsFromSummary(spreadsheetId);
-      } catch (err) {
-        if (!isMissingSheetRangeError(err)) throw err;
-        await ensureSheetStructure(spreadsheetId);
-      }
-    }
     const response = await gapiCall(window.gapi.client.sheets.spreadsheets.values.get({
       spreadsheetId,
       range: `'${SHEET_NAMES.MAINTENANCE}'!A2:J5000`,
@@ -1252,22 +1213,6 @@ function formatSummaryPct(value) {
 }
 
 function parseMonthlySummaryRow(row) {
-  const looksNew = row.length >= 8
-    || /%/.test(String(row[6] || ''))
-    || /SURPLUS|DEFICIT/i.test(String(row[8] || ''));
-  if (looksNew) {
-    return {
-      month: coerceMonthLabel(row[0]) || String(row[0] || '').trim(),
-      totalCollection: sheetAmount(row[1]),
-      totalMiscFunds: sheetAmount(row[2]),
-      totalExpenses: sheetAmount(row[3]),
-      netBalance: sheetAmount(row[4]),
-      cumulativeBalance: sheetAmount(row[5]),
-      collectionPct: formatSummaryPct(row[6]),
-      pendingFlats: row[7] || '',
-      status: row[8] || '',
-    };
-  }
   return {
     month: coerceMonthLabel(row[0]) || String(row[0] || '').trim(),
     totalCollection: sheetAmount(row[1]),
@@ -1275,9 +1220,9 @@ function parseMonthlySummaryRow(row) {
     totalExpenses: sheetAmount(row[2]),
     netBalance: sheetAmount(row[3]),
     cumulativeBalance: sheetAmount(row[4]),
-    collectionPct: formatSummaryPct(row[5]),
-    pendingFlats: row[6] || '',
-    status: '',
+    status: row[5] || '',
+    collectionPct: formatSummaryPct(row[6]),
+    pendingFlats: row[7] || '',
   };
 }
 
@@ -1337,13 +1282,7 @@ export async function getDashboardData() {
       err.code = 'SHEET_NOT_ACCESSIBLE';
       throw err;
     }
-    await resolveLiveWorkbookForUser(user?.email).catch(() => null);
     const spreadsheetId = getSpreadsheetId() || historyId;
-
-    const liveIdForSync = getLiveSpreadsheetId();
-    if (isValidSpreadsheetId(liveIdForSync)) {
-      await syncLiveSummaryMonths(liveIdForSync);
-    }
 
     const coreRanges = [
       `'${SHEET_NAMES.CONFIGURATION}'!A2:C100`,
@@ -1352,12 +1291,9 @@ export async function getDashboardData() {
       `'${SHEET_NAMES.REMINDERS}'!A2:J200`,
       `'${SHEET_NAMES.EMERGENCY_CONTACTS}'!A2:G200`,
       `'${SHEET_NAMES.FLATS}'!A2:H50`,
-      `'${SHEET_NAMES.MONTHLY_SUMMARY}'!A2:I100`,
+      `'${SHEET_NAMES.MONTHLY_SUMMARY}'!A2:H100`,
     ];
-    const rangesWithMisc = [
-      ...coreRanges,
-      `'${SHEET_NAMES.MISC_FUNDS}'!A2:I2000`,
-    ];
+    const rangesWithMisc = coreRanges;
 
     const batchGetRanges = async (rangeList) => {
       const response = await gapiCall(window.gapi.client.sheets.spreadsheets.values.batchGet({
@@ -1484,52 +1420,31 @@ export async function getDashboardData() {
     const summaries = summaryRows.map(parseMonthlySummaryRow);
     const miscFunds = parseMisc(ranges[7]?.values);
 
-    const totalCollected = maintenance.reduce((sum, r) => sum + r.amountPaid, 0);
-    const totalMiscFunds = miscFunds.reduce((sum, f) => sum + f.amount, 0);
-    const totalExpenseAmount = expenses.reduce((sum, e) => sum + e.amount, 0);
-    const liveCollected = maintenance.filter((r) => isLiveAppMonth(r.month)).reduce((sum, r) => sum + r.amountPaid, 0);
-    const liveMiscFunds = miscFunds.filter((f) => isLiveAppMonth(f.month)).reduce((sum, f) => sum + f.amount, 0);
-    const liveExpenseAmount = expenses.filter((e) => isLiveAppMonth(e.month)).reduce((sum, e) => sum + e.amount, 0);
-    const opening = sheetAvailableBalance(config);
-    const currentBalance = opening + liveCollected + liveMiscFunds - liveExpenseAmount + (Number(config.CORPUS_FUND) || 0);
+    const ledger = buildLedger({
+      opening: sheetOpeningSurplus(config),
+      maintenance,
+      expenses,
+    });
+    const totalCollected = ledger.totalCollection;
+    const totalMiscFunds = 0;
+    const totalExpenseAmount = ledger.totalExpenses;
+    const currentBalance = ledger.available + (Number(config.CORPUS_FUND) || 0);
     const monthLabel = getCurrentMonthLabel();
     const monthMaintenance = maintenance.filter((row) => row.month === monthLabel);
     const monthExpenses = expenses.filter((row) => row.month === monthLabel);
     const monthCollection = monthMaintenance.reduce((sum, row) => sum + row.amountPaid, 0);
     const monthExpenseTotal = monthExpenses.reduce((sum, row) => sum + row.amount, 0);
-    const computedStillDue = monthMaintenance.reduce(
-      (sum, row) => sum + Math.max(0, (Number(row.amountDue) || 0) - (Number(row.amountPaid) || 0)),
-      0,
-    );
-    const sheetStillDue = monthMaintenance.reduce((sum, row) => sum + (Number(row.stillDue) || 0), 0);
+    const monthNet = monthCollection - monthExpenseTotal;
 
-    const liveId = getLiveSpreadsheetId();
-    let liveSnapshot = null;
-    if (liveId) {
-      const liveResponse = await gapiCallSafe(
-        window.gapi.client.sheets.spreadsheets.values.get({
-          spreadsheetId: liveId,
-          range: `'${SHEET_NAMES.LIVE_SUMMARY}'!A1:AZ33`,
-          valueRenderOption: 'UNFORMATTED_VALUE',
-        }),
-        { result: { values: [] } },
-      );
-      const headerMonths = (liveResponse.result.values?.[4] || []).slice(2);
-      const snapMonth = headerMonths.includes(monthLabel)
-        ? monthLabel
-        : (headerMonths[headerMonths.length - 1] || monthLabel);
-      liveSnapshot = parseLiveSummarySnapshot(liveResponse.result.values || [], snapMonth);
-    }
-
-    const corrections = dashboardCorrectionMessages({
-      liveSnap: liveSnapshot,
-      appBalance: currentBalance,
-      monthCollection,
-      monthExpenses: monthExpenseTotal,
-      sheetStillDue,
-      computedStillDue,
-      monthLabel,
-    });
+    const liveSnapshot = {
+      month: monthLabel,
+      collection: monthCollection,
+      expenses: monthExpenseTotal,
+      surplus: monthNet,
+      running: currentBalance,
+      status: ledger.status,
+    };
+    const corrections = [];
 
     // Cache dashboard data
     const dashboardData = {
@@ -1548,9 +1463,14 @@ export async function getDashboardData() {
         totalMiscFunds,
         totalExpenses: totalExpenseAmount,
         currentBalance,
-        deficit: config.DEFICIT_LAST_YEAR,
+        deficit: 0,
         corpusFund: config.CORPUS_FUND,
+        openingSurplus: ledger.opening,
+        availableStatus: ledger.status,
+        monthNet,
+        monthStatus: monthNet > 0 ? 'SURPLUS' : monthNet < 0 ? 'DEFICIT' : 'BALANCED',
       },
+      ledger,
     };
 
     localStorage.setItem(STORAGE_KEYS.CACHED_DASHBOARD, JSON.stringify(dashboardData));
@@ -1560,148 +1480,16 @@ export async function getDashboardData() {
   });
 }
 
-// ═══════════════════════════════════════════════════════════════
-// MISC FUNDS
-// ═══════════════════════════════════════════════════════════════
-
-/**
- * Ensure the Misc Funds sheet exists (for setups created before this feature).
- * Creates the sheet + headers if missing. Safe to call multiple times.
- */
-async function ensureMiscFundsSheet(spreadsheetId) {
-  try {
-    const meta = await window.gapi.client.sheets.spreadsheets.get({
-      spreadsheetId,
-      fields: 'sheets.properties.title',
-    });
-    const titles = (meta.result.sheets || []).map(s => s.properties.title);
-    if (titles.includes(SHEET_NAMES.MISC_FUNDS)) return;
-
-    await window.gapi.client.sheets.spreadsheets.batchUpdate({
-      spreadsheetId,
-      resource: {
-        requests: [{
-          addSheet: {
-            properties: {
-              title: SHEET_NAMES.MISC_FUNDS,
-              gridProperties: { frozenRowCount: 1 },
-            },
-          },
-        }],
-      },
-    });
-
-    await window.gapi.client.sheets.spreadsheets.values.update({
-      spreadsheetId,
-      range: `'${SHEET_NAMES.MISC_FUNDS}'!A1`,
-      valueInputOption: 'RAW',
-      resource: { values: [SHEET_HEADERS[SHEET_NAMES.MISC_FUNDS]] },
-    });
-  } catch {
-    // Readers cannot add tabs; dashboard reads skip this sheet instead.
-  }
+export async function getMiscFunds() {
+  return [];
 }
 
-/**
- * Get misc fund records, optionally filtered by month
- */
-export async function getMiscFunds(month = null) {
-  return withAuth(async () => {
-    const spreadsheetId = getSpreadsheetId();
-    await ensureMiscFundsSheet(spreadsheetId);
-
-    const response = await window.gapi.client.sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: `'${SHEET_NAMES.MISC_FUNDS}'!A2:I2000`,
-    });
-
-    const rows = response.result.values || [];
-    let records = rows.map(row => ({
-      id: row[0] || '',
-      date: row[1] || '',
-      month: row[2] || '',
-      flat: row[3] || '',
-      amount: Number(row[4]) || 0,
-      description: row[5] || '',
-      paymentMode: row[6] || '',
-      collectedBy: row[7] || '',
-      remarks: row[8] || '',
-    }));
-
-    if (month) records = records.filter(r => r.month === month);
-    return records;
-  });
+export async function addMiscFund() {
+  throw new Error('Optional collections use Activity Funds, not Misc Funds.');
 }
 
-/**
- * Add a new misc fund entry
- */
-export async function addMiscFund(data) {
-  return withWriteAuth(async () => {
-    const spreadsheetId = getSpreadsheetId();
-    await ensureMiscFundsSheet(spreadsheetId);
-
-    const id = `MISC-${Date.now()}`;
-    await window.gapi.client.sheets.spreadsheets.values.append({
-      spreadsheetId,
-      range: `'${SHEET_NAMES.MISC_FUNDS}'!A:I`,
-      valueInputOption: 'RAW',
-      insertDataOption: 'INSERT_ROWS',
-      resource: {
-        values: [[
-          id,
-          sheetText(data.date || new Date().toISOString().split('T')[0], 12),
-          sheetText(data.month, 12),
-          sheetText(data.flat, 8),
-          sheetNumber(data.amount),
-          sheetText(data.description, 200),
-          sheetText(data.paymentMode, 40),
-          sheetText(data.collectedBy, 80),
-          sheetText(data.remarks, 300),
-        ]],
-      },
-    });
-    return id;
-  });
-}
-
-/**
- * Delete a misc fund entry by ID
- */
-export async function deleteMiscFund(fundId) {
-  return withWriteAuth(async () => {
-    const spreadsheetId = getSpreadsheetId();
-
-    const response = await window.gapi.client.sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: `'${SHEET_NAMES.MISC_FUNDS}'!A2:A2000`,
-    });
-    const rows = response.result.values || [];
-    const rowIndex = rows.findIndex(r => r[0] === fundId);
-    if (rowIndex < 0) return;
-
-    const sheetMeta = await window.gapi.client.sheets.spreadsheets.get({
-      spreadsheetId,
-      fields: 'sheets.properties',
-    });
-    const sheet = sheetMeta.result.sheets.find(s => s.properties.title === SHEET_NAMES.MISC_FUNDS);
-
-    await window.gapi.client.sheets.spreadsheets.batchUpdate({
-      spreadsheetId,
-      resource: {
-        requests: [{
-          deleteDimension: {
-            range: {
-              sheetId: sheet.properties.sheetId,
-              dimension: 'ROWS',
-              startIndex: rowIndex + 1,
-              endIndex: rowIndex + 2,
-            },
-          },
-        }],
-      },
-    });
-  });
+export async function deleteMiscFund() {
+  return undefined;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1885,29 +1673,11 @@ export async function getAuditLogForMonth(monthLabel) {
 }
 
 export async function getHandoverSummary() {
-  return withAuth(async () => {
-    const spreadsheetId = getHistorySpreadsheetId() || getSpreadsheetId();
-    if (!spreadsheetId) return [];
-    const response = await gapiCallSafe(window.gapi.client.sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: `'${SHEET_NAMES.HANDOVER_SUMMARY}'!A2:Q200`,
-    }), { result: { values: [] } });
-    return parseHandoverSummaryRows(response.result.values || []);
-  });
+  return [];
 }
 
 export async function getSocietyNotes() {
-  return withAuth(async () => {
-    const spreadsheetId = getHistorySpreadsheetId() || getSpreadsheetId();
-    if (!spreadsheetId) return [];
-    const response = await gapiCallSafe(window.gapi.client.sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: `'${SHEET_NAMES.SOCIETY_NOTES}'!A2:C100`,
-    }), { result: { values: [] } });
-    return (response.result.values || [])
-      .filter((row) => row[0])
-      .map((row) => [row[0] || '', row[1] || '', row[2] || '']);
-  });
+  return [];
 }
 
 export async function getPayees() {
@@ -1994,28 +1764,14 @@ export async function updatePayee(index, payee) {
 }
 
 export async function getHistorySummaryGrid() {
-  return withAuth(async () => {
-    const spreadsheetId = getHistorySpreadsheetId();
-    if (!spreadsheetId) return [];
-    const response = await gapiCallSafe(window.gapi.client.sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: "'Summary'!A1:BZ50",
-      valueRenderOption: 'FORMATTED_VALUE',
-    }), { result: { values: [] } });
-    return response.result.values || [];
-  });
+  return [];
 }
 
 export async function getWorkingMonthLabels() {
   return withAuth(async () => {
-    const liveId = getLiveSpreadsheetId();
-    if (isValidSpreadsheetId(liveId)) {
-      const result = await syncLiveSummaryMonths(liveId);
-      return result.months;
-    }
     const spreadsheetId = getSpreadsheetId();
-    if (!isValidSpreadsheetId(spreadsheetId)) return [FIRST_LIVE_MONTH_LABEL];
-    const [maintenance, expenses] = await Promise.all([
+    if (!isValidSpreadsheetId(spreadsheetId)) return [FIRST_APP_MONTH_LABEL];
+    const [maintenance, expenses, summary] = await Promise.all([
       gapiCallSafe(window.gapi.client.sheets.spreadsheets.values.get({
         spreadsheetId,
         range: `'${SHEET_NAMES.MAINTENANCE}'!A2:A5000`,
@@ -2024,22 +1780,29 @@ export async function getWorkingMonthLabels() {
         spreadsheetId,
         range: `'${SHEET_NAMES.EXPENSES}'!C2:C5000`,
       }), { result: { values: [] } }),
+      gapiCallSafe(window.gapi.client.sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: `'${SHEET_NAMES.MONTHLY_SUMMARY}'!A2:A100`,
+      }), { result: { values: [] } }),
     ]);
-    const labels = sortMonthLabels([
-      ...(maintenance.result.values || []).map((row) => row[0]),
-      ...(expenses.result.values || []).map((row) => row[0]),
-    ]);
-    return labels.length ? labels : getFiscalMonthOptions('2020-11', 0);
+    return workingMonthsFromRows(
+      [
+        ...(maintenance.result.values || []).map((row) => row[0]),
+        ...(summary.result.values || []).map((row) => row[0]),
+      ],
+      (expenses.result.values || []).map((row) => row[0]),
+      FIRST_APP_MONTH_LABEL,
+    );
   });
 }
 
 export async function appendNextLiveMonth() {
   return withWriteAuth(async () => {
-    const liveId = getLiveSpreadsheetId();
-    if (!isValidSpreadsheetId(liveId)) {
-      throw new Error('Add next month only after The Pride of Tirumala-LIVE is connected.');
+    const spreadsheetId = getSpreadsheetId();
+    if (!isValidSpreadsheetId(spreadsheetId)) {
+      throw new Error('Connect APP-TPT-Tracker first, then add the next month.');
     }
-    const { month } = await appendNextLiveMonthColumn(liveId);
+    const { month } = await appendNextMonthColumn(spreadsheetId);
     const config = await getConfiguration();
     try {
       await initializeMonthMaintenance(month, config.MONTHLY_MAINTENANCE || 3000);
@@ -2050,15 +1813,6 @@ export async function appendNextLiveMonth() {
   });
 }
 
-export async function getLiveSummarySnapshot(monthLabel) {
-  return withAuth(async () => {
-    const spreadsheetId = getLiveSpreadsheetId();
-    if (!spreadsheetId) return null;
-    const response = await gapiCallSafe(window.gapi.client.sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: `'${SHEET_NAMES.LIVE_SUMMARY}'!A1:AZ33`,
-      valueRenderOption: 'UNFORMATTED_VALUE',
-    }), { result: { values: [] } });
-    return parseLiveSummarySnapshot(response.result.values || [], monthLabel);
-  });
+export async function getLiveSummarySnapshot() {
+  return null;
 }

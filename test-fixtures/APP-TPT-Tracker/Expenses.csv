@@ -1,0 +1,5 @@
+ID,Date (YYYY-MM-DD),Month (MMM-YY),Description,Category,Amount (₹),Payment Mode,Bill Attached (Y/N),Approved By,Receipt Drive Link,Remarks
+EXP-1,2026-09-08,Sep-26,Watchman salary September,Watchman Salary,12000,Bank Transfer,Y,Treasurer,,Monthly
+EXP-2,2026-09-15,Sep-26,Common electricity,Common Electricity,2400,UPI,Y,Treasurer,,
+EXP-3,2026-10-08,Oct-26,Watchman salary October,Watchman Salary,12000,Bank Transfer,Y,Treasurer,,
+EXP-4,2026-10-20,Oct-26,Lift AMC,Lift Service,8000,UPI,Y,Treasurer,,

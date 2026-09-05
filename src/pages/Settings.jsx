@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   Settings as SettingsIcon, Users, Shield, Database, Trash2,
   Plus, ExternalLink, Download, UserPlus, UserMinus, Save,
-  RefreshCw, AlertTriangle, Key, Eye, Lock, KeyRound, CheckCircle2, FlaskConical, Palette
+  RefreshCw, AlertTriangle, Eye, Lock, Palette
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -16,19 +16,17 @@ import {
   getAccessControl, addAccessControl, removeAccessControl, updateAccessControlRole,
   getFlats, updateFlat, addAuditLog,
   getWatchmanDetails, addWatchmanDetail, updateWatchmanDetail, deleteWatchmanDetail,
-  seedSampleLiveData,
   ensureSheetStructure,
 } from '../services/googleSheets';
-import { createOrConnectLiveWorkbook } from '../services/liveSheetSetup';
 import {
   backupAllWorkbooks, listBackups,
-  getSpreadsheetUrl, getHistorySpreadsheetUrl, getLiveSpreadsheetUrl, getRootFolderUrl,
+  getSpreadsheetUrl, getRootFolderUrl,
   shareSpreadsheet, shareFolder, removeSharing,
 } from '../services/googleDrive';
-import { DEFAULT_CONFIG, FEATURES, FLATS, STORAGE_KEYS, SHEET_FILE_NAME, LIVE_SHEET_FILE_NAME, isSampleDataEnabled } from '../config/constants';
+import { DRIVE_ROOT_FOLDER, FEATURES, FLATS, STORAGE_KEYS, SHEET_FILE_NAME } from '../config/constants';
 import { clearAppCachesAndReload } from '../utils/appCache';
-import { DRIVE_ROLE_BY_APP_ROLE, FOUNDING_OWNER_EMAIL, canCreateLiveWorkbook, canGrantOwner, canRemoveUser, isFoundingOwner } from '../config/accessPolicy';
-import { formatDate, formatCurrency, isValidEmail, isValidSpreadsheetId, getHistorySpreadsheetIdFromStorage, getLiveSpreadsheetIdFromStorage } from '../utils/helpers';
+import { DRIVE_ROLE_BY_APP_ROLE, FOUNDING_OWNER_EMAIL, canGrantOwner, canRemoveUser, isFoundingOwner } from '../config/accessPolicy';
+import { formatDate, formatCurrency, isValidEmail, isValidSpreadsheetId, getSpreadsheetIdFromStorage } from '../utils/helpers';
 import { InfoBubble } from '../components/common/Tooltip';
 import { hashPin } from '../contexts/AuthContext';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -37,7 +35,7 @@ import Navbar from '../components/common/Navbar';
 import ThemePicker from '../components/common/ThemePicker';
 
 export default function Settings() {
-  const { showToast, isOwner, resetSetup, userRole } = useApp();
+  const { showToast, isOwner, userRole } = useApp();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('config');
   const [config, setConfig] = useState({});
@@ -52,9 +50,7 @@ export default function Settings() {
   const [showWatchmanModal, setShowWatchmanModal] = useState(false);
   const [editingWatchman, setEditingWatchman] = useState(null);
   const [backingUp, setBackingUp] = useState(false);
-  const [seedingSample, setSeedingSample] = useState(false);
   const [refreshingLayout, setRefreshingLayout] = useState(false);
-  const [creatingLive, setCreatingLive] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -185,68 +181,16 @@ export default function Settings() {
     }
   };
 
-  const handleCreateLive = async () => {
-    if (!canCreateLiveWorkbook(user?.email)) {
-      showToast('Only the founding owner can create The Pride of Tirumala-LIVE.', 'error');
-      return;
-    }
-    try {
-      setCreatingLive(true);
-      const result = await createOrConnectLiveWorkbook();
-      await addAuditLog(user.email, result.created ? 'CREATE_LIVE' : 'CONNECT_LIVE', LIVE_SHEET_FILE_NAME);
-      showToast(
-        result.created
-          ? 'Live books created (from Aug 2026). Opening balance came from the old Summary green cell. Do not re-enter August if it is already in that cell. History months stay on The Pride of Tirumala-APP.'
-          : 'Connected the existing The Pride of Tirumala-LIVE file.',
-        'success',
-      );
-      fetchData();
-    } catch (err) {
-      showToast(err.message || 'Could not create live books', 'error');
-    } finally {
-      setCreatingLive(false);
-    }
-  };
-
-  const handleSeedSampleData = async () => {
-    if (!isFoundingOwner(user?.email)) {
-      showToast('Only the founding owner can load sample data.', 'error');
-      return;
-    }
-    if (!isSampleDataEnabled(config)) {
-      showToast('Sample data is turned off. Set Sample data to Y in Configuration first.', 'error');
-      return;
-    }
-    if (!window.confirm(
-      'Load pretend Sep/Oct plus this month’s numbers into the existing sheet?\n\nThis replaces Flats, Maintenance, Expenses, contacts, reminders, and related live tabs. Access Control is not changed. You can delete this sheet later and set up a fresh one.'
-    )) return;
-    try {
-      setSeedingSample(true);
-      await seedSampleLiveData();
-      await addAuditLog(user.email, 'SEED_SAMPLE', 'Loaded sample live-tab data for testing');
-      showToast('Sample data loaded. Open Dashboard to try the app. Delete the sheet when you are ready for production.', 'success');
-      fetchData();
-    } catch (err) {
-      showToast(err.message || 'Failed to load sample data', 'error');
-    } finally {
-      setSeedingSample(false);
-    }
-  };
-
   const handleRefreshLayout = async () => {
     try {
       setRefreshingLayout(true);
-      const historyId = getHistorySpreadsheetIdFromStorage();
-      const liveBound = getLiveSpreadsheetIdFromStorage();
-      if (isValidSpreadsheetId(historyId)) {
-        await ensureSheetStructure(historyId, { liveWorkbook: false });
+      const spreadsheetId = getSpreadsheetIdFromStorage();
+      if (isValidSpreadsheetId(spreadsheetId)) {
+        await ensureSheetStructure(spreadsheetId);
       }
-      if (isValidSpreadsheetId(liveBound)) {
-        await ensureSheetStructure(liveBound, { liveWorkbook: true });
-      }
-      sessionStorage.setItem('tpt_sheet_layout_v15', '1');
-      await addAuditLog(user.email, 'UPGRADE_SHEET', 'Refreshed Guide, tabs, and live formulas');
-      showToast('Sheet layout refreshed. Live Summary was rebuilt on The Pride of Tirumala-LIVE (same file). History stays on APP.', 'success');
+      sessionStorage.setItem('tpt_sheet_layout_v20', '1');
+      await addAuditLog(user.email, 'UPGRADE_SHEET', 'Refreshed Guide, Balance formulas, and tabs');
+      showToast('Sheet layout refreshed. Balance and Monthly Summary formulas now show surplus or deficit from Sep-26.', 'success');
     } catch (err) {
       showToast(err.message || 'Could not update the sheet layout', 'error');
     } finally {
@@ -308,10 +252,7 @@ export default function Settings() {
   }
 
   const sheetUrl = getSpreadsheetUrl();
-  const historyUrl = getHistorySpreadsheetUrl();
-  const liveUrl = getLiveSpreadsheetUrl();
   const driveUrl = getRootFolderUrl();
-  const liveId = localStorage.getItem(STORAGE_KEYS.LIVE_SPREADSHEET_ID);
   const historyId = localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID);
 
   return (
@@ -324,17 +265,7 @@ export default function Settings() {
           <p className="page-subtitle">Manage configuration, users, and backups</p>
         </div>
         <div className="flex gap-2">
-          {liveUrl && (
-            <a href={liveUrl} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm">
-              <ExternalLink size={14} /> Open live sheet
-            </a>
-          )}
-          {historyUrl && (
-            <a href={historyUrl} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm">
-              <ExternalLink size={14} /> Open old sheet
-            </a>
-          )}
-          {!liveUrl && sheetUrl && (
+          {sheetUrl && (
             <a href={sheetUrl} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm">
               <ExternalLink size={14} /> Open Sheet
             </a>
@@ -415,12 +346,12 @@ export default function Settings() {
                   info: 'One-time corpus amount collected from flat owners. Edit directly in the Configuration sheet in Google Drive.'
                 },
                 {
-                  key: 'AVAILABLE_BALANCE', label: 'Available balance (from Summary) ₹', type: 'number', readonly: true,
-                  info: 'Copied from the green Available balance cell on the Summary tab. Change that cell, then Settings → Backups → Refresh sheet layout.'
+                  key: 'OPENING_SURPLUS', label: 'Opening surplus (₹)', type: 'number', readonly: true,
+                  info: 'Carry-forward into Sep 2026. Fixed at ₹612. Balance tab and PDFs start from this number.'
                 },
                 {
                   key: 'FISCAL_YEAR_START', label: 'Books start (YYYY-MM)', type: 'text',
-                  info: 'First month of history. The Summary tab starts Nov 2020, so this is 2020-11. Not September 2026.'
+                  info: 'First month on these books. Always 2026-09 (Sep-26). Earlier history is not imported.'
                 },
                 {
                   key: 'TREASURER_FLAT', label: 'Treasurer Flat', type: 'select', options: FLATS,
@@ -448,9 +379,8 @@ export default function Settings() {
             <div className="config-note mt-6">
               <AlertTriangle size={16} />
               <p>
-                <strong>Corpus Fund</strong> and <strong>Deficit from August 2026 (Handover)</strong> are read-only here.
-                Edit them directly in the <em>Configuration</em> sheet in Google Drive, or update <code>DEFAULT_CONFIG</code> in
-                <code>src/config/constants.js</code> before initial setup.
+                <strong>Opening surplus</strong> (₹612) and <strong>Corpus Fund</strong> are read-only here.
+                Opening surplus is the carry-forward into Sep 2026. Edit corpus in the Configuration tab if needed.
               </p>
             </div>
           </div>
@@ -529,12 +459,6 @@ export default function Settings() {
                 <code className="sheet-id-code">{historyId}</code>
               </p>
             )}
-            {liveId && (
-              <p className="sheet-id-row text-muted text-sm mb-4">
-                <strong>{LIVE_SHEET_FILE_NAME} ID:</strong>
-                <code className="sheet-id-code">{liveId}</code>
-              </p>
-            )}
 
             <div className="table-container">
               <table>
@@ -609,9 +533,8 @@ export default function Settings() {
               )}
             </div>
             <p className="text-muted text-sm mb-4">
-              Copies of <strong>{SHEET_FILE_NAME}</strong> and, if it exists, <strong>{LIVE_SHEET_FILE_NAME}</strong>
-              go into Drive / TPT-AppartmentApp / backups. If Drive blocks a direct copy, the app clones the tabs instead.
-              First backup can take a minute. The app also copies both files before first Setup (APP) and once on each Google sign-in.
+              Copies of <strong>{SHEET_FILE_NAME}</strong> go into Drive / {DRIVE_ROOT_FOLDER} / backups.
+              If Drive blocks a direct copy, the app clones the tabs instead. A copy also runs on each Google sign-in.
               Guest PIN sessions do not back up.
             </p>
 
@@ -653,35 +576,12 @@ export default function Settings() {
           </div>
         )}
 
-        {activeTab === 'backups' && isFoundingOwner(user?.email) && (
-          <div className="card mt-4">
-            <h3 className="card-title mb-2">Live books from Aug 2026</h3>
-            <p className="text-muted text-sm mb-4">
-              Creates or reconnects <strong>{LIVE_SHEET_FILE_NAME}</strong>. It copies Configuration, Flats, Payees,
-              Access Control, contacts, reminders, and watchman rows from the APP file. Opening available balance
-              is the green cell on the old Summary tab at create time (already includes August as of that cell).
-              Live Summary starts with Aug-26 only. Add the next month from Maintenance. History months stay on {SHEET_FILE_NAME}.
-              Live Summary uses formulas from Maintenance and Expenses so you can keep the sheet by hand.
-              This does not replace the APP file and is never named TPT-MaintenanceTracker.
-            </p>
-            <button
-              className="btn btn-primary"
-              onClick={handleCreateLive}
-              disabled={creatingLive}
-            >
-              {creatingLive ? <RefreshCw size={14} className="animate-spin" /> : <Database size={14} />}
-              {creatingLive ? 'Working…' : (liveId ? 'Reconnect live books' : 'Create live books')}
-            </button>
-          </div>
-        )}
-
         {activeTab === 'backups' && isOwner && (
           <div className="card mt-4">
             <h3 className="card-title mb-2">Refresh sheet layout</h3>
             <p className="text-muted text-sm mb-4">
-              {liveId
-                ? `Adds missing tabs on the active workbook (${LIVE_SHEET_FILE_NAME} when live books are connected). Does not copy Nov 2020–Aug 2026 history onto the live file.`
-                : `Adds any missing app tabs to the existing ${SHEET_FILE_NAME} Google Sheet. Collected maintenance is read from the Summary grid and written to Maintenance. Expenses come from Exp-Detailed plus Summary category rows (not Sundry). Surplus/deficit and late-fee rows are skipped. History tabs stay as they are.`}
+              Adds any missing tabs on <strong>{SHEET_FILE_NAME}</strong> and rewrites Balance, Monthly Summary, and Pending Dues formulas.
+              Opening surplus stays ₹612. First month stays Sep-26.
             </p>
             <button
               className="btn btn-secondary"
@@ -690,26 +590,6 @@ export default function Settings() {
             >
               {refreshingLayout ? <RefreshCw size={14} className="animate-spin" /> : <RefreshCw size={14} />}
               {refreshingLayout ? 'Updating sheet…' : 'Refresh sheet layout'}
-            </button>
-          </div>
-        )}
-
-        {activeTab === 'backups' && isOwner && isFoundingOwner(user?.email) && isSampleDataEnabled(config) && (
-          <div className="card mt-4">
-            <h3 className="card-title mb-2">Load sample data for testing</h3>
-            <p className="text-muted text-sm mb-4">
-              Writes pretend collections, expenses, contacts, and reminders into this
-              existing <strong>{SHEET_FILE_NAME}</strong> (including the current month
-              so the dashboard is not empty). Does not create another spreadsheet.
-              Access Control is left as-is. Delete the sheet when you set up for real.
-            </p>
-            <button
-              className="btn btn-primary"
-              onClick={handleSeedSampleData}
-              disabled={seedingSample}
-            >
-              {seedingSample ? <RefreshCw size={14} className="animate-spin" /> : <FlaskConical size={14} />}
-              {seedingSample ? 'Loading sample data…' : 'Load sample data'}
             </button>
           </div>
         )}

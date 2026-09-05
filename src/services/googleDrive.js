@@ -10,19 +10,16 @@ import {
   DRIVE_ACTIVITY_FOLDER,
   STORAGE_KEYS,
   SHEET_FILE_NAME,
-  LIVE_SHEET_FILE_NAME,
   SOCIETY_SHEET_ALIASES,
   GOOGLE_SHEET_MIME,
   EXCEL_SHEET_MIME,
   isSocietySheetName,
-  isLiveSocietySheetName,
-  isLiveWorkbookName,
   isGoogleSpreadsheetMime,
 } from '../config/constants';
 import { gapiCall } from '../utils/gapi';
 import { FOUNDING_OWNER_EMAIL, isFoundingOwner } from '../config/accessPolicy';
 import { ensureValidToken, getCurrentUser } from './googleAuth';
-import { escapeDriveQuery, isAllowedReceiptFile, isValidSpreadsheetId, normalizeEmail, getHistorySpreadsheetIdFromStorage, getLiveSpreadsheetIdFromStorage } from '../utils/helpers';
+import { escapeDriveQuery, isAllowedReceiptFile, isValidSpreadsheetId, normalizeEmail, getSpreadsheetIdFromStorage } from '../utils/helpers';
 
 /**
  * Wrapper to ensure auth before any API call
@@ -62,15 +59,7 @@ export async function loadPublishedSpreadsheetId() {
 }
 
 export async function loadPublishedLiveSpreadsheetId() {
-  try {
-    const url = `${import.meta.env.BASE_URL}sheet-config.json`;
-    const response = await fetch(url, { cache: 'no-store' });
-    if (!response.ok) return null;
-    const data = await response.json();
-    return isValidSpreadsheetId(data?.liveSpreadsheetId) ? data.liveSpreadsheetId : null;
-  } catch {
-    return null;
-  }
+  return null;
 }
 
 function ownerEmails(file) {
@@ -104,8 +93,6 @@ export function isSocietyWorkbook(file, email) {
 
 function pickPreferredSocietyFile(files) {
   const matches = (files || []).filter((file) => isSocietySheetName(file.name));
-  const liveSheet = matches.find((file) => isLiveSocietySheetName(file.name) && isGoogleSpreadsheetMime(file.mimeType));
-  if (liveSheet) return liveSheet;
   return matches.find((file) => isGoogleSpreadsheetMime(file.mimeType)) || matches[0] || null;
 }
 
@@ -177,40 +164,8 @@ export async function findSocietySpreadsheet(email) {
   });
 }
 
-export async function findLiveWorkbook(email) {
-  return withAuth(async () => {
-    const match = (files) => (files || []).find((file) => (
-      isLiveWorkbookName(file.name) && isGoogleSpreadsheetMime(file.mimeType)
-    ));
-    if (isFoundingOwner(email)) {
-      const owned = match(await listTrackerFilesByName(LIVE_SHEET_FILE_NAME, "'me' in owners"));
-      if (owned) return owned;
-    }
-    const shared = match(await listTrackerFilesByName(LIVE_SHEET_FILE_NAME, 'sharedWithMe=true'));
-    if (shared) return shared;
-    const published = await loadPublishedLiveSpreadsheetId();
-    if (published) {
-      const meta = await getSpreadsheetFileMeta(published);
-      if (meta && isLiveWorkbookName(meta.name) && !isPrivateCopyOwnedByUser(meta, email)) return meta;
-    }
-    return null;
-  });
-}
-
-async function listTrackerFilesByName(name, extraQuery) {
-  let query = `name='${escapeDriveQuery(name)}' and mimeType='${GOOGLE_SHEET_MIME}' and trashed=false`;
-  if (extraQuery) query += ` and ${extraQuery}`;
-  const response = await window.gapi.client.drive.files.list({
-    q: query,
-    fields: `files(${TRACKER_FILE_FIELDS})`,
-    spaces: 'drive',
-    corpora: 'user',
-    includeItemsFromAllDrives: true,
-    supportsAllDrives: true,
-    pageSize: 10,
-    orderBy: 'modifiedTime desc',
-  });
-  return response.result.files || [];
+export async function findLiveWorkbook() {
+  return null;
 }
 
 /** @deprecated Use findSocietySpreadsheet — kept so older callers keep compiling. */
@@ -273,8 +228,10 @@ export async function findFolder(name, parentId = null) {
 
 /**
  * Set up the complete folder structure
- * TPT-AppartmentApp/
+ * TPT-APP-Tracker/
+ *   ├── APP-TPT-Tracker
  *   ├── expenses-evidence/
+ *   ├── activity-funds/
  *   └── backups/
  */
 export async function setupFolderStructure() {
@@ -531,9 +488,7 @@ async function copyWorkbookToBackups(fileId, backupName, backupsId) {
  */
 export async function createBackup(spreadsheetId = null, options = {}) {
   return withAuth(async () => {
-    const fileId = spreadsheetId
-      || getLiveSpreadsheetIdFromStorage()
-      || getHistorySpreadsheetIdFromStorage();
+    const fileId = spreadsheetId || getSpreadsheetIdFromStorage();
     let rootId = getRootFolderId();
     if (!rootId) {
       const folders = await setupFolderStructure();
@@ -596,17 +551,9 @@ export async function listBackups() {
 }
 
 export async function backupAllWorkbooks(options = {}) {
-  const historyId = getHistorySpreadsheetIdFromStorage();
-  const liveId = getLiveSpreadsheetIdFromStorage();
-  const created = [];
-  if (isValidSpreadsheetId(historyId)) {
-    created.push(await createBackup(historyId, { ...options, reason: options.reason || 'manual', fileLabel: SHEET_FILE_NAME }));
-  }
-  if (isValidSpreadsheetId(liveId)) {
-    created.push(await createBackup(liveId, { ...options, reason: options.reason || 'manual', fileLabel: LIVE_SHEET_FILE_NAME }));
-  }
-  if (!created.length) throw new Error('Spreadsheet is not connected.');
-  return created;
+  const spreadsheetId = getSpreadsheetIdFromStorage();
+  if (!isValidSpreadsheetId(spreadsheetId)) throw new Error('Spreadsheet is not connected.');
+  return [await createBackup(spreadsheetId, { ...options, reason: options.reason || 'manual', fileLabel: SHEET_FILE_NAME })];
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -664,13 +611,11 @@ export async function shareFile(fileId, email, role = 'reader') {
  */
 export async function shareSpreadsheet(email, role = 'reader') {
   return withAuth(async () => {
-    const historyId = getHistorySpreadsheetIdFromStorage();
-    const liveId = getLiveSpreadsheetIdFromStorage();
-    if (!isValidSpreadsheetId(historyId) && !isValidSpreadsheetId(liveId)) {
+    const spreadsheetId = getSpreadsheetIdFromStorage();
+    if (!isValidSpreadsheetId(spreadsheetId)) {
       throw new Error('Spreadsheet not set up');
     }
-    if (isValidSpreadsheetId(historyId)) await setFilePermission(historyId, email, role);
-    if (isValidSpreadsheetId(liveId)) await setFilePermission(liveId, email, role);
+    await setFilePermission(spreadsheetId, email, role);
   });
 }
 
@@ -691,7 +636,7 @@ export async function shareFolder(email, role = 'reader') {
 export async function removeSharing(email) {
   return withAuth(async () => {
     const address = normalizeEmail(email);
-    const ids = [getHistorySpreadsheetIdFromStorage(), getLiveSpreadsheetIdFromStorage()].filter(isValidSpreadsheetId);
+    const ids = [getSpreadsheetIdFromStorage()].filter(isValidSpreadsheetId);
     for (const spreadsheetId of ids) {
       const response = await window.gapi.client.drive.permissions.list({
         fileId: spreadsheetId,
@@ -714,17 +659,16 @@ function sheetUrl(id) {
   return isValidSpreadsheetId(id) ? `https://docs.google.com/spreadsheets/d/${id}` : null;
 }
 
-/** Active books (live file if bound, otherwise the APP history file). */
 export function getSpreadsheetUrl() {
-  return sheetUrl(getLiveSpreadsheetIdFromStorage()) || sheetUrl(getHistorySpreadsheetIdFromStorage());
+  return sheetUrl(getSpreadsheetIdFromStorage());
 }
 
 export function getHistorySpreadsheetUrl() {
-  return sheetUrl(getHistorySpreadsheetIdFromStorage());
+  return getSpreadsheetUrl();
 }
 
 export function getLiveSpreadsheetUrl() {
-  return sheetUrl(getLiveSpreadsheetIdFromStorage());
+  return getSpreadsheetUrl();
 }
 
 /**

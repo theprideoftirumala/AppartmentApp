@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatCurrency, maskIdNumber, maskPhone, sanitizeForSheet, sheetAvailableBalance } from './helpers';
+import { formatCurrency, maskIdNumber, maskPhone, sanitizeForSheet, sheetAvailableBalance, sheetOpeningSurplus } from './helpers';
 
 describe('sanitizeForSheet', () => {
   it('strips formula prefixes', () => {
@@ -37,13 +37,14 @@ describe('formatCurrency', () => {
   });
 });
 
-describe('sheetAvailableBalance', () => {
-  it('reads a finite number from Configuration', () => {
-    expect(sheetAvailableBalance({ AVAILABLE_BALANCE: 1732.54 })).toBe(1732.54);
+describe('sheetOpeningSurplus', () => {
+  it('reads OPENING_SURPLUS from Configuration', () => {
+    expect(sheetOpeningSurplus({ OPENING_SURPLUS: 612 })).toBe(612);
+    expect(sheetAvailableBalance({ OPENING_SURPLUS: 612 })).toBe(612);
   });
 
-  it('returns 0 when the sheet value is missing', () => {
-    expect(sheetAvailableBalance({})).toBe(0);
-    expect(sheetAvailableBalance(undefined)).toBe(0);
+  it('defaults to 612 when the sheet value is missing', () => {
+    expect(sheetOpeningSurplus({})).toBe(612);
+    expect(sheetOpeningSurplus(undefined)).toBe(612);
   });
 });

@@ -10,13 +10,13 @@ import { useAuth } from '../contexts/AuthContext';
 import {
   appendNextLiveMonth,
   getMaintenanceRecords, upsertMaintenancePayments, initializeMonthMaintenance,
-  getFlats, getConfiguration, getLiveSpreadsheetId,
+  getFlats, getConfiguration,
   addAuditLog, parseApiError,
 } from '../services/googleSheets';
 import { formatCurrency, getCurrentMonthLabel } from '../utils/helpers';
 import { paidPaymentDefaults, unpaidFlats, uniqueFlats } from '../utils/maintenancePayment';
 import { useWorkingMonths } from '../hooks/useWorkingMonths';
-import { nextSequentialMonthLabel, pickDefaultWorkingMonth } from '../utils/liveSummaryLayout';
+import { nextSequentialMonthLabel, pickDefaultWorkingMonth } from '../utils/months';
 import { FLATS, PAYMENT_MODES, MAINTENANCE_STATUS, MAINTENANCE_MIN_DATE } from '../config/constants';
 import Modal from '../components/common/Modal';
 import StatusBadge from '../components/common/StatusBadge';
@@ -37,7 +37,6 @@ export default function Maintenance() {
   const [checkedFlats, setCheckedFlats] = useState([]);
   const [saving, setSaving] = useState(false);
   const { months: monthOptions, refresh: refreshMonths } = useWorkingMonths();
-  const liveBound = Boolean(getLiveSpreadsheetId());
   const nextMonthLabel = nextSequentialMonthLabel(monthOptions);
 
   const fetchData = useCallback(async () => {
@@ -163,7 +162,7 @@ export default function Maintenance() {
           <h1 className="page-title">Maintenance Collection</h1>
           <p className="page-subtitle">
             Months on the sheet: {monthOptions.join(', ') || '—'}.
-            {liveBound ? ` Next to add is ${nextMonthLabel} (the first month after Aug-26 that is not already here).` : ''}
+            Next to add is {nextMonthLabel}.
           </p>
         </div>
         <div className="flex gap-2 items-center flex-wrap">
@@ -177,7 +176,7 @@ export default function Maintenance() {
               <option key={m} value={m}>{m}</option>
             ))}
           </select>
-          {isOwner !== false && liveBound && (
+          {isOwner !== false && (
             <button className="btn btn-secondary btn-sm" onClick={handleAddNextMonth} disabled={saving}>
               <Plus size={16} /> Add next month ({nextMonthLabel})
             </button>

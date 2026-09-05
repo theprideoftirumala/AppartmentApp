@@ -7,7 +7,7 @@
  * injection attacks (OWASP A03 Injection).
  */
 
-import { STORAGE_KEYS } from '../config/constants';
+import { OPENING_SURPLUS, STORAGE_KEYS } from '../config/constants';
 
 // ─── Security ────────────────────────────────────────────────
 
@@ -50,10 +50,15 @@ export function sheetNumber(value) {
   return String(Number.isFinite(n) ? n : 0);
 }
 
-/** Available balance from the Summary tab (copied into Configuration). Not a hardcoded default. */
+/** Opening surplus from Configuration (₹612). Used as the books starting cash. */
+export function sheetOpeningSurplus(config) {
+  const n = Number(config?.OPENING_SURPLUS);
+  return Number.isFinite(n) ? n : OPENING_SURPLUS;
+}
+
+/** @deprecated Use sheetOpeningSurplus + ledger available balance. */
 export function sheetAvailableBalance(config) {
-  const n = Number(config?.AVAILABLE_BALANCE);
-  return Number.isFinite(n) ? n : 0;
+  return sheetOpeningSurplus(config);
 }
 
 /**
@@ -96,35 +101,24 @@ export function bindSpreadsheet(id, email) {
   }
 }
 
-export function bindLiveSpreadsheet(id) {
-  if (isValidSpreadsheetId(id)) {
-    localStorage.setItem(STORAGE_KEYS.LIVE_SPREADSHEET_ID, id);
-  }
-}
-
-export function getHistorySpreadsheetIdFromStorage() {
+export function getSpreadsheetIdFromStorage() {
   const id = localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID);
   return isValidSpreadsheetId(id) ? id : null;
 }
 
-export function getLiveSpreadsheetIdFromStorage() {
-  const id = localStorage.getItem(STORAGE_KEYS.LIVE_SPREADSHEET_ID);
-  return isValidSpreadsheetId(id) ? id : null;
+/** @deprecated Use getSpreadsheetIdFromStorage. */
+export function getHistorySpreadsheetIdFromStorage() {
+  return getSpreadsheetIdFromStorage();
 }
 
 export function getActiveSpreadsheetIdFromStorage() {
-  return getLiveSpreadsheetIdFromStorage() || getHistorySpreadsheetIdFromStorage();
-}
-
-export function unbindLiveSpreadsheet() {
-  localStorage.removeItem(STORAGE_KEYS.LIVE_SPREADSHEET_ID);
+  return getSpreadsheetIdFromStorage();
 }
 
 /** Drop a stale/private spreadsheet id so the next login cannot reuse it. */
 export function unbindSpreadsheet() {
   localStorage.removeItem(STORAGE_KEYS.SPREADSHEET_ID);
   localStorage.removeItem(STORAGE_KEYS.BOUND_EMAIL);
-  unbindLiveSpreadsheet();
 }
 
 /**
@@ -391,7 +385,7 @@ export function calculateNextDue(lastCompleted, frequency) {
 /**
  * Get month options for the fiscal year
  */
-export function getFiscalMonthOptions(startMonth = '2020-11', extraFutureMonths = 6) {
+export function getFiscalMonthOptions(startMonth = '2026-09', extraFutureMonths = 6) {
   const [startYear, startMon] = startMonth.split('-').map(Number);
   if (!startYear || !startMon) return [];
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',

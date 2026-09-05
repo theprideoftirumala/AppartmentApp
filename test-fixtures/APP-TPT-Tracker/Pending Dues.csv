@@ -1,0 +1,22 @@
+HOW TO USE,"Type a month in the YELLOW cell (B3), for example Sep-26. The table below updates by itself.","Do not type in the grey table. To record a payment, edit the Maintenance tab (or use the app)."
+,,
+Month to check →,Sep-26,← change only this yellow cell. Use MMM-YY (Sep-26).
+,,
+Total still due (₹),,Amount due minus amount paid for the month in B3
+Flats not fully paid,,Count of flats whose status is not PAID or WAIVED
+,,
+Flat,Owner name,Amount due (₹),Amount paid (₹),Still due (₹),Status,Remarks
+101,,,,,,
+102,,,,,,
+201,,,,,,
+202,,,,,,
+301,,,,,,
+302,,,,,,
+401,,,,,,
+402,,,,,,
+501,,,,,,
+502,,,,,,
+,,,,,,
+Who to remind,,,,,,
+,,,,,,
+TIP,Still due = Amount due − Amount paid. Change B3 to any month on the Maintenance tab.,Net surplus / deficit and running balance are on Monthly Summary and the Balance tab.
