@@ -123,8 +123,11 @@ async function assertCanManageUsers() {
  * Parse a Google API error into a user-friendly message.
  */
 export function parseApiError(error) {
+  if (error?.code === 'SHEET_NOT_BOUND' || error?.message === 'SHEET_NOT_BOUND') {
+    return `${SHEET_FILE_NAME} is not connected yet. Sign in as the society Owner and create it from Setup.`;
+  }
   if (error?.code === 'SHEET_NOT_ACCESSIBLE' || error?.message === 'SHEET_NOT_ACCESSIBLE') {
-    return 'This browser is pointing at a Google Sheet your account cannot open. If you are a resident, ask the society Owner to add you and share APP-TPT-Tracker as Viewer.';
+    return `This browser is pointing at a Google Sheet your account cannot open. If you are a resident, ask the society Owner to add you and share ${SHEET_FILE_NAME} as Viewer.`;
   }
   if (!navigator.onLine) {
     return 'You appear to be offline. Please check your internet connection.';
@@ -251,6 +254,7 @@ export async function resolveSpreadsheetForUser(email) {
       return found.id;
     }
 
+    localStorage.removeItem(STORAGE_KEYS.SETUP_COMPLETE);
     return null;
   });
 }
@@ -1278,8 +1282,8 @@ export async function getDashboardData() {
     const user = getCurrentUser();
     const historyId = await resolveSpreadsheetForUser(user?.email);
     if (!historyId) {
-      const err = new Error('SHEET_NOT_ACCESSIBLE');
-      err.code = 'SHEET_NOT_ACCESSIBLE';
+      const err = new Error('SHEET_NOT_BOUND');
+      err.code = 'SHEET_NOT_BOUND';
       throw err;
     }
     const spreadsheetId = getSpreadsheetId() || historyId;

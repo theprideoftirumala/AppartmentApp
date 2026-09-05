@@ -17,6 +17,7 @@ import { STORAGE_KEYS } from '../config/constants';
 import { effectiveAppRole, isFoundingOwner } from '../config/accessPolicy';
 import { formatCurrency, getCurrentMonthLabel, getCollectionPercentage, daysUntil, getRelativeTime, groupExpensesByCategory, parseJsonSafe, normalizeEmail } from '../utils/helpers';
 import { cashStatus } from '../utils/ledgerMath';
+import { isMissingSocietySheetError } from '../utils/setupFlow';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Navbar from '../components/common/Navbar';
 
@@ -103,6 +104,11 @@ export default function Dashboard() {
 
     } catch (err) {
       console.error('Dashboard fetch error:', err);
+      if (isMissingSocietySheetError(err) && isFoundingOwner(user?.email)) {
+        resetSetup();
+        navigate('/setup', { replace: true });
+        return;
+      }
       const msg = parseApiError(err);
       setAccessError(msg);
       showToast(msg, 'error');
@@ -110,7 +116,7 @@ export default function Dashboard() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user, isGuest, setDashboardData, setConfig, setUserRole, showToast, setLastSync, signOut, navigate, applySheetLayout]);
+  }, [user, isGuest, setDashboardData, setConfig, setUserRole, showToast, setLastSync, signOut, navigate, applySheetLayout, resetSetup]);
 
   useEffect(() => {
     fetchData();

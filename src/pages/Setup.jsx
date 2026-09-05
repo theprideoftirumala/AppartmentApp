@@ -1,9 +1,9 @@
 /**
  * Setup Wizard — founding owner only.
  *
- * Connects The Pride of Tirumala-APP already in Drive. Never creates a
- * second society workbook. Backs up that file, then adds empty app tabs
- * beside the existing history tabs.
+ * Connects the one APP-TPT-Tracker in TPT-APP-Tracker.
+ * Reuses that file on every login. Creates it only when the founding
+ * owner clicks Create after Drive search finds none. Members never create.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -19,7 +19,11 @@ import {
 import { DEFAULT_REMINDERS, DRIVE_ROOT_FOLDER, GOOGLE_SHEET_MIME, SHEET_FILE_NAME, STORAGE_KEYS, isGoogleSpreadsheetMime } from '../config/constants';
 import { FOUNDING_OWNER_EMAIL, isFoundingOwner, maskEmail } from '../config/accessPolicy';
 import { calculateNextDue, getLastDayOfCurrentMonth, getFirstDayOfNextMonth, bindSpreadsheet, isValidSpreadsheetId } from '../utils/helpers';
-import { shouldOfferSheetCreation, shouldShowMissingSheetHelp } from '../utils/setupFlow';
+import {
+  planSocietyWorkbook,
+  shouldOfferSheetCreation,
+  shouldShowMissingSheetHelp,
+} from '../utils/setupFlow';
 
 const STEPS = [
   { id: 'welcome', title: 'Welcome', icon: Shield },
@@ -31,7 +35,7 @@ const STEPS = [
 const OWNER_EMAIL_MASKED = maskEmail(FOUNDING_OWNER_EMAIL);
 const DRIVE_HOME = 'https://drive.google.com';
 
-function CreateWorkbookHelp({ foundXlsx, creating, onSearch, onCreate }) {
+function CreateWorkbookHelp({ foundXlsx, creating, canCreate, onSearch, onCreate }) {
   return (
     <div className="setup-welcome">
       <div className="setup-logo">
@@ -40,8 +44,8 @@ function CreateWorkbookHelp({ foundXlsx, creating, onSearch, onCreate }) {
       <h2>{foundXlsx ? 'Convert that Excel file first' : `Create ${SHEET_FILE_NAME}`}</h2>
       <p>
         {foundXlsx
-          ? <>Found an Excel file named like <strong>{SHEET_FILE_NAME}</strong>. Convert it to a Google Sheet, or create a fresh tracker.</>
-          : <>No <strong>{SHEET_FILE_NAME}</strong> was found. Create it in Drive folder <strong>{DRIVE_ROOT_FOLDER}</strong>. Books start Sep-26 with opening surplus ₹612.</>}
+          ? <>Found an Excel file named like <strong>{SHEET_FILE_NAME}</strong>. Convert it to a Google Sheet. Residents you add will reuse that same file.</>
+          : <>No <strong>{SHEET_FILE_NAME}</strong> was found. Create it once in <strong>{DRIVE_ROOT_FOLDER}</strong>. Residents you grant access reuse this sheet — they never get a second copy.</>}
       </p>
       {foundXlsx && (
         <ol className="setup-steps">
@@ -58,9 +62,11 @@ function CreateWorkbookHelp({ foundXlsx, creating, onSearch, onCreate }) {
         <button className="btn btn-secondary btn-lg" type="button" onClick={onSearch}>
           <Search size={18} /> Search again
         </button>
-        <button className="btn btn-primary btn-lg" type="button" disabled={creating} onClick={onCreate}>
-          <FileSpreadsheet size={18} /> {creating ? 'Creating…' : `Create ${SHEET_FILE_NAME}`} <ArrowRight size={18} />
-        </button>
+        {canCreate ? (
+          <button className="btn btn-primary btn-lg" type="button" disabled={creating} onClick={onCreate}>
+            <FileSpreadsheet size={18} /> {creating ? 'Creating…' : `Create ${SHEET_FILE_NAME}`} <ArrowRight size={18} />
+          </button>
+        ) : null}
       </div>
     </div>
   );
@@ -200,13 +206,33 @@ export default function Setup() {
     lookForExistingSheet();
   }, [alreadyBound, founder, isSetupComplete, lookForExistingSheet, user?.email]);
 
-  const createFreshWorkbook = async () => {
+  const createFreshWorkbook = useCallback(async () => {
     if (!canCreate) return;
     setCreating(true);
     setError(null);
     setCurrentStep(2);
     try {
       const folders = await setupFolderStructure();
+      const existing = await findSocietySpreadsheet(user.email);
+      const existingId = existing?.id && isGoogleSpreadsheetMime(existing.mimeType || GOOGLE_SHEET_MIME)
+        ? existing.id
+        : null;
+      const plan = planSocietyWorkbook({
+        email: user.email,
+        existingSheetId: existingId,
+        alreadyBound,
+        searchConfirmedEmpty: true,
+        lookupFailed: false,
+      });
+      if (plan.action === 'reuse' && plan.spreadsheetId) {
+        await reconnectExisting(plan.spreadsheetId, folders?.rootId);
+        return;
+      }
+      if (!plan.allowCreate) {
+        setCurrentStep(0);
+        setError(`Could not create ${SHEET_FILE_NAME}. Search again to reuse the existing society sheet.`);
+        return;
+      }
       const spreadsheetId = await createSpreadsheet();
       bindSpreadsheet(spreadsheetId, user.email);
       await ensureFoundingOwnerEntry(user.email);
@@ -238,7 +264,7 @@ export default function Setup() {
     } finally {
       setCreating(false);
     }
-  };
+  }, [alreadyBound, canCreate, completeSetup, reconnectExisting, showToast, user?.email]);
 
   const copySheetId = async () => {
     if (!results.spreadsheetId) return;
@@ -311,6 +337,7 @@ export default function Setup() {
             <CreateWorkbookHelp
               foundXlsx={needsGoogleSheet}
               creating={creating}
+              canCreate={canCreate}
               onSearch={() => { autoSearchKey.current = ''; lookForExistingSheet(); }}
               onCreate={createFreshWorkbook}
             />

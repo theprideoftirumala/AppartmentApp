@@ -11,13 +11,14 @@
  */
 
 import { useEffect } from 'react';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AppProvider, useApp } from './contexts/AppContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { getAccessControl, resolveSpreadsheetForUser, ensureFoundingOwnerEntry } from './services/googleSheets';
 import { effectiveAppRole, isFoundingOwner } from './config/accessPolicy';
-import { normalizeEmail } from './utils/helpers';
+import { STORAGE_KEYS } from './config/constants';
+import { isValidSpreadsheetId, normalizeEmail } from './utils/helpers';
 
 import ProtectedRoute from './components/common/ProtectedRoute';
 import AccessDenied from './components/common/AccessDenied';
@@ -42,7 +43,8 @@ import Payees from './pages/Payees';
 
 function AccessBootstrap() {
   const { user, isGuest, setAccessDenied } = useAuth();
-  const { setUserRole, isSetupComplete, completeSetup } = useApp();
+  const { setUserRole, isSetupComplete, completeSetup, resetSetup } = useApp();
+  const location = useLocation();
 
   useEffect(() => {
     if (!user?.email || isGuest) return;
@@ -53,7 +55,12 @@ function AccessBootstrap() {
       if (cancelled) return;
 
       if (!sheetId) {
-        if (!isFoundingOwner(user.email)) {
+        if (isFoundingOwner(user.email)) {
+          const rebound = isValidSpreadsheetId(localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID));
+          if (!rebound && location.pathname !== '/setup') {
+            resetSetup();
+          }
+        } else {
           setAccessDenied(true);
         }
         return;
@@ -80,7 +87,7 @@ function AccessBootstrap() {
 
     syncSheet();
     return () => { cancelled = true; };
-  }, [user, isGuest, isSetupComplete, setUserRole, completeSetup, setAccessDenied]);
+  }, [user, isGuest, isSetupComplete, location.pathname, setUserRole, completeSetup, resetSetup, setAccessDenied]);
 
   return null;
 }

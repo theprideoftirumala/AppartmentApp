@@ -10,11 +10,12 @@ import {
   FIRST_APP_MONTH_LABEL,
   FLATS,
   GOOGLE_SHEET_MIME,
+  isGoogleSpreadsheetMime,
   SHEET_FILE_NAME,
   SHEET_HEADERS,
   SHEET_NAMES,
 } from '../config/constants';
-import { canCreateSocietySpreadsheet } from '../config/accessPolicy';
+import { shouldCreateNewSocietySpreadsheet } from '../utils/setupFlow';
 import { guideRows } from '../data/workbookGuide';
 import { ensureValidToken, getCurrentUser } from './googleAuth';
 import { findSocietySpreadsheet, setupFolderStructure } from './googleDrive';
@@ -324,15 +325,17 @@ export async function ensureSheetStructure(spreadsheetId = getSpreadsheetId()) {
 export async function createSpreadsheet() {
   return withAuth(async () => {
     const user = getCurrentUser();
-    if (!canCreateSocietySpreadsheet(user?.email)) {
-      throw new Error('Only the founding owner can create APP-TPT-Tracker.');
-    }
-
     const folders = await setupFolderStructure();
     const existing = await findSocietySpreadsheet(user.email);
-    if (existing?.id && existing.mimeType === GOOGLE_SHEET_MIME) {
-      await ensureSheetStructure(existing.id);
-      return existing.id;
+    const existingId = existing?.id && isGoogleSpreadsheetMime(existing.mimeType || GOOGLE_SHEET_MIME)
+      ? existing.id
+      : null;
+    if (existingId) {
+      await ensureSheetStructure(existingId);
+      return existingId;
+    }
+    if (!shouldCreateNewSocietySpreadsheet({ email: user?.email, existingSheetId: existingId })) {
+      throw new Error('Only the founding owner can create APP-TPT-Tracker. Residents reuse the shared society sheet.');
     }
 
     const tabTitles = Object.values(SHEET_NAMES);

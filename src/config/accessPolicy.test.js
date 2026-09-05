@@ -4,6 +4,7 @@ import {
   canGrantOwner,
   DEFAULT_MEMBER_ROLE,
   effectiveAppRole,
+  FOUNDING_OWNER_EMAIL,
   isFoundingOwner,
   maskEmail,
   maskEmailsInText,
@@ -47,8 +48,10 @@ describe('normalizeRequestedRole', () => {
 });
 
 describe('canCreateSocietySpreadsheet', () => {
-  it('is only the founding owner', () => {
+  it('is only the founding owner — not a resident you grant access', () => {
+    expect(canCreateSocietySpreadsheet(FOUNDING_OWNER_EMAIL)).toBe(true);
     expect(canCreateSocietySpreadsheet('resident@example.com')).toBe(false);
+    expect(canCreateSocietySpreadsheet('treasurer@example.com')).toBe(false);
     expect(canGrantOwner('resident@example.com')).toBe(false);
   });
 });
