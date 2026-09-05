@@ -450,8 +450,8 @@ export default function Reports() {
                     <strong>{formatCurrency((reportData.config.MONTHLY_MAINTENANCE || 3000) * 10)}</strong>
                   </div>
                   <div className="report-stat">
-                    <span>Available balance (29 Aug 2026)</span>
-                    <strong>{formatCurrency(sheetAvailableBalance(reportData.config))}</strong>
+                    <span>Available balance</span>
+                    <strong>{formatCurrency(reportData.cumulativeBalance ?? sheetOpeningSurplus(reportData.config))}</strong>
                   </div>
                   <div className="report-stat">
                     <span>Activities This Month</span>

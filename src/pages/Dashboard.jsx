@@ -17,6 +17,7 @@ import { STORAGE_KEYS } from '../config/constants';
 import { effectiveAppRole, isFoundingOwner } from '../config/accessPolicy';
 import { formatCurrency, getCurrentMonthLabel, getCollectionPercentage, daysUntil, getRelativeTime, groupExpensesByCategory, parseJsonSafe, normalizeEmail } from '../utils/helpers';
 import { cashStatus } from '../utils/ledgerMath';
+import { dashboardAvailableBalance, flatStatusClass } from '../utils/dashboardView';
 import { isMissingSocietySheetError } from '../utils/setupFlow';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Navbar from '../components/common/Navbar';
@@ -169,6 +170,17 @@ export default function Dashboard() {
   }
 
   const data = dashboardData;
+  if (!data) {
+    return (
+      <div className="main-content">
+        <Navbar />
+        <div className="full-page-center">
+          <LoadingSpinner text="Loading dashboard..." />
+        </div>
+      </div>
+    );
+  }
+
   const config = data?.config || {};
   const totals = data?.totals || {};
   const currentMonthMaintenance = (data?.maintenance || []).filter(m => m.month === currentMonth);
@@ -393,7 +405,7 @@ export default function Dashboard() {
             {currentMonthMaintenance.map(m => (
               <div
                 key={m.flat}
-                className={`flat-status-item flat-status-${m.status.toLowerCase()}`}
+                className={`flat-status-item flat-status-${flatStatusClass(m.status)}`}
                 title={`Flat ${m.flat}: ${m.status}`}
               >
                 <Building2 size={14} />
@@ -544,9 +556,9 @@ export default function Dashboard() {
       <div className="deficit-banner mt-6 animate-fade-in deficit-banner-info">
         <AlertCircle size={20} />
         <div>
-          <strong>Available balance from the Summary tab: {formatCurrency(sheetAvailableBalance(config))}</strong>
+          <strong>Available balance: {formatCurrency(dashboardAvailableBalance(totals, config))}</strong>
           <p className="text-sm">
-            That is the green Available balance cell on the Summary tab. Late fees and surplus/deficit rows from that sheet are not used. History from Summary and Exp-Detailed loads into Maintenance and Expenses so you can view and export it.
+            Same figure as the Balance tab in APP-TPT-Tracker. Opening surplus is ₹612. Books start Sep-26.
           </p>
         </div>
       </div>
