@@ -1211,8 +1211,19 @@
   gap: var(--space-4);
 }
 
+.report-summary-grid-5 {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+@media (max-width: 960px) {
+  .report-summary-grid-5 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 @media (max-width: 640px) {
-  .report-summary-grid {
+  .report-summary-grid,
+  .report-summary-grid-5 {
     grid-template-columns: 1fr;
   }
 }
@@ -1893,6 +1904,180 @@
 /* Row highlight for current month */
 .row-highlight {
   background: hsla(220, 90%, 56%, 0.08) !important;
+}
+
+.expert-report {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.report-status-row {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-top: var(--space-3);
+}
+
+.report-status-pill {
+  display: inline-flex;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.report-expected {
+  margin: 0;
+}
+
+.report-charts-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+}
+
+@media (max-width: 900px) {
+  .report-charts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.report-chart-block {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+}
+
+.report-chart-title {
+  margin: 0 0 var(--space-4);
+  font-size: var(--font-size-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.report-chart-caption {
+  margin: var(--space-3) 0 0;
+  text-align: center;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.report-donut {
+  display: block;
+  width: 140px;
+  height: 140px;
+  margin: 0 auto;
+}
+
+.report-donut-value {
+  font-size: 16px;
+  font-weight: 700;
+  fill: var(--color-text);
+}
+
+.report-donut-label {
+  font-size: 8px;
+  fill: var(--color-text-muted);
+}
+
+.report-compare {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.report-compare-row {
+  display: grid;
+  grid-template-columns: 5rem 1fr auto;
+  gap: var(--space-3);
+  align-items: center;
+  font-size: var(--font-size-sm);
+}
+
+.report-compare-track {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--glass-border);
+  overflow: hidden;
+}
+
+.report-compare-fill {
+  height: 100%;
+  border-radius: 999px;
+}
+
+.report-compare-collect,
+.report-ytd-collect {
+  background: var(--color-success);
+}
+
+.report-compare-spend,
+.report-ytd-spend {
+  background: var(--color-danger);
+}
+
+.report-ytd-legend {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-3);
+}
+
+.report-ytd-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  margin-right: 0.35rem;
+}
+
+.report-ytd-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  min-height: 140px;
+  padding: var(--space-3) 0;
+  overflow-x: auto;
+}
+
+.report-ytd-col {
+  flex: 1;
+  min-width: 44px;
+  text-align: center;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.report-ytd-bars {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 3px;
+  height: 110px;
+  margin-bottom: var(--space-2);
+}
+
+.report-ytd-bar {
+  width: 12px;
+  min-height: 2px;
+  border-radius: 3px 3px 0 0;
+}
+
+.report-total-row {
+  background: var(--glass-bg);
+}
+
+.report-footnote {
+  margin: 0;
+  text-align: center;
 }
 
 /* ─── Activities Timeline ──────────────────────────────── */

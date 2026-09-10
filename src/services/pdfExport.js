@@ -3,17 +3,13 @@
  * Generates comprehensive monthly financial reports as downloadable/shareable PDFs
  * 
  * Includes:
- * - Financial Summary (collection, expenses, balance)
- * - Payment Received Summary (flat-wise)
- * - Expenses Report (detailed + category-wise)
- * - Activities Performed (from audit log)
- * - Watchman Details
+ * - Financial summary (opening, collected, spent, available)
+ * - Payment received (flat-wise)
+ * - Expenses (detailed + category)
  */
 
 import jsPDF from 'jspdf';
-import { maskEmail, maskEmailsInText } from '../config/accessPolicy';
 import { FEATURES, SOCIETY_DISCLAIMER } from '../config/constants';
-import { maskIdNumber, maskPhone } from '../utils/helpers';
 
 const PDF_FONT = 'NotoSans';
 let cachedFontBase64 = null;
@@ -57,6 +53,30 @@ function formatCurrency(amount) {
 /**
  * Draw a section header
  */
+function drawCompareBars(doc, collection, expenses, y, margin, contentWidth) {
+  const max = Math.max(Number(collection) || 0, Number(expenses) || 0, 1);
+  const barMax = 22;
+  const collectH = Math.max(2, ((Number(collection) || 0) / max) * barMax);
+  const spendH = Math.max(2, ((Number(expenses) || 0) / max) * barMax);
+  const colW = (contentWidth - 12) / 2;
+  const base = y + 28;
+  doc.setFontSize(8);
+  pdfFont(doc, 'bold');
+  doc.setTextColor(60, 60, 80);
+  doc.text('Collected vs spent', margin, y + 4);
+  doc.setFillColor(40, 167, 69);
+  doc.rect(margin + 8, base - collectH, colW - 16, collectH, 'F');
+  doc.setFillColor(220, 53, 69);
+  doc.rect(margin + colW + 8, base - spendH, colW - 16, spendH, 'F');
+  pdfFont(doc, 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(40, 167, 69);
+  doc.text(`Collected ${formatCurrency(collection)}`, margin + 8, base + 5);
+  doc.setTextColor(220, 53, 69);
+  doc.text(`Spent ${formatCurrency(expenses)}`, margin + colW + 8, base + 5);
+  return base + 10;
+}
+
 function drawSectionHeader(doc, text, y, pageWidth, margin) {
   doc.setFillColor(50, 55, 80);
   doc.rect(margin, y, pageWidth - 2 * margin, 9, 'F');
@@ -335,9 +355,6 @@ export async function generateMonthlyReport(reportData) {
     monthStatus,
     availableStatus,
     flats,
-    watchman,
-    activities,
-    remindersCompleted,
   } = reportData;
 
   const doc = await createPdfDoc();
@@ -398,6 +415,9 @@ export async function generateMonthlyReport(reportData) {
   doc.setTextColor(80, 80, 80);
   doc.text(`Opening ${formatCurrency(opening)} + collected ${formatCurrency(totalCollection)} − spent ${formatCurrency(totalExpenses)} = ${formatCurrency(available)}`, margin + 4, y + 15.5);
   y += 22;
+  y = checkPageBreak(doc, y, margin, 42);
+  y = drawCompareBars(doc, totalCollection, totalExpenses, y, margin, contentWidth);
+  y += 6;
 
   // ═══════════════════════════════════════════════════════
   // SECTION 1: RECEIVED PAYMENT SUMMARY
@@ -508,143 +528,9 @@ export async function generateMonthlyReport(reportData) {
     y += 14;
   }
 
-  y = drawExpenseReport(doc, expenses, totalExpenses, y, pageWidth, margin, contentWidth);
-
-  // ═══════════════════════════════════════════════════════
-  // SECTION 3: WATCHMAN DETAILS
-  // ═══════════════════════════════════════════════════════
-  y = checkPageBreak(doc, y, margin, 35);
-  y = drawSectionHeader(doc, '4. WATCHMAN DETAILS', y, pageWidth, margin);
-  y += 2;
-
-  const activeWatchmen = (watchman || []).filter(w => w.status === 'Active');
-  if (activeWatchmen.length > 0) {
-    activeWatchmen.forEach((w, i) => {
-      y = checkPageBreak(doc, y, margin, 22);
-
-      doc.setFillColor(248, 249, 252);
-      doc.roundedRect(margin, y, contentWidth, 18, 2, 2, 'F');
-
-      doc.setFontSize(9);
-      pdfFont(doc, 'bold');
-      doc.setTextColor(40, 40, 60);
-      doc.text(`${w.name || 'Watchman ' + (i + 1)}`, margin + 4, y + 6);
-
-      doc.setFontSize(7.5);
-      pdfFont(doc, 'normal');
-      doc.setTextColor(80, 80, 80);
-      doc.text(`Phone: ${maskPhone(w.phone)}  |  Shift: ${w.shiftTiming || '-'}  |  Salary: ${formatCurrency(w.salary)}`, margin + 4, y + 11.5);
-      doc.text(`Join Date: ${w.joinDate || '-'}  |  ID: ${w.idProofType || '-'} ${maskIdNumber(w.idProofNumber)}  |  Emergency: ${w.emergencyContact || '-'} (${maskPhone(w.emergencyPhone)})`, margin + 4, y + 16);
-
-      y += 22;
-    });
-  } else {
-    doc.setTextColor(120, 120, 120);
-    doc.setFontSize(8);
-    pdfFont(doc, 'normal');
-    doc.text('No active watchman records.', margin + 4, y + 6);
-    y += 12;
-  }
-
-  y += 4;
-
-  // ═══════════════════════════════════════════════════════
-  // SECTION 4: ACTIVITIES PERFORMED THIS MONTH
-  // ═══════════════════════════════════════════════════════
-  y = checkPageBreak(doc, y, margin, 30);
-  y = drawSectionHeader(doc, '5. ACTIVITIES PERFORMED THIS MONTH', y, pageWidth, margin);
-  y += 2;
-
-  if (activities && activities.length > 0) {
-    // Group activities by action type
-    const activityGroups = {};
-    activities.forEach(a => {
-      const action = a.action || 'OTHER';
-      if (!activityGroups[action]) activityGroups[action] = [];
-      activityGroups[action].push(a);
-    });
-
-    const actLabels = {
-      'PAYMENT': '[PAY] Payments Recorded',
-      'ADD_EXPENSE': '[EXP] Expenses Added',
-      'INIT_MONTH': '[INIT] Month Initialized',
-      'ADD_REMINDER': '[REM] Reminders Added',
-      'ADD_CONTACT': '[CONT] Contacts Added',
-      'ADD_USER': '[USER] Users Added',
-      'REMOVE_USER': '[DEL] Users Removed',
-      'UPDATE_CONFIG': '[CFG] Config Updated',
-      'UPDATE_FLAT': '[FLAT] Flat Details Updated',
-      'BACKUP': '[BCK] Backups Created',
-      'SETUP': '[SETUP] Initial Setup',
-      'DELETE_EXPENSE': '[DEL] Expenses Deleted',
-      'ADD_MISC_FUND': '[MISC] Misc Fund Recorded',
-    };
-
-    Object.entries(activityGroups).forEach(([action, items]) => {
-      y = checkPageBreak(doc, y, margin, 10);
-
-      doc.setFontSize(8);
-      pdfFont(doc, 'bold');
-      doc.setTextColor(60, 60, 80);
-      doc.text(`${actLabels[action] || action} (${items.length})`, margin + 2, y + 5);
-      y += 7;
-
-      // Show first 5 items per category
-      items.slice(0, 5).forEach(item => {
-        y = checkPageBreak(doc, y, margin, 6);
-        doc.setFontSize(7);
-        pdfFont(doc, 'normal');
-        doc.setTextColor(100, 100, 100);
-        const detail = maskEmailsInText(item.details || '').substring(0, 80);
-        const user = maskEmail(item.user);
-        doc.text(`  - ${detail}  (by ${user})`, margin + 4, y + 4);
-        y += 5;
-      });
-
-      if (items.length > 5) {
-        doc.setFontSize(7);
-        pdfFont(doc, 'normal');
-        doc.text(`    ... and ${items.length - 5} more`, margin + 4, y + 4);
-        y += 5;
-      }
-      y += 2;
-    });
-
-    // Activity summary
-    y = checkPageBreak(doc, y, margin, 10);
-    doc.setFillColor(230, 240, 255);
-    doc.roundedRect(margin, y, contentWidth, 8, 2, 2, 'F');
-    doc.setFontSize(7.5);
-    pdfFont(doc, 'bold');
-    doc.setTextColor(50, 80, 150);
-    doc.text(`Total: ${activities.length} activities by ${new Set(activities.map(a => a.user)).size} user(s) this month`, margin + 4, y + 5.5);
-    y += 12;
-  } else {
-    doc.setTextColor(120, 120, 120);
-    doc.setFontSize(8);
-    pdfFont(doc, 'normal');
-    doc.text('No activities recorded for this month.', margin + 4, y + 6);
-    y += 14;
-  }
-
-  // ═══════════════════════════════════════════════════════
-  // SECTION 5: REMINDERS COMPLETED
-  // ═══════════════════════════════════════════════════════
-  if (remindersCompleted && remindersCompleted.length > 0) {
-    y = checkPageBreak(doc, y, margin, 20);
-    y = drawSectionHeader(doc, '6. REMINDERS / TASKS COMPLETED', y, pageWidth, margin);
-    y += 2;
-
-    remindersCompleted.forEach((r, i) => {
-      y = checkPageBreak(doc, y, margin, 6);
-      doc.setFontSize(7.5);
-      pdfFont(doc, 'normal');
-      doc.setTextColor(60, 60, 60);
-      doc.text(`[OK] ${r.title}  (${r.lastCompleted || 'Completed'})`, margin + 2, y + 4);
-      y += 6;
-    });
-    y += 6;
-  }
+  y = drawExpenseReport(doc, expenses, totalExpenses, y, pageWidth, margin, contentWidth, {
+    title: FEATURES.MISC_FUNDS ? '3. EXPENSES REPORT' : '2. EXPENSES REPORT',
+  });
 
   // ─── Important Note ─────────────────────────────────────
   y = checkPageBreak(doc, y, margin, 30);
