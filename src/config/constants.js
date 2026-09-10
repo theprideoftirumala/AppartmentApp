@@ -51,15 +51,16 @@ export function isSampleDataEnabled(config) {
 }
 
 export const SOCIETY_DISCLAIMER =
-  'These books are kept by resident volunteers, next to their own work. Totals can move a little as bills arrive — please support one another, and we will help as soon as we can. The Google Sheet is our shared record.';
+  'This statement is prepared by resident volunteers who also look after their own homes. We update it whenever a bill or payment is entered. Kindly read it with patience and support one another — we will help as soon as we can. APP-TPT-Tracker in Google Drive is the shared record.';
 
-export const REPORT_NOTE_TITLE = 'A note from the committee';
+export const REPORT_NOTE_TITLE = 'How to read this report';
 export const REPORT_NOTE_LINES = [
-  'This page is for neighbours to read together. A bill that arrives later may still be added, so the total can change a little.',
-  'If anything looks unclear, the Balance tab in APP-TPT-Tracker is the copy we all use.',
+  'The figures show what the society collected and spent this month, and what remains for common use.',
+  'A receipt may still arrive after this copy is made. That is normal. The next update will include it. No family is being singled out.',
+  'If a number differs from what you remember, please write to the treasurer. We will sit with the Balance tab in APP-TPT-Tracker and set it right together.',
 ];
 export const ACTIVITY_REPORT_NOTE =
-  'Activity collections sit apart from monthly maintenance. Please look through each line before you share this with neighbours.';
+  'This sheet is only for the named activity. It does not change monthly maintenance. Please read each line once before forwarding it to the group.';
 
 /** Carry-forward surplus into Sep 2026. Typed on Configuration as OPENING_SURPLUS. */
 export const OPENING_SURPLUS = 612;

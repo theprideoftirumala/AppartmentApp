@@ -17,24 +17,62 @@ import {
   SOCIETY_DISCLAIMER,
 } from '../config/constants';
 
-/** Soft teal / terracotta — easier on the eyes than navy, neon green, and warning yellow. */
+/** Light saffron header, cream paper, sage / terracotta figures. */
 const TONE = {
-  header: [47, 88, 82],
-  headerAccent: [196, 164, 110],
-  section: [62, 99, 92],
-  ink: [55, 64, 62],
-  muted: [92, 104, 100],
+  saffronTop: [255, 248, 232],
+  saffron: [244, 196, 120],
+  saffronDeep: [214, 148, 72],
+  headerInk: [92, 48, 22],
+  section: [140, 92, 58],
+  ink: [62, 48, 36],
+  muted: [110, 88, 68],
   collect: [62, 130, 102],
-  collectBg: [232, 244, 236],
+  collectBg: [236, 246, 238],
   spend: [176, 98, 88],
-  spendBg: [252, 238, 234],
-  opening: [72, 108, 138],
-  openingBg: [236, 242, 247],
-  noteBg: [236, 246, 241],
-  noteInk: [52, 88, 78],
-  discBg: [246, 247, 245],
+  spendBg: [252, 240, 236],
+  opening: [86, 118, 148],
+  openingBg: [238, 244, 248],
+  noteBg: [255, 248, 236],
+  noteInk: [92, 56, 28],
+  discBg: [250, 246, 238],
   pending: [176, 120, 72],
+  shadow: [210, 196, 176],
+  paper: [255, 252, 246],
 };
+
+function mixRgb(rgb, other, amount) {
+  return rgb.map((c, i) => Math.round(c * (1 - amount) + other[i] * amount));
+}
+
+function clampRgb(rgb) {
+  return rgb.map((c) => Math.max(0, Math.min(255, Math.round(c))));
+}
+
+function drawRaisedCard(doc, x, y, w, h, fill) {
+  doc.setFillColor(...TONE.shadow);
+  doc.roundedRect(x + 0.8, y + 1, w, h, 2, 2, 'F');
+  doc.setFillColor(...fill);
+  doc.roundedRect(x, y, w, h, 2, 2, 'F');
+  doc.setFillColor(...mixRgb(fill, [255, 255, 255], 0.45));
+  doc.roundedRect(x + 0.5, y + 0.35, w - 1, 1.3, 1, 1, 'F');
+}
+
+function draw3dBar(doc, x, baseY, w, h, rgb) {
+  const depth = 2.4;
+  const top = baseY - h;
+  doc.setFillColor(...TONE.shadow);
+  doc.rect(x + 0.8, baseY, w + depth, 1.3, 'F');
+  doc.setFillColor(...mixRgb(rgb, [40, 28, 16], 0.32));
+  doc.triangle(x + w, top, x + w + depth, top - depth, x + w + depth, baseY - depth, 'F');
+  doc.triangle(x + w, top, x + w + depth, baseY - depth, x + w, baseY, 'F');
+  doc.setFillColor(...mixRgb(rgb, [255, 255, 255], 0.38));
+  doc.triangle(x, top, x + depth, top - depth, x + w + depth, top - depth, 'F');
+  doc.triangle(x, top, x + w + depth, top - depth, x + w, top, 'F');
+  doc.setFillColor(...rgb);
+  doc.rect(x, top, w, h, 'F');
+  doc.setFillColor(...mixRgb(rgb, [255, 255, 255], 0.5));
+  doc.rect(x + 0.4, top + 0.4, 1.3, Math.max(h - 0.8, 0.6), 'F');
+}
 
 const PDF_FONT = 'NotoSans';
 let cachedFontBase64 = null;
@@ -80,48 +118,54 @@ function formatCurrency(amount) {
  */
 function drawCompareBars(doc, collection, expenses, y, margin, contentWidth) {
   const max = Math.max(Number(collection) || 0, Number(expenses) || 0, 1);
-  const barMax = 22;
-  const collectH = Math.max(2, ((Number(collection) || 0) / max) * barMax);
-  const spendH = Math.max(2, ((Number(expenses) || 0) / max) * barMax);
-  const colW = (contentWidth - 12) / 2;
-  const base = y + 28;
+  const barMax = 24;
+  const collectH = Math.max(4, ((Number(collection) || 0) / max) * barMax);
+  const spendH = Math.max(4, ((Number(expenses) || 0) / max) * barMax);
+  const colW = (contentWidth - 16) / 2;
+  const barW = Math.min(28, colW - 18);
+  const base = y + 32;
   doc.setFontSize(8);
   pdfFont(doc, 'bold');
-  doc.setTextColor(60, 60, 80);
-  doc.text('Collected vs spent', margin, y + 4);
-  doc.setFillColor(...TONE.collect);
-  doc.rect(margin + 8, base - collectH, colW - 16, collectH, 'F');
-  doc.setFillColor(...TONE.spend);
-  doc.rect(margin + colW + 8, base - spendH, colW - 16, spendH, 'F');
+  doc.setTextColor(...TONE.ink);
+  doc.text('Collected and spent this month', margin, y + 4);
+  draw3dBar(doc, margin + 14, base, barW, collectH, TONE.collect);
+  draw3dBar(doc, margin + colW + 14, base, barW, spendH, TONE.spend);
   pdfFont(doc, 'normal');
-  doc.setFontSize(7);
+  doc.setFontSize(7.5);
   doc.setTextColor(...TONE.collect);
-  doc.text(`Collected ${formatCurrency(collection)}`, margin + 8, base + 5);
+  doc.text(`Collected  ${formatCurrency(collection)}`, margin + 8, base + 7);
   doc.setTextColor(...TONE.spend);
-  doc.text(`Spent ${formatCurrency(expenses)}`, margin + colW + 8, base + 5);
-  return base + 10;
+  doc.text(`Spent  ${formatCurrency(expenses)}`, margin + colW + 8, base + 7);
+  return base + 12;
 }
 
 function drawFriendlyNote(doc, y, margin, contentWidth, title, lines) {
-  const wrapped = lines.flatMap((line) => doc.splitTextToSize(line, contentWidth - 10));
-  const height = 12 + wrapped.length * 4;
+  const wrapped = lines.flatMap((line) => doc.splitTextToSize(line, contentWidth - 14));
+  const height = 14 + wrapped.length * 4.2;
   y = checkPageBreak(doc, y, margin, height + 6);
-  doc.setFillColor(...TONE.noteBg);
-  doc.roundedRect(margin, y, contentWidth, height, 2, 2, 'F');
-  doc.setFontSize(8.5);
+  drawRaisedCard(doc, margin, y, contentWidth, height, TONE.noteBg);
+  doc.setFillColor(...TONE.saffron);
+  doc.roundedRect(margin, y, 2.4, height, 1, 1, 'F');
+  doc.setFontSize(9);
   pdfFont(doc, 'bold');
   doc.setTextColor(...TONE.noteInk);
-  doc.text(title, margin + 4, y + 7);
+  doc.text(title, margin + 8, y + 7);
   doc.setFontSize(7.5);
   pdfFont(doc, 'normal');
-  doc.text(wrapped, margin + 4, y + 12);
-  return y + height + 4;
+  doc.setTextColor(...TONE.ink);
+  doc.text(wrapped, margin + 8, y + 13);
+  return y + height + 5;
 }
 
 function drawSectionHeader(doc, text, y, pageWidth, margin) {
+  const w = pageWidth - 2 * margin;
+  doc.setFillColor(...TONE.shadow);
+  doc.rect(margin + 0.6, y + 0.7, w, 9, 'F');
   doc.setFillColor(...TONE.section);
-  doc.rect(margin, y, pageWidth - 2 * margin, 9, 'F');
-  doc.setTextColor(255, 255, 255);
+  doc.rect(margin, y, w, 9, 'F');
+  doc.setFillColor(...mixRgb(TONE.section, [255, 220, 170], 0.28));
+  doc.rect(margin, y, w, 1.4, 'F');
+  doc.setTextColor(255, 250, 242);
   doc.setFontSize(10);
   pdfFont(doc, 'bold');
   doc.text(text, margin + 4, y + 6.5);
@@ -153,6 +197,7 @@ function checkPageBreak(doc, y, margin, needed = 20) {
   const pageHeight = doc.internal.pageSize.getHeight();
   if (y + needed > pageHeight - 20) {
     doc.addPage();
+    washPaper(doc);
     return margin;
   }
   return y;
@@ -199,17 +244,23 @@ function pageMetrics(doc) {
 }
 
 function drawHeaderBanner(doc, pageWidth, { title, subtitle, line3 }) {
-  doc.setFillColor(...TONE.header);
-  doc.rect(0, 0, pageWidth, 48, 'F');
-  doc.setFillColor(...TONE.headerAccent);
-  doc.rect(0, 48, pageWidth, 2, 'F');
+  const height = 50;
+  for (let i = 0; i < height; i += 1) {
+    const t = i / (height - 1);
+    doc.setFillColor(...clampRgb(mixRgb(TONE.saffronTop, TONE.saffron, t)));
+    doc.rect(0, i, pageWidth, 1.1, 'F');
+  }
+  doc.setFillColor(...TONE.saffronDeep);
+  doc.rect(0, height, pageWidth, 2.4, 'F');
+  doc.setFillColor(...mixRgb(TONE.saffron, [255, 255, 255], 0.45));
+  doc.rect(0, height, pageWidth, 0.7, 'F');
 
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(22);
+  doc.setTextColor(...TONE.headerInk);
+  doc.setFontSize(21);
   pdfFont(doc, 'bold');
   doc.text(title, pageWidth / 2, 18, { align: 'center' });
 
-  doc.setFontSize(12);
+  doc.setFontSize(11);
   pdfFont(doc, 'normal');
   doc.text(subtitle, pageWidth / 2, 28, { align: 'center' });
 
@@ -219,38 +270,44 @@ function drawHeaderBanner(doc, pageWidth, { title, subtitle, line3 }) {
 
   doc.setFontSize(8);
   pdfFont(doc, 'normal');
-  doc.text(`Generated: ${new Date().toLocaleDateString('en-IN', { dateStyle: 'long' })}`, pageWidth / 2, 45, { align: 'center' });
+  doc.setTextColor(...TONE.muted);
+  doc.text(`Prepared on ${new Date().toLocaleDateString('en-IN', { dateStyle: 'long' })}`, pageWidth / 2, 45, { align: 'center' });
 }
 
 function drawSummaryCards(doc, summaryCards, y, margin, contentWidth) {
   const cardWidth = contentWidth / summaryCards.length - 3;
   summaryCards.forEach((card, i) => {
     const x = margin + i * (cardWidth + 4);
-    doc.setFillColor(...card.bg);
-    doc.roundedRect(x, y, cardWidth, 20, 2, 2, 'F');
+    drawRaisedCard(doc, x, y, cardWidth, 22, card.bg);
     doc.setFontSize(7);
     pdfFont(doc, 'normal');
-    doc.setTextColor(120, 120, 120);
-    doc.text(card.label, x + 3, y + 7);
+    doc.setTextColor(...TONE.muted);
+    doc.text(card.label, x + 3, y + 7.5);
     doc.setFontSize(11);
     pdfFont(doc, 'bold');
     doc.setTextColor(...card.color);
-    doc.text(card.value, x + 3, y + 16);
+    doc.text(card.value, x + 3, y + 17);
   });
-  return y + 28;
+  return y + 30;
 }
 
 function drawDisclaimerBlock(doc, y, margin, contentWidth) {
   y = checkPageBreak(doc, y, margin, 28);
-  const disclaimerLines = doc.splitTextToSize(SOCIETY_DISCLAIMER, contentWidth - 8);
-  const discH = 10 + disclaimerLines.length * 4;
-  doc.setFillColor(...TONE.discBg);
-  doc.roundedRect(margin, y, contentWidth, discH, 2, 2, 'F');
+  const disclaimerLines = doc.splitTextToSize(SOCIETY_DISCLAIMER, contentWidth - 10);
+  const discH = 11 + disclaimerLines.length * 4;
+  drawRaisedCard(doc, margin, y, contentWidth, discH, TONE.discBg);
   doc.setFontSize(7);
   pdfFont(doc, 'normal');
   doc.setTextColor(...TONE.muted);
-  doc.text(disclaimerLines, margin + 4, y + 6);
+  doc.text(disclaimerLines, margin + 4, y + 6.5);
   return y + discH + 4;
+}
+
+function washPaper(doc) {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  doc.setFillColor(...TONE.paper);
+  doc.rect(0, 0, pageWidth, pageHeight, 'F');
 }
 
 function stampFooters(doc, reportData) {
@@ -399,12 +456,13 @@ export async function generateMonthlyReport(reportData) {
   } = reportData;
 
   const doc = await createPdfDoc();
+  washPaper(doc);
   const { pageWidth, margin, contentWidth } = pageMetrics(doc);
   let y = margin;
 
   drawHeaderBanner(doc, pageWidth, {
     title: apartmentName || 'The Pride of Tirumala',
-    subtitle: 'Monthly Financial Report',
+    subtitle: 'Monthly society accounts',
     line3: month,
   });
   y = 58;
@@ -590,6 +648,7 @@ export async function generateActivityReport({ activity, detail }) {
   const members = detail.members || [];
 
   const doc = await createPdfDoc();
+  washPaper(doc);
   const { pageWidth, margin, contentWidth } = pageMetrics(doc);
 
   drawHeaderBanner(doc, pageWidth, {

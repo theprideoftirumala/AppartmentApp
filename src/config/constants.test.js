@@ -49,10 +49,12 @@ describe('society disclaimer', () => {
     expect(SOCIETY_DISCLAIMER).not.toMatch(/IMPORTANT NOTE/i);
   });
 
-  it('keeps the report note warm and neighbourly', () => {
-    expect(REPORT_NOTE_TITLE).toMatch(/note from the committee/i);
-    expect(REPORT_NOTE_LINES.join(' ')).toMatch(/neighbours/i);
-    expect(REPORT_NOTE_LINES.join(' ')).not.toMatch(/not final/i);
+  it('explains the report without blaming any family', () => {
+    expect(REPORT_NOTE_TITLE).toMatch(/how to read this report/i);
+    const note = REPORT_NOTE_LINES.join(' ');
+    expect(note).toMatch(/no family is being singled out/i);
+    expect(note).not.toMatch(/not final/i);
+    expect(note).not.toMatch(/IMPORTANT NOTE/i);
   });
 });
 

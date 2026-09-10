@@ -139,7 +139,7 @@ export default function Reports() {
       `Spent: ₹${Number(reportData.totalExpenses || 0).toLocaleString('en-IN')}\n` +
       `This month: ${reportData.monthStatus} ₹${Math.abs(reportData.netBalance).toLocaleString('en-IN')}\n` +
       `Available: ${reportData.availableStatus} ₹${Number(reportData.cumulativeBalance || 0).toLocaleString('en-IN')}\n\n` +
-      `A PDF is in your downloads — please attach it. The Balance tab in APP-TPT-Tracker is the copy we all use.\n\nWarm regards,\nTPT committee`,
+      `A PDF is in your downloads — please attach it if useful. We will sit with the Balance tab in APP-TPT-Tracker if any figure needs a second look.\n\nWith regards,\nTPT committee`,
     );
     await downloadReport(reportData);
     window.open(`mailto:?subject=${subject}&body=${body}`, '_self');
