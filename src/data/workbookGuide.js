@@ -9,7 +9,7 @@ export function guideRows() {
   return [
     ['START HERE', `This Google Sheet (${SHEET_FILE_NAME}) IS the apartment cash book from ${FIRST_APP_MONTH_LABEL}. The website only reads and writes these tabs.`, 'Keep the header row. Do not rename tabs. Add new rows at the bottom. Type amounts as plain numbers (3000, not ₹3,000).'],
     ['Opening surplus', `₹${OPENING_SURPLUS} was already in hand on 1 Sep 2026. It is stored as OPENING_SURPLUS on the Configuration tab and shown on the Balance tab.`, 'Do not add old Nov 2020–Aug 2026 history here. Those books are closed.'],
-    ['How to know surplus or deficit', 'Open the Balance tab first. Available balance = opening surplus + all collected − all spent. If that number is above 0 the society is in SURPLUS. Below 0 is DEFICIT. Zero is BALANCED.', 'Monthly Summary shows the same math for each month. Green SURPLUS / red DEFICIT is a formula — do not type over it.'],
+    ['How to know surplus or deficit', 'Open the Balance tab first. Available balance = opening surplus + all collected − all spent. If that number is above 0 the building is in SURPLUS. Below 0 is DEFICIT. Zero is BALANCED.', 'Monthly Summary shows the same math for each month. Green SURPLUS / red DEFICIT is a formula — do not type over it.'],
     ['Who paid this month?', 'Open Pending Dues. Type the month in the yellow cell (example Sep-26). You will see each flat, still due, and who to remind.', 'To record a payment, edit Maintenance (or use the app). Do not type in the grey Pending Dues table.'],
     ['Tab: Balance', 'The first tab a resident should open. Opening surplus, total collected, total spent, available balance, and SURPLUS/DEFICIT.', 'All amount cells are formulas. If a number looks wrong, fix Maintenance or Expenses — not this tab.'],
     ['Tab: Configuration', 'Key / Value / Description. The app reads Key and Value.', 'Change MONTHLY_MAINTENANCE here (plain number). OPENING_SURPLUS is 612. Do not invent a second opening number.'],
@@ -20,7 +20,7 @@ export function guideRows() {
     ['Tab: Pending Dues', 'Change the yellow month cell and see who still owes.', 'If a number looks wrong, fix the matching Maintenance row.'],
     ['Tab: Payees', 'Watchman and vendor phones. GPay and PhonePe pay number@ybl unless a UPI ID is pasted.', 'Do not invent a UPI ID. Same phone or same UPI is a duplicate.'],
     ['Tab: Emergency Contacts', 'Plumber, lift, hospital, police, etc.', 'Phone is 10-digit Indian mobile where possible.'],
-    ['Tab: Reminders', 'Recurring society tasks. Status Active = shown in the app.', 'Dates use YYYY-MM-DD.'],
+    ['Tab: Reminders', 'Recurring apartment tasks. Status Active = shown in the app.', 'Dates use YYYY-MM-DD.'],
     ['Tab: Access Control', 'Who may open the website. Email + Role + Status.', 'Role is Owner or Reader. Max 20 users, max 2 Owners.'],
     ['Tab: Audit Log', 'Automatic history of app writes. Do not edit rows.', 'Filter by User or Action if something looks wrong.'],
     ['Tab: Watchman Details', 'Staff record. Status Active or Inactive.', 'Do not share ID numbers widely.'],

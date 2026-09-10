@@ -49,12 +49,14 @@ describe('society disclaimer', () => {
     expect(SOCIETY_DISCLAIMER).not.toMatch(/IMPORTANT NOTE/i);
   });
 
-  it('explains the report without blaming any family', () => {
+  it('explains the report without blaming anyone', () => {
     expect(REPORT_NOTE_TITLE).toMatch(/how to read this report/i);
-    const note = REPORT_NOTE_LINES.join(' ');
-    expect(note).toMatch(/no family is being singled out/i);
+    const note = `${SOCIETY_DISCLAIMER} ${REPORT_NOTE_LINES.join(' ')}`;
+    expect(note).not.toMatch(/society/i);
+    expect(note).not.toMatch(/APP-TPT-Tracker/i);
+    expect(note).not.toMatch(/singled out/i);
     expect(note).not.toMatch(/not final/i);
-    expect(note).not.toMatch(/IMPORTANT NOTE/i);
+    expect(note).toMatch(/shared Google Sheet/i);
   });
 });
 

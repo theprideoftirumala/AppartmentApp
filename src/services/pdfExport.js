@@ -17,27 +17,28 @@ import {
   SOCIETY_DISCLAIMER,
 } from '../config/constants';
 
-/** Light saffron header, cream paper, sage / terracotta figures. */
+/** India-flag saffron (#FF9933) lightened for the header; cream paper; sage / terracotta figures. */
 const TONE = {
-  saffronTop: [255, 248, 232],
-  saffron: [244, 196, 120],
-  saffronDeep: [214, 148, 72],
-  headerInk: [92, 48, 22],
-  section: [140, 92, 58],
-  ink: [62, 48, 36],
-  muted: [110, 88, 68],
-  collect: [62, 130, 102],
+  saffronTop: [255, 214, 168],
+  saffron: [255, 176, 92],
+  saffronDeep: [255, 153, 51],
+  headerInk: [92, 36, 8],
+  section: [186, 96, 42],
+  ink: [62, 42, 28],
+  muted: [112, 82, 58],
+  collect: [72, 128, 104],
   collectBg: [236, 246, 238],
   spend: [176, 98, 88],
   spendBg: [252, 240, 236],
   opening: [86, 118, 148],
   openingBg: [238, 244, 248],
-  noteBg: [255, 248, 236],
-  noteInk: [92, 56, 28],
-  discBg: [250, 246, 238],
+  noteBg: [255, 246, 232],
+  noteInk: [102, 48, 16],
+  discBg: [255, 250, 242],
   pending: [176, 120, 72],
-  shadow: [210, 196, 176],
-  paper: [255, 252, 246],
+  shadow: [214, 198, 178],
+  paper: [255, 250, 242],
+  stamp: [196, 78, 28],
 };
 
 function mixRgb(rgb, other, amount) {
@@ -49,29 +50,40 @@ function clampRgb(rgb) {
 }
 
 function drawRaisedCard(doc, x, y, w, h, fill) {
-  doc.setFillColor(...TONE.shadow);
-  doc.roundedRect(x + 0.8, y + 1, w, h, 2, 2, 'F');
+  doc.setFillColor(228, 216, 200);
+  doc.roundedRect(x + 1.1, y + 1.5, w, h, 2.2, 2.2, 'F');
+  doc.setFillColor(240, 230, 218);
+  doc.roundedRect(x + 0.45, y + 0.65, w, h, 2.2, 2.2, 'F');
   doc.setFillColor(...fill);
-  doc.roundedRect(x, y, w, h, 2, 2, 'F');
-  doc.setFillColor(...mixRgb(fill, [255, 255, 255], 0.45));
-  doc.roundedRect(x + 0.5, y + 0.35, w - 1, 1.3, 1, 1, 'F');
+  doc.roundedRect(x, y, w, h, 2.2, 2.2, 'F');
+  doc.setFillColor(...mixRgb(fill, [255, 255, 255], 0.58));
+  doc.roundedRect(x + 0.6, y + 0.35, w - 1.2, 1.5, 1.2, 1.2, 'F');
 }
 
 function draw3dBar(doc, x, baseY, w, h, rgb) {
-  const depth = 2.4;
+  const dx = 3.4;
+  const dy = 1.9;
   const top = baseY - h;
-  doc.setFillColor(...TONE.shadow);
-  doc.rect(x + 0.8, baseY, w + depth, 1.3, 'F');
-  doc.setFillColor(...mixRgb(rgb, [40, 28, 16], 0.32));
-  doc.triangle(x + w, top, x + w + depth, top - depth, x + w + depth, baseY - depth, 'F');
-  doc.triangle(x + w, top, x + w + depth, baseY - depth, x + w, baseY, 'F');
-  doc.setFillColor(...mixRgb(rgb, [255, 255, 255], 0.38));
-  doc.triangle(x, top, x + depth, top - depth, x + w + depth, top - depth, 'F');
-  doc.triangle(x, top, x + w + depth, top - depth, x + w, top, 'F');
-  doc.setFillColor(...rgb);
-  doc.rect(x, top, w, h, 'F');
-  doc.setFillColor(...mixRgb(rgb, [255, 255, 255], 0.5));
-  doc.rect(x + 0.4, top + 0.4, 1.3, Math.max(h - 0.8, 0.6), 'F');
+  const light = mixRgb(rgb, [255, 255, 255], 0.3);
+  const dark = mixRgb(rgb, [42, 28, 18], 0.32);
+  doc.setFillColor(230, 218, 204);
+  doc.ellipse(x + w / 2 + 1.5, baseY + 1.7, w / 2 + 2.6, 1.25, 'F');
+  doc.setFillColor(240, 230, 218);
+  doc.ellipse(x + w / 2 + 0.7, baseY + 1.15, w / 2 + 1.2, 0.75, 'F');
+  doc.setFillColor(...dark);
+  doc.triangle(x + w, top, x + w + dx, top - dy, x + w + dx, baseY - dy, 'F');
+  doc.triangle(x + w, top, x + w + dx, baseY - dy, x + w, baseY, 'F');
+  doc.setFillColor(...mixRgb(light, [255, 246, 232], 0.18));
+  doc.triangle(x, top, x + dx, top - dy, x + w + dx, top - dy, 'F');
+  doc.triangle(x, top, x + w + dx, top - dy, x + w, top, 'F');
+  const strips = 12;
+  for (let i = 0; i < strips; i += 1) {
+    const t = i / (strips - 1);
+    doc.setFillColor(...mixRgb(light, rgb, 0.12 + t * 0.88));
+    doc.rect(x, top + (h * i) / strips, w, h / strips + 0.22, 'F');
+  }
+  doc.setFillColor(...mixRgb(light, [255, 255, 255], 0.45));
+  doc.rect(x, top, 0.7, h, 'F');
 }
 
 const PDF_FONT = 'NotoSans';
@@ -122,7 +134,7 @@ function drawCompareBars(doc, collection, expenses, y, margin, contentWidth) {
   const collectH = Math.max(4, ((Number(collection) || 0) / max) * barMax);
   const spendH = Math.max(4, ((Number(expenses) || 0) / max) * barMax);
   const colW = (contentWidth - 16) / 2;
-  const barW = Math.min(28, colW - 18);
+  const barW = Math.min(18, colW - 22);
   const base = y + 32;
   doc.setFontSize(8);
   pdfFont(doc, 'bold');
@@ -243,17 +255,70 @@ function pageMetrics(doc) {
   return { pageWidth, margin, contentWidth: pageWidth - 2 * margin };
 }
 
+function stampMonthLabel(month) {
+  if (month && /[A-Za-z]{3}-\d{2}/.test(String(month))) return String(month);
+  return new Date().toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }).replace(/\s+/g, '-');
+}
+
+function drawMonthSeal(doc, monthLabel) {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const cx = pageWidth - 28;
+  const cy = pageHeight - 36;
+  const ink = TONE.stamp;
+  const angle = -18;
+  const label = stampMonthLabel(monthLabel);
+
+  doc.setDrawColor(...mixRgb(ink, [255, 220, 190], 0.28));
+  doc.setLineWidth(2);
+  doc.circle(cx, cy, 15.6, 'S');
+  doc.setDrawColor(...ink);
+  doc.setLineWidth(0.9);
+  doc.circle(cx, cy, 14.4, 'S');
+  doc.setLineWidth(0.3);
+  doc.circle(cx, cy, 12.6, 'S');
+  if (typeof doc.setLineDashPattern === 'function') {
+    doc.setLineDashPattern([0.65, 0.5], 0);
+    doc.setLineWidth(0.2);
+    doc.circle(cx, cy, 11.2, 'S');
+    doc.setLineDashPattern([], 0);
+  }
+
+  doc.setTextColor(...ink);
+  pdfFont(doc, 'bold');
+  doc.setFontSize(4.8);
+  doc.text('THE PRIDE OF TIRUMALA', cx, cy - 5.4, { align: 'center', angle });
+  doc.setFontSize(11.5);
+  doc.text(label, cx, cy + 1.3, { align: 'center', angle });
+  doc.setFontSize(4.8);
+  pdfFont(doc, 'normal');
+  doc.text('READ · RECORD · CARE', cx, cy + 6.8, { align: 'center', angle });
+}
+
+function finishWithNotesAndSeal(doc, y, margin, contentWidth, noteLines, monthLabel, reportData) {
+  y = drawFriendlyNote(doc, y, margin, contentWidth, REPORT_NOTE_TITLE, noteLines);
+  y = drawDisclaimerBlock(doc, y, margin, contentWidth);
+  const pageHeight = doc.internal.pageSize.getHeight();
+  if (y > pageHeight - 52) {
+    doc.addPage();
+    washPaper(doc);
+  }
+  drawMonthSeal(doc, monthLabel);
+  stampFooters(doc, reportData);
+}
+
 function drawHeaderBanner(doc, pageWidth, { title, subtitle, line3 }) {
   const height = 50;
   for (let i = 0; i < height; i += 1) {
     const t = i / (height - 1);
-    doc.setFillColor(...clampRgb(mixRgb(TONE.saffronTop, TONE.saffron, t)));
-    doc.rect(0, i, pageWidth, 1.1, 'F');
+    const eased = t * 0.55 + t * t * 0.45;
+    doc.setFillColor(...clampRgb(mixRgb(TONE.saffronTop, TONE.saffronDeep, eased)));
+    doc.rect(0, i, pageWidth, 1.2, 'F');
   }
   doc.setFillColor(...TONE.saffronDeep);
-  doc.rect(0, height, pageWidth, 2.4, 'F');
-  doc.setFillColor(...mixRgb(TONE.saffron, [255, 255, 255], 0.45));
-  doc.rect(0, height, pageWidth, 0.7, 'F');
+  doc.rect(0, height, pageWidth, 2.8, 'F');
+  doc.setFillColor(...mixRgb(TONE.saffronDeep, [255, 255, 255], 0.22));
+  doc.rect(0, height, pageWidth, 0.6, 'F');
 
   doc.setTextColor(...TONE.headerInk);
   doc.setFontSize(21);
@@ -411,10 +476,12 @@ function drawExpenseReport(doc, expenses, totalExpenses, y, pageWidth, margin, c
     doc.text(`${pct}%`, margin + 132, y + 5);
     const barX = margin + 140;
     const barW = 35;
-    doc.setFillColor(230, 230, 235);
-    doc.rect(barX, y + 1.5, barW, 3, 'F');
-    doc.setFillColor(79, 124, 255);
-    doc.rect(barX, y + 1.5, barW * pct / 100, 3, 'F');
+    doc.setFillColor(245, 232, 214);
+    doc.roundedRect(barX, y + 1.6, barW, 3.2, 0.8, 0.8, 'F');
+    if (pct > 0) {
+      doc.setFillColor(...TONE.saffronDeep);
+      doc.roundedRect(barX, y + 1.6, Math.max(1.2, barW * pct / 100), 3.2, 0.8, 0.8, 'F');
+    }
     y += 7;
   });
   return y + 8;
@@ -462,7 +529,7 @@ export async function generateMonthlyReport(reportData) {
 
   drawHeaderBanner(doc, pageWidth, {
     title: apartmentName || 'The Pride of Tirumala',
-    subtitle: 'Monthly society accounts',
+    subtitle: 'Monthly apartment accounts',
     line3: month,
   });
   y = 58;
@@ -631,9 +698,7 @@ export async function generateMonthlyReport(reportData) {
     title: FEATURES.MISC_FUNDS ? '3. Expenses' : '2. Expenses',
   });
 
-  y = drawFriendlyNote(doc, y, margin, contentWidth, REPORT_NOTE_TITLE, REPORT_NOTE_LINES);
-  drawDisclaimerBlock(doc, y, margin, contentWidth);
-  stampFooters(doc, reportData);
+  finishWithNotesAndSeal(doc, y, margin, contentWidth, REPORT_NOTE_LINES, month, reportData);
   return doc;
 }
 
@@ -746,9 +811,7 @@ export async function generateActivityReport({ activity, detail }) {
     { title: '2. Expenses', emptyText: 'No expenses recorded for this activity yet.' },
   );
 
-  y = drawFriendlyNote(doc, y, margin, contentWidth, REPORT_NOTE_TITLE, [ACTIVITY_REPORT_NOTE]);
-  drawDisclaimerBlock(doc, y, margin, contentWidth);
-  stampFooters(doc, {
+  finishWithNotesAndSeal(doc, y, margin, contentWidth, [ACTIVITY_REPORT_NOTE], stampMonthLabel(), {
     footerLine: `${activity.name || 'Activity Fund'} | Activity report | Status: ${activity.status || 'Open'}`,
   });
   return doc;

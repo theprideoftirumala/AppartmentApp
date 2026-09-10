@@ -51,13 +51,13 @@ export function isSampleDataEnabled(config) {
 }
 
 export const SOCIETY_DISCLAIMER =
-  'This statement is prepared by resident volunteers who also look after their own homes. We update it whenever a bill or payment is entered. Kindly read it with patience and support one another — we will help as soon as we can. APP-TPT-Tracker in Google Drive is the shared record.';
+  'This statement is prepared by resident volunteers who also look after their own homes. We update it whenever a bill or payment is entered. Kindly read it with patience and support one another — we will help as soon as we can. The shared Google Sheet is the record we all follow.';
 
 export const REPORT_NOTE_TITLE = 'How to read this report';
 export const REPORT_NOTE_LINES = [
-  'The figures show what the society collected and spent this month, and what remains for common use.',
-  'A receipt may still arrive after this copy is made. That is normal. The next update will include it. No family is being singled out.',
-  'If a number differs from what you remember, please write to the treasurer. We will sit with the Balance tab in APP-TPT-Tracker and set it right together.',
+  'The figures show what our building collected and spent this month, and what remains for common use.',
+  'A receipt may still arrive after this copy is made. That is normal. The next update will include it.',
+  'If a number differs from what you remember, please write to the treasurer. We will sit with the Balance tab of the shared Google Sheet and set it right together.',
 ];
 export const ACTIVITY_REPORT_NOTE =
   'This sheet is only for the named activity. It does not change monthly maintenance. Please read each line once before forwarding it to the group.';

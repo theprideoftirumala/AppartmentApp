@@ -137,7 +137,7 @@ export default function Settings() {
       showToast('The founding owner cannot be removed.', 'error');
       return;
     }
-    if (!confirm(`Remove access for ${email}? They will lose Drive access to the society sheet.`)) return;
+    if (!confirm(`Remove access for ${email}? They will lose Drive access to the shared sheet.`)) return;
     try {
       await removeAccessControl(email);
       await removeSharing(email).catch(() => {});
@@ -335,7 +335,7 @@ export default function Settings() {
               {[
                 {
                   key: 'APARTMENT_NAME', label: 'Apartment Name', type: 'text', readonly: true,
-                  info: 'Shown on the dashboard and PDFs. Read-only here — change it only in the Configuration tab of the Google Sheet if the society name ever changes.'
+                  info: 'Shown on the dashboard and PDFs. Read-only here — change it only in the Configuration tab of the Google Sheet if the apartment name ever changes.'
                 },
                 {
                   key: 'MONTHLY_MAINTENANCE', label: 'Monthly Maintenance (₹)', type: 'number',
@@ -363,7 +363,7 @@ export default function Settings() {
                 },
                 FEATURES.SAMPLE_DATA && {
                   key: 'SAMPLE_DATA', label: 'Sample data (Y/N)', type: 'select', options: ['N', 'Y'],
-                  info: 'Y allows the founding owner to load pretend test rows. Leave N for real society accounts.'
+                  info: 'Y allows the founding owner to load pretend test rows. Leave N for real apartment accounts.'
                 },
               ].filter(Boolean).map(field => (
                 <ConfigField
@@ -449,7 +449,7 @@ export default function Settings() {
               )}
             </div>
             <p className="text-muted text-sm mb-4">
-              One society workbook. Founding owner is <strong>{FOUNDING_OWNER_EMAIL}</strong>.
+              One shared workbook. Founding owner is <strong>{FOUNDING_OWNER_EMAIL}</strong>.
               New users default to <strong>Reader</strong> (Google Sheet Viewer). Max {config.MAX_USERS || 20} users,
               max {config.MAX_OWNERS || 2} owners. Only the founding owner can grant Owner.
             </p>
@@ -781,7 +781,7 @@ function AddUserModal({ isOpen, onClose, onSave, saving, accessList, config, act
     <Modal isOpen={isOpen} onClose={onClose} title="Add User">
       <form onSubmit={handleSubmit} className="form-grid">
         <p className="text-muted text-sm">
-          Added users receive <strong>read-only</strong> Google Drive access to the existing society sheet.
+          Added users receive <strong>read-only</strong> Google Drive access to the existing shared sheet.
           They will not create a new spreadsheet.
         </p>
         <div className="form-group">

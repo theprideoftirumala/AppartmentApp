@@ -93,7 +93,7 @@ export default function Dashboard() {
           } else {
             signOut();
             navigate('/login');
-            showToast(`Access denied: this account is not on the society access list. Contact the founding owner.`, 'error');
+            showToast(`Access denied: this account is not on the apartment access list. Contact the founding owner.`, 'error');
             return;
           }
         } catch (aclErr) {
@@ -155,12 +155,12 @@ export default function Dashboard() {
                   navigate('/setup');
                 }}
               >
-                Reconnect society sheet
+                Reconnect shared sheet
               </button>
             ) : (
               <p className="text-muted text-sm mt-3">
-                Only the founding owner can create or reconnect the society spreadsheet.
-                Ask that owner to add you as a Reader and share APP-TPT-Tracker as Viewer.
+                Only the founding owner can create or reconnect the shared spreadsheet.
+                Ask that owner to add you as a Reader and share the Google Sheet as Viewer.
               </p>
             )}
           </div>
@@ -558,7 +558,7 @@ export default function Dashboard() {
         <div>
           <strong>Available balance: {formatCurrency(dashboardAvailableBalance(totals, config))}</strong>
           <p className="text-sm">
-            Same figure as the Balance tab in APP-TPT-Tracker. Opening surplus is ₹612. Books start Sep-26.
+            Same figure as the Balance tab of the shared Google Sheet. Opening surplus is ₹612. Books start Sep-26.
           </p>
         </div>
       </div>

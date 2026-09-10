@@ -29,8 +29,8 @@ export default function AccessDenied() {
                 )}
 
                 <p className="access-denied-message">
-                    This Google account is not on the society access list, or it is not
-                    shared the society spreadsheet as Viewer.
+                    This Google account is not on the apartment access list, or it is not
+                    shared the Google Sheet as Viewer.
                 </p>
 
                 <p className="access-denied-hint">

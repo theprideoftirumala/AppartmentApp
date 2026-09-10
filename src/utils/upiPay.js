@@ -63,7 +63,7 @@ function linkPayee(payee, vpa) {
     vpa,
     name: payee.name || payee.category,
     amount: payee.amount ?? payee.defaultAmount,
-    note: payee.note || payee.category || 'TPT society',
+    note: payee.note || payee.category || 'TPT maintenance',
   };
 }
 

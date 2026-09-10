@@ -43,7 +43,7 @@ export function balanceStaticRows() {
     ['Opening surplus (carry-forward)', '', 'Money already in hand on 1 Sep 2026. Comes from Configuration OPENING_SURPLUS.'],
     ['Total collected (all months)', '', 'Sum of Amount Paid on the Maintenance tab.'],
     ['Total spent (all months)', '', 'Sum of Amount on the Expenses tab.'],
-    ['Available balance', '', 'Opening surplus + collected − spent. This is the society cash position.'],
+    ['Available balance', '', 'Opening surplus + collected − spent. This is the apartment cash position.'],
     ['Overall status', '', 'SURPLUS if available balance > 0. DEFICIT if below 0. BALANCED if exactly 0.'],
     ['', '', ''],
     ['How to read a month', 'Open Monthly Summary', 'This month surplus/deficit is Collected − Spent. Running balance is the available cash after that month.'],

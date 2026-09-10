@@ -17,7 +17,7 @@ The website has no server. Every number lives on that sheet.
 
 Books start ${FIRST_APP_MONTH_LABEL}. Opening surplus is ₹${OPENING_SURPLUS}.
 Available balance = opening surplus + all collected − all spent.
-If that number is above 0 the society is in SURPLUS. Below 0 is DEFICIT.
+If that number is above 0 the building is in SURPLUS. Below 0 is DEFICIT.
 
 Open the Balance tab in Google Sheets first. A layman can see surplus or deficit there without this app.`,
   },

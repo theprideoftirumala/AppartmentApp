@@ -139,7 +139,7 @@ export default function Reports() {
       `Spent: ₹${Number(reportData.totalExpenses || 0).toLocaleString('en-IN')}\n` +
       `This month: ${reportData.monthStatus} ₹${Math.abs(reportData.netBalance).toLocaleString('en-IN')}\n` +
       `Available: ${reportData.availableStatus} ₹${Number(reportData.cumulativeBalance || 0).toLocaleString('en-IN')}\n\n` +
-      `A PDF is in your downloads — please attach it if useful. We will sit with the Balance tab in APP-TPT-Tracker if any figure needs a second look.\n\nWith regards,\nTPT committee`,
+      `A PDF is in your downloads — please attach it if useful. We will sit with the Balance tab of the shared Google Sheet if any figure needs a second look.\n\nWith regards,\nTPT residents`,
     );
     await downloadReport(reportData);
     window.open(`mailto:?subject=${subject}&body=${body}`, '_self');
@@ -158,7 +158,7 @@ export default function Reports() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Monthly Report</h1>
-          <p className="page-subtitle">Collected, spent, and available — same figures as the Balance tab</p>
+          <p className="page-subtitle">Collected, spent, and available — same figures as the Balance tab of the shared Google Sheet</p>
         </div>
         <div className="flex gap-2 items-center flex-wrap">
           <select
@@ -187,7 +187,7 @@ export default function Reports() {
         <div className="expert-report animate-fade-in">
           <header className="report-header">
             <h2>{reportData.apartmentName}</h2>
-            <p className="text-muted">Financial brief — {reportData.month}</p>
+            <p className="text-muted">Apartment accounts — {reportData.month}</p>
             <div className="report-status-row">
               <span className={`report-status-pill ${monthClass}`}>{reportData.monthStatus} this month</span>
               <span className={`report-status-pill ${available >= 0 ? 'report-surplus' : 'report-deficit'}`}>
@@ -366,6 +366,14 @@ export default function Reports() {
             {REPORT_NOTE_LINES.map((line) => (
               <p key={line}>{line}</p>
             ))}
+          </div>
+
+          <div className="report-month-seal" aria-hidden="true">
+            <div className="report-month-seal-ring">
+              <span className="report-month-seal-top">The Pride of Tirumala</span>
+              <strong>{reportData.month}</strong>
+              <span className="report-month-seal-bottom">Read · Record · Care</span>
+            </div>
           </div>
         </div>
       ) : null}
