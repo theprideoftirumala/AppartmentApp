@@ -10,6 +10,8 @@ import {
   OPENING_SURPLUS,
   SHEET_FILE_NAME,
   SOCIETY_DISCLAIMER,
+  REPORT_NOTE_TITLE,
+  REPORT_NOTE_LINES,
   isSampleDataEnabled,
   isSocietySheetName,
 } from './constants';
@@ -44,6 +46,13 @@ describe('society disclaimer', () => {
   it('is cooperative and does not blame members', () => {
     expect(SOCIETY_DISCLAIMER).toMatch(/volunteers/i);
     expect(SOCIETY_DISCLAIMER).toMatch(/support one another/i);
+    expect(SOCIETY_DISCLAIMER).not.toMatch(/IMPORTANT NOTE/i);
+  });
+
+  it('keeps the report note warm and neighbourly', () => {
+    expect(REPORT_NOTE_TITLE).toMatch(/note from the committee/i);
+    expect(REPORT_NOTE_LINES.join(' ')).toMatch(/neighbours/i);
+    expect(REPORT_NOTE_LINES.join(' ')).not.toMatch(/not final/i);
   });
 });
 

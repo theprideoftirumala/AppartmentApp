@@ -1148,9 +1148,9 @@ tbody tr:last-child td {
   margin: var(--space-6) var(--space-6) calc(var(--bottom-nav-height) + var(--space-4));
   padding: var(--space-4);
   font-size: var(--font-size-xs);
-  line-height: 1.55;
+  line-height: 1.6;
   color: var(--color-text-muted);
-  background: var(--glass-bg);
+  background: var(--color-success-bg);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-md);
 }

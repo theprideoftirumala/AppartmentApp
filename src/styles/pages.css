@@ -2014,12 +2014,12 @@
 
 .report-compare-collect,
 .report-ytd-collect {
-  background: var(--color-success);
+  background: #3e8266;
 }
 
 .report-compare-spend,
 .report-ytd-spend {
-  background: var(--color-danger);
+  background: #b06258;
 }
 
 .report-ytd-legend {
@@ -2078,6 +2078,31 @@
 .report-footnote {
   margin: 0;
   text-align: center;
+}
+
+.report-friendly-note {
+  margin: 0;
+  padding: var(--space-4) var(--space-5);
+  background: var(--color-success-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  color: var(--color-text);
+}
+
+.report-friendly-note strong {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-size: var(--font-size-sm);
+}
+
+.report-friendly-note p {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-sm);
+  line-height: 1.55;
+}
+
+.report-friendly-note p:last-child {
+  margin-bottom: 0;
 }
 
 /* ─── Activities Timeline ──────────────────────────────── */

@@ -9,7 +9,32 @@
  */
 
 import jsPDF from 'jspdf';
-import { FEATURES, SOCIETY_DISCLAIMER } from '../config/constants';
+import {
+  ACTIVITY_REPORT_NOTE,
+  FEATURES,
+  REPORT_NOTE_LINES,
+  REPORT_NOTE_TITLE,
+  SOCIETY_DISCLAIMER,
+} from '../config/constants';
+
+/** Soft teal / terracotta — easier on the eyes than navy, neon green, and warning yellow. */
+const TONE = {
+  header: [47, 88, 82],
+  headerAccent: [196, 164, 110],
+  section: [62, 99, 92],
+  ink: [55, 64, 62],
+  muted: [92, 104, 100],
+  collect: [62, 130, 102],
+  collectBg: [232, 244, 236],
+  spend: [176, 98, 88],
+  spendBg: [252, 238, 234],
+  opening: [72, 108, 138],
+  openingBg: [236, 242, 247],
+  noteBg: [236, 246, 241],
+  noteInk: [52, 88, 78],
+  discBg: [246, 247, 245],
+  pending: [176, 120, 72],
+};
 
 const PDF_FONT = 'NotoSans';
 let cachedFontBase64 = null;
@@ -64,21 +89,37 @@ function drawCompareBars(doc, collection, expenses, y, margin, contentWidth) {
   pdfFont(doc, 'bold');
   doc.setTextColor(60, 60, 80);
   doc.text('Collected vs spent', margin, y + 4);
-  doc.setFillColor(40, 167, 69);
+  doc.setFillColor(...TONE.collect);
   doc.rect(margin + 8, base - collectH, colW - 16, collectH, 'F');
-  doc.setFillColor(220, 53, 69);
+  doc.setFillColor(...TONE.spend);
   doc.rect(margin + colW + 8, base - spendH, colW - 16, spendH, 'F');
   pdfFont(doc, 'normal');
   doc.setFontSize(7);
-  doc.setTextColor(40, 167, 69);
+  doc.setTextColor(...TONE.collect);
   doc.text(`Collected ${formatCurrency(collection)}`, margin + 8, base + 5);
-  doc.setTextColor(220, 53, 69);
+  doc.setTextColor(...TONE.spend);
   doc.text(`Spent ${formatCurrency(expenses)}`, margin + colW + 8, base + 5);
   return base + 10;
 }
 
+function drawFriendlyNote(doc, y, margin, contentWidth, title, lines) {
+  const wrapped = lines.flatMap((line) => doc.splitTextToSize(line, contentWidth - 10));
+  const height = 12 + wrapped.length * 4;
+  y = checkPageBreak(doc, y, margin, height + 6);
+  doc.setFillColor(...TONE.noteBg);
+  doc.roundedRect(margin, y, contentWidth, height, 2, 2, 'F');
+  doc.setFontSize(8.5);
+  pdfFont(doc, 'bold');
+  doc.setTextColor(...TONE.noteInk);
+  doc.text(title, margin + 4, y + 7);
+  doc.setFontSize(7.5);
+  pdfFont(doc, 'normal');
+  doc.text(wrapped, margin + 4, y + 12);
+  return y + height + 4;
+}
+
 function drawSectionHeader(doc, text, y, pageWidth, margin) {
-  doc.setFillColor(50, 55, 80);
+  doc.setFillColor(...TONE.section);
   doc.rect(margin, y, pageWidth - 2 * margin, 9, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(10);
@@ -158,9 +199,9 @@ function pageMetrics(doc) {
 }
 
 function drawHeaderBanner(doc, pageWidth, { title, subtitle, line3 }) {
-  doc.setFillColor(25, 28, 42);
+  doc.setFillColor(...TONE.header);
   doc.rect(0, 0, pageWidth, 48, 'F');
-  doc.setFillColor(79, 124, 255);
+  doc.setFillColor(...TONE.headerAccent);
   doc.rect(0, 48, pageWidth, 2, 'F');
 
   doc.setTextColor(255, 255, 255);
@@ -203,11 +244,11 @@ function drawDisclaimerBlock(doc, y, margin, contentWidth) {
   y = checkPageBreak(doc, y, margin, 28);
   const disclaimerLines = doc.splitTextToSize(SOCIETY_DISCLAIMER, contentWidth - 8);
   const discH = 10 + disclaimerLines.length * 4;
-  doc.setFillColor(248, 248, 248);
+  doc.setFillColor(...TONE.discBg);
   doc.roundedRect(margin, y, contentWidth, discH, 2, 2, 'F');
   doc.setFontSize(7);
   pdfFont(doc, 'normal');
-  doc.setTextColor(90, 90, 90);
+  doc.setTextColor(...TONE.muted);
   doc.text(disclaimerLines, margin + 4, y + 6);
   return y + discH + 4;
 }
@@ -221,7 +262,7 @@ function stampFooters(doc, reportData) {
 }
 
 function drawExpenseReport(doc, expenses, totalExpenses, y, pageWidth, margin, contentWidth, options = {}) {
-  const title = options.title || '3. EXPENSES REPORT';
+  const title = options.title || '2. Expenses';
   const emptyText = options.emptyText || 'No expenses recorded for this month.';
 
   y = checkPageBreak(doc, y, margin, 40);
@@ -260,7 +301,7 @@ function drawExpenseReport(doc, expenses, totalExpenses, y, pageWidth, margin, c
     rowData.forEach((val, i) => {
       if (i === 3) {
         pdfFont(doc, 'bold');
-        doc.setTextColor(220, 53, 69);
+        doc.setTextColor(...TONE.spend);
       }
       doc.text(String(val), colX, y + 5);
       if (i === 3) {
@@ -272,11 +313,11 @@ function drawExpenseReport(doc, expenses, totalExpenses, y, pageWidth, margin, c
     y += 7;
   });
 
-  doc.setFillColor(255, 235, 238);
+  doc.setFillColor(...TONE.spendBg);
   doc.rect(margin, y, contentWidth, 8, 'F');
   pdfFont(doc, 'bold');
   doc.setFontSize(8);
-  doc.setTextColor(220, 53, 69);
+  doc.setTextColor(...TONE.spend);
   doc.text(`TOTAL EXPENSES: ${formatCurrency(totalExpenses)}`, margin + 4, y + 5.5);
   doc.text(`${expenses.length} transaction(s)`, margin + contentWidth - 50, y + 5.5);
   y += 12;
@@ -374,10 +415,10 @@ export async function generateMonthlyReport(reportData) {
   const runningStatus = availableStatus || (available > 0 ? 'SURPLUS' : available < 0 ? 'DEFICIT' : 'BALANCED');
 
   const summaryCards = [
-    { label: 'Opening surplus', value: formatCurrency(opening), color: [50, 80, 200], bg: [230, 240, 255] },
-    { label: 'Collected this month', value: formatCurrency(totalCollection), color: [40, 167, 69], bg: [235, 250, 240] },
-    { label: 'Spent this month', value: formatCurrency(totalExpenses), color: [220, 53, 69], bg: [255, 235, 238] },
-    { label: 'Available balance', value: formatCurrency(available), color: available >= 0 ? [40, 167, 69] : [220, 53, 69], bg: available >= 0 ? [235, 250, 240] : [255, 235, 238] },
+    { label: 'Opening surplus', value: formatCurrency(opening), color: TONE.opening, bg: TONE.openingBg },
+    { label: 'Collected this month', value: formatCurrency(totalCollection), color: TONE.collect, bg: TONE.collectBg },
+    { label: 'Spent this month', value: formatCurrency(totalExpenses), color: TONE.spend, bg: TONE.spendBg },
+    { label: 'Available balance', value: formatCurrency(available), color: available >= 0 ? TONE.collect : TONE.spend, bg: available >= 0 ? TONE.collectBg : TONE.spendBg },
   ];
   y = drawSummaryCards(doc, summaryCards, y, margin, contentWidth);
 
@@ -398,18 +439,18 @@ export async function generateMonthlyReport(reportData) {
 
   // ─── Remaining / Deficit Summary ──────────────────────
   const isDeficit = netBalance < 0;
-  const bgColor = isDeficit ? [255, 240, 240] : [235, 250, 240];
-  const textColor = isDeficit ? [180, 40, 40] : [30, 130, 60];
+  const bgColor = isDeficit ? TONE.spendBg : TONE.collectBg;
+  const textColor = isDeficit ? TONE.spend : TONE.collect;
   doc.setFillColor(...bgColor);
   doc.roundedRect(margin, y, contentWidth, 18, 2, 2, 'F');
   doc.setFontSize(8.5);
   pdfFont(doc, 'bold');
   doc.setTextColor(...textColor);
-  doc.text(`THIS MONTH ${thisMonthStatus}: ${formatCurrency(netBalance)}  (collected − spent)`, margin + 4, y + 5.5);
+  doc.text(`This month — ${thisMonthStatus}: ${formatCurrency(netBalance)}  (collected minus spent)`, margin + 4, y + 5.5);
   doc.setFontSize(8);
   pdfFont(doc, 'bold');
-  doc.setTextColor(...(available < 0 ? [180, 40, 40] : [30, 130, 60]));
-  doc.text(`AVAILABLE BALANCE ${runningStatus}: ${formatCurrency(available)}`, margin + 4, y + 11);
+  doc.setTextColor(...(available < 0 ? TONE.spend : TONE.collect));
+  doc.text(`Available — ${runningStatus}: ${formatCurrency(available)}`, margin + 4, y + 11);
   doc.setFontSize(7);
   pdfFont(doc, 'normal');
   doc.setTextColor(80, 80, 80);
@@ -420,9 +461,9 @@ export async function generateMonthlyReport(reportData) {
   y += 6;
 
   // ═══════════════════════════════════════════════════════
-  // SECTION 1: RECEIVED PAYMENT SUMMARY
+  // SECTION 1: Maintenance received
   // ═══════════════════════════════════════════════════════
-  y = drawSectionHeader(doc, '1. RECEIVED PAYMENT SUMMARY', y, pageWidth, margin);
+  y = drawSectionHeader(doc, '1. Maintenance received', y, pageWidth, margin);
   y += 2;
 
   const payColWidths = [18, 42, 28, 28, 25, 20, 20];
@@ -454,7 +495,7 @@ export async function generateMonthlyReport(reportData) {
 
     rowData.forEach((val, i) => {
       if (i === 6) {
-        const statusColors = { PAID: [40, 167, 69], PENDING: [220, 53, 69], PARTIAL: [255, 153, 0] };
+        const statusColors = { PAID: TONE.collect, PENDING: TONE.pending, PARTIAL: TONE.opening };
         doc.setTextColor(...(statusColors[val] || [60, 60, 60]));
         pdfFont(doc, 'bold');
       } else {
@@ -476,7 +517,7 @@ export async function generateMonthlyReport(reportData) {
   doc.setTextColor(40, 40, 60);
   doc.text('TOTAL', margin + 2, y + 5.5);
   doc.text(formatCurrency(maintenance?.reduce((s, r) => s + r.amountDue, 0) || 0), margin + 62, y + 5.5);
-  doc.setTextColor(40, 167, 69);
+  doc.setTextColor(...TONE.collect);
   doc.text(formatCurrency(totalCollection), margin + 90, y + 5.5);
   y += 14;
 
@@ -529,32 +570,10 @@ export async function generateMonthlyReport(reportData) {
   }
 
   y = drawExpenseReport(doc, expenses, totalExpenses, y, pageWidth, margin, contentWidth, {
-    title: FEATURES.MISC_FUNDS ? '3. EXPENSES REPORT' : '2. EXPENSES REPORT',
+    title: FEATURES.MISC_FUNDS ? '3. Expenses' : '2. Expenses',
   });
 
-  // ─── Important Note ─────────────────────────────────────
-  y = checkPageBreak(doc, y, margin, 30);
-  doc.setFillColor(255, 248, 220);
-  doc.roundedRect(margin, y, contentWidth, 22, 2, 2, 'F');
-  doc.setDrawColor(200, 160, 0);
-  doc.roundedRect(margin, y, contentWidth, 22, 2, 2, 'S');
-
-  doc.setFontSize(8.5);
-  pdfFont(doc, 'bold');
-  doc.setTextColor(120, 80, 0);
-  doc.text('IMPORTANT NOTE:', margin + 4, y + 7);
-
-  doc.setFontSize(7.5);
-  pdfFont(doc, 'normal');
-  doc.setTextColor(100, 70, 0);
-  const noteText = 'The expenses shown in this report are not final. Any missed or pending expenses may be added to the sheet at a later date.';
-  const noteText2 = 'This report is shared only for your information and reference. The Google Sheet is the final source of truth.';
-  const noteLines1 = doc.splitTextToSize(noteText, contentWidth - 10);
-  const noteLines2 = doc.splitTextToSize(noteText2, contentWidth - 10);
-  doc.text(noteLines1, margin + 4, y + 12);
-  doc.text(noteLines2, margin + 4, y + 12 + (noteLines1.length * 4));
-  y += 28;
-
+  y = drawFriendlyNote(doc, y, margin, contentWidth, REPORT_NOTE_TITLE, REPORT_NOTE_LINES);
   drawDisclaimerBlock(doc, y, margin, contentWidth);
   stampFooters(doc, reportData);
   return doc;
@@ -581,9 +600,9 @@ export async function generateActivityReport({ activity, detail }) {
   let y = 58;
 
   y = drawSummaryCards(doc, [
-    { label: 'Total Collection', value: formatCurrency(collected), color: [40, 167, 69], bg: [235, 250, 240] },
-    { label: 'Total Expenses', value: formatCurrency(spent), color: [220, 53, 69], bg: [255, 235, 238] },
-    { label: 'Net Balance', value: formatCurrency(balance), color: balance >= 0 ? [40, 167, 69] : [220, 53, 69], bg: balance >= 0 ? [235, 250, 240] : [255, 235, 238] },
+    { label: 'Total Collection', value: formatCurrency(collected), color: TONE.collect, bg: TONE.collectBg },
+    { label: 'Total Expenses', value: formatCurrency(spent), color: TONE.spend, bg: TONE.spendBg },
+    { label: 'Net Balance', value: formatCurrency(balance), color: balance >= 0 ? TONE.collect : TONE.spend, bg: balance >= 0 ? TONE.collectBg : TONE.spendBg },
   ], y, margin, contentWidth);
 
   doc.setFillColor(248, 249, 252);
@@ -598,18 +617,18 @@ export async function generateActivityReport({ activity, detail }) {
   y += 20;
 
   const isDeficit = balance < 0;
-  doc.setFillColor(...(isDeficit ? [255, 240, 240] : [235, 250, 240]));
+  doc.setFillColor(...(isDeficit ? TONE.spendBg : TONE.collectBg));
   doc.roundedRect(margin, y, contentWidth, 12, 2, 2, 'F');
   doc.setFontSize(8.5);
   pdfFont(doc, 'bold');
-  doc.setTextColor(...(isDeficit ? [180, 40, 40] : [30, 130, 60]));
+  doc.setTextColor(...(isDeficit ? TONE.spend : TONE.collect));
   doc.text(`${isDeficit ? 'DEFICIT THIS ACTIVITY' : 'SURPLUS / REMAINING FUNDS'}: ${formatCurrency(Math.abs(balance))}`, margin + 4, y + 5);
   doc.setFontSize(7);
   pdfFont(doc, 'normal');
   doc.text(`Collection ${formatCurrency(collected)} - Expenses ${formatCurrency(spent)} = ${formatCurrency(balance)}`, margin + 4, y + 9.5);
   y += 16;
 
-  y = drawSectionHeader(doc, '1. RECEIVED PAYMENT SUMMARY', y, pageWidth, margin);
+  y = drawSectionHeader(doc, '1. Contributions received', y, pageWidth, margin);
   y += 2;
   const payColWidths = [18, 42, 22, 28, 28, 25, 17];
   y = drawTableHeader(doc, ['Flat', 'Owner', 'Join', 'Due', 'Paid', 'Date', 'Mode'], payColWidths, y, margin, contentWidth);
@@ -635,7 +654,7 @@ export async function generateActivityReport({ activity, detail }) {
     values.forEach((val, i) => {
       if (i === 4) {
         pdfFont(doc, 'bold');
-        doc.setTextColor(40, 167, 69);
+        doc.setTextColor(...TONE.collect);
       } else {
         pdfFont(doc, 'normal');
         doc.setTextColor(60, 60, 60);
@@ -653,7 +672,7 @@ export async function generateActivityReport({ activity, detail }) {
   doc.setTextColor(40, 40, 60);
   doc.text('TOTAL', margin + 2, y + 5.5);
   doc.text(formatCurrency(members.reduce((sum, row) => sum + (Number(row.amountDue) || 0), 0)), margin + 82, y + 5.5);
-  doc.setTextColor(40, 167, 69);
+  doc.setTextColor(...TONE.collect);
   doc.text(formatCurrency(collected), margin + 110, y + 5.5);
   y += 14;
 
@@ -665,24 +684,10 @@ export async function generateActivityReport({ activity, detail }) {
     pageWidth,
     margin,
     contentWidth,
-    { title: '2. EXPENSES REPORT', emptyText: 'No expenses recorded for this activity.' },
+    { title: '2. Expenses', emptyText: 'No expenses recorded for this activity yet.' },
   );
 
-  y = checkPageBreak(doc, y, margin, 30);
-  doc.setFillColor(255, 248, 220);
-  doc.roundedRect(margin, y, contentWidth, 22, 2, 2, 'F');
-  doc.setDrawColor(200, 160, 0);
-  doc.roundedRect(margin, y, contentWidth, 22, 2, 2, 'S');
-  doc.setFontSize(8.5);
-  pdfFont(doc, 'bold');
-  doc.setTextColor(120, 80, 0);
-  doc.text('IMPORTANT NOTE:', margin + 4, y + 7);
-  doc.setFontSize(7.5);
-  pdfFont(doc, 'normal');
-  doc.setTextColor(100, 70, 0);
-  doc.text(doc.splitTextToSize('Expenses on this activity sheet are separate from monthly maintenance. Review every line before sharing.', contentWidth - 10), margin + 4, y + 12);
-  y += 28;
-
+  y = drawFriendlyNote(doc, y, margin, contentWidth, REPORT_NOTE_TITLE, [ACTIVITY_REPORT_NOTE]);
   drawDisclaimerBlock(doc, y, margin, contentWidth);
   stampFooters(doc, {
     footerLine: `${activity.name || 'Activity Fund'} | Activity report | Status: ${activity.status || 'Open'}`,

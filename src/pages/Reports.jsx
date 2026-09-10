@@ -25,6 +25,7 @@ import { CategoryBars, CollectionDonut, CompareBars, YtdBars } from '../componen
 import StatusBadge from '../components/common/StatusBadge';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Navbar from '../components/common/Navbar';
+import { REPORT_NOTE_LINES, REPORT_NOTE_TITLE } from '../config/constants';
 
 async function loadMonthReport(month) {
   const [allMaintenance, allExpenses, config, flats] = await Promise.all([
@@ -138,7 +139,7 @@ export default function Reports() {
       `Spent: ₹${Number(reportData.totalExpenses || 0).toLocaleString('en-IN')}\n` +
       `This month: ${reportData.monthStatus} ₹${Math.abs(reportData.netBalance).toLocaleString('en-IN')}\n` +
       `Available: ${reportData.availableStatus} ₹${Number(reportData.cumulativeBalance || 0).toLocaleString('en-IN')}\n\n` +
-      `The PDF is attached from your downloads. The Google Sheet is the source of truth.\n\nRegards,\nTPT Management`,
+      `A PDF is in your downloads — please attach it. The Balance tab in APP-TPT-Tracker is the copy we all use.\n\nWarm regards,\nTPT committee`,
     );
     await downloadReport(reportData);
     window.open(`mailto:?subject=${subject}&body=${body}`, '_self');
@@ -360,9 +361,12 @@ export default function Reports() {
             </section>
           )}
 
-          <p className="report-footnote text-muted text-sm">
-            Figures may change as bills arrive. The Google Sheet Balance tab is the source of truth.
-          </p>
+          <div className="report-friendly-note">
+            <strong>{REPORT_NOTE_TITLE}</strong>
+            {REPORT_NOTE_LINES.map((line) => (
+              <p key={line}>{line}</p>
+            ))}
+          </div>
         </div>
       ) : null}
     </div>
