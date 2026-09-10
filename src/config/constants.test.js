@@ -50,7 +50,7 @@ describe('society disclaimer', () => {
   });
 
   it('explains the report without blaming anyone', () => {
-    expect(REPORT_NOTE_TITLE).toMatch(/please keep this in mind/i);
+    expect(REPORT_NOTE_TITLE).toMatch(/for your information/i);
     const note = `${SOCIETY_DISCLAIMER} ${REPORT_NOTE_LINES.join(' ')}`;
     expect(note).not.toMatch(/society/i);
     expect(note).not.toMatch(/APP-TPT-Tracker/i);

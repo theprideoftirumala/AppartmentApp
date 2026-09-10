@@ -51,13 +51,12 @@ export function isSampleDataEnabled(config) {
 }
 
 export const SOCIETY_DISCLAIMER =
-  'This statement is prepared by resident volunteers who also look after their own homes. We record what is entered for common use, and kindly do not read it as cover for repairs, damages, or extra expenses beyond that account. Please bear with us and support one another — we will help as soon as we can. The shared Google Sheet is the record we all follow.';
+  'These accounts are kept by resident volunteers alongside their own work. Figures may be updated as bills arrive. Please bear with us and support one another — we will help as soon as we can. The shared Google Sheet is the record we all follow.';
 
-export const REPORT_NOTE_TITLE = 'Please keep this in mind';
+export const REPORT_NOTE_TITLE = 'For your information';
 export const REPORT_NOTE_LINES = [
-  'These figures show only what our building collected and paid for common use this month. A bill or receipt may still arrive after this copy is made — the next update will include it.',
+  'The expenses shown in this report are for information and reference. Any missed or pending expenses may be added to the shared Google Sheet when they arrive.',
   'Household repairs, personal damages, and extra costs that were not paid from the common account sit outside this statement. Kindly take those up with the person or vendor concerned.',
-  'If a number differs from what you remember, please write to the treasurer. We will sit with the Balance tab of the shared Google Sheet and set it right together.',
 ];
 export const ACTIVITY_REPORT_NOTE =
   'This sheet is only for the named activity. It does not change monthly maintenance. Please read each line once before forwarding it to the group.';

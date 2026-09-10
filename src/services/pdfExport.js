@@ -16,6 +16,7 @@ import {
   REPORT_NOTE_TITLE,
   SOCIETY_DISCLAIMER,
 } from '../config/constants';
+import { stillDueHighlights } from '../utils/expertReport';
 
 /** India-flag saffron (#FF9933) lightened for the header; cream paper; sage / terracotta figures. */
 const TONE = {
@@ -215,29 +216,6 @@ function checkPageBreak(doc, y, margin, needed = 20) {
   return y;
 }
 
-/**
- * Add footer to current page
- */
-function addFooter(doc, reportData, pageNum) {
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 15;
-  const footerY = pageHeight - 10;
-
-  doc.setDrawColor(200, 200, 200);
-  doc.line(margin, footerY - 4, pageWidth - margin, footerY - 4);
-
-  doc.setFontSize(6.5);
-  doc.setTextColor(150, 150, 150);
-  pdfFont(doc, 'normal');
-  doc.text(
-    reportData.footerLine
-      || `${reportData.apartmentName} | Monthly Report ${reportData.month} | Treasurer: Flat ${reportData.config?.TREASURER_FLAT || '401'} | President: Flat ${reportData.config?.PRESIDENT_FLAT || '102'}`,
-    margin,
-    footerY
-  );
-  doc.text(`Page ${pageNum}`, pageWidth - margin, footerY, { align: 'right' });
-}
 
 async function createPdfDoc() {
   const doc = new jsPDF('p', 'mm', 'a4');
@@ -300,7 +278,7 @@ function drawMonthSeal(doc, monthLabel) {
   doc.text('COMMON ACCOUNTS', cx, cy + 8.5, { align: 'center', angle });
 }
 
-function finishWithNotesAndSeal(doc, y, margin, contentWidth, noteLines, monthLabel, reportData) {
+function finishWithNotesAndSeal(doc, y, margin, contentWidth, noteLines, monthLabel) {
   y = drawFriendlyNote(doc, y, margin, contentWidth, REPORT_NOTE_TITLE, noteLines);
   y = drawDisclaimerBlock(doc, y, margin, contentWidth);
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -309,10 +287,9 @@ function finishWithNotesAndSeal(doc, y, margin, contentWidth, noteLines, monthLa
     washPaper(doc);
   }
   drawMonthSeal(doc, monthLabel);
-  stampFooters(doc, reportData);
 }
 
-function drawHeaderBanner(doc, pageWidth, { title, subtitle, line3 }) {
+function drawHeaderBanner(doc, pageWidth, { title, subtitle, line3, meta }) {
   const height = 50;
   for (let i = 0; i < height; i += 1) {
     const t = i / (height - 1);
@@ -341,7 +318,12 @@ function drawHeaderBanner(doc, pageWidth, { title, subtitle, line3 }) {
   doc.setFontSize(8);
   pdfFont(doc, 'normal');
   doc.setTextColor(...TONE.muted);
-  doc.text(`Prepared on ${new Date().toLocaleDateString('en-IN', { dateStyle: 'long' })}`, pageWidth / 2, 45, { align: 'center' });
+  doc.text(
+    meta || `Prepared on ${new Date().toLocaleDateString('en-IN', { dateStyle: 'long' })}`,
+    pageWidth / 2,
+    45,
+    { align: 'center' },
+  );
 }
 
 function drawSummaryCards(doc, summaryCards, y, margin, contentWidth) {
@@ -378,14 +360,6 @@ function washPaper(doc) {
   const pageHeight = doc.internal.pageSize.getHeight();
   doc.setFillColor(...TONE.paper);
   doc.rect(0, 0, pageWidth, pageHeight, 'F');
-}
-
-function stampFooters(doc, reportData) {
-  const totalPages = doc.internal.getNumberOfPages();
-  for (let i = 1; i <= totalPages; i++) {
-    doc.setPage(i);
-    addFooter(doc, reportData, i);
-  }
 }
 
 function drawExpenseReport(doc, expenses, totalExpenses, y, pageWidth, margin, contentWidth, options = {}) {
@@ -536,6 +510,7 @@ export async function generateMonthlyReport(reportData) {
     title: apartmentName || 'The Pride of Tirumala',
     subtitle: 'Monthly apartment accounts',
     line3: month,
+    meta: `Prepared on ${new Date().toLocaleDateString('en-IN', { dateStyle: 'long' })}  ·  Treasurer Flat ${config?.TREASURER_FLAT || '401'}  ·  President Flat ${config?.PRESIDENT_FLAT || '102'}`,
   });
   y = 58;
 
@@ -566,6 +541,21 @@ export async function generateMonthlyReport(reportData) {
   doc.text(`Collection: ${paidCount} Paid  |  ${pendingCount} Pending  |  ${partialCount} Partial  |  ${Math.round(paidCount / Math.max((maintenance || []).length, 1) * 100)}% collected`, margin + 4, y + 11.5);
 
   y += 20;
+
+  const due = stillDueHighlights(maintenance);
+  if (due.total > 0) {
+    y = checkPageBreak(doc, y, margin, 16);
+    drawRaisedCard(doc, margin, y, contentWidth, 12, TONE.noteBg);
+    pdfFont(doc, 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(...TONE.pending);
+    doc.text(
+      `Still to collect  ${formatCurrency(due.total)}  ·  Flats ${due.rows.map((row) => row.flat).join(', ')}`,
+      margin + 4,
+      y + 7.5,
+    );
+    y += 16;
+  }
 
   // ─── Remaining / Deficit Summary ──────────────────────
   const isDeficit = netBalance < 0;
@@ -703,7 +693,7 @@ export async function generateMonthlyReport(reportData) {
     title: FEATURES.MISC_FUNDS ? '3. Expenses' : '2. Expenses',
   });
 
-  finishWithNotesAndSeal(doc, y, margin, contentWidth, REPORT_NOTE_LINES, month, reportData);
+  finishWithNotesAndSeal(doc, y, margin, contentWidth, REPORT_NOTE_LINES, month);
   return doc;
 }
 
@@ -816,9 +806,7 @@ export async function generateActivityReport({ activity, detail }) {
     { title: '2. Expenses', emptyText: 'No expenses recorded for this activity yet.' },
   );
 
-  finishWithNotesAndSeal(doc, y, margin, contentWidth, [ACTIVITY_REPORT_NOTE], stampMonthLabel(), {
-    footerLine: `${activity.name || 'Activity Fund'} | Activity report | Status: ${activity.status || 'Open'}`,
-  });
+  finishWithNotesAndSeal(doc, y, margin, contentWidth, [ACTIVITY_REPORT_NOTE], stampMonthLabel());
   return doc;
 }
 

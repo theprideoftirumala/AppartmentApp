@@ -3,8 +3,8 @@
  * Charts + money tables. No audit log, watchman cards, or duplicate export.
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Download, Send, Mail } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { Download, ImageDown, Send, Mail } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import {
   getMaintenanceRecords, getExpenses, getConfiguration, getFlats,
@@ -19,8 +19,10 @@ import {
   categoryChartRows,
   collectionCounts,
   compareBarPercents,
+  stillDueHighlights,
   ytdChartRows,
 } from '../utils/expertReport';
+import { exportReportImage } from '../utils/reportImage';
 import { CategoryBars, CollectionDonut, CompareBars, YtdBars } from '../components/reports/ReportCharts';
 import StatusBadge from '../components/common/StatusBadge';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -66,6 +68,8 @@ export default function Reports() {
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [exportingImage, setExportingImage] = useState(false);
+  const reportRef = useRef(null);
 
   const { months: monthOptions } = useWorkingMonths();
 
@@ -105,6 +109,10 @@ export default function Reports() {
     () => ytdChartRows(reportData?.ledger ? ytdRowsFromLedger(reportData.ledger) : []),
     [reportData],
   );
+  const stillDue = useMemo(
+    () => stillDueHighlights(reportData?.maintenance),
+    [reportData],
+  );
 
   const handleDownload = async () => {
     if (!reportData) return;
@@ -127,6 +135,19 @@ export default function Reports() {
       showToast(parseApiError(err) || 'Failed to share report', 'error');
     } finally {
       setSharing(false);
+    }
+  };
+
+  const handleExportImage = async () => {
+    if (!reportData) return;
+    try {
+      setExportingImage(true);
+      const fileName = await exportReportImage(reportRef.current, reportData.month);
+      showToast(`Image downloaded: ${fileName}`, 'success');
+    } catch (err) {
+      showToast(parseApiError(err) || 'Failed to export image', 'error');
+    } finally {
+      setExportingImage(false);
     }
   };
 
@@ -172,6 +193,9 @@ export default function Reports() {
           <button className="btn btn-primary btn-sm" onClick={handleDownload} disabled={!reportData || loading}>
             <Download size={14} /> PDF
           </button>
+          <button className="btn btn-secondary btn-sm" onClick={handleExportImage} disabled={!reportData || loading || exportingImage}>
+            <ImageDown size={14} /> {exportingImage ? 'Image…' : 'Image'}
+          </button>
           <button className="btn btn-success btn-sm" onClick={handleShare} disabled={!reportData || loading || sharing}>
             <Send size={14} /> {sharing ? 'Sharing...' : 'WhatsApp'}
           </button>
@@ -184,10 +208,17 @@ export default function Reports() {
       {loading ? (
         <LoadingSpinner text="Loading report..." />
       ) : reportData ? (
-        <div className="expert-report animate-fade-in">
+        <div className="expert-report animate-fade-in" ref={reportRef} data-report-capture>
           <header className="report-header">
             <h2>{reportData.apartmentName}</h2>
             <p className="text-muted">Apartment accounts — {reportData.month}</p>
+            <p className="report-header-meta">
+              Treasurer Flat {reportData.config?.TREASURER_FLAT || '401'}
+              {' · '}
+              President Flat {reportData.config?.PRESIDENT_FLAT || '102'}
+              {' · '}
+              Prepared {new Date().toLocaleDateString('en-IN', { dateStyle: 'long' })}
+            </p>
             <div className="report-status-row">
               <span className={`report-status-pill ${monthClass}`}>{reportData.monthStatus} this month</span>
               <span className={`report-status-pill ${available >= 0 ? 'report-surplus' : 'report-deficit'}`}>
@@ -226,7 +257,15 @@ export default function Reports() {
 
           <p className="report-expected text-muted text-sm">
             Monthly rate {formatCurrency(rate)} × 10 flats = {formatCurrency(expected)} expected.
+            Opening {formatCurrency(reportData.openingSurplus)} + collected {formatCurrency(reportData.totalCollection)} − spent {formatCurrency(reportData.totalExpenses)} = {formatCurrency(available)}.
           </p>
+
+          {stillDue.total > 0 && (
+            <div className="report-still-due">
+              <strong>Still to collect {formatCurrency(stillDue.total)}</strong>
+              <p>Flats {stillDue.rows.map((row) => row.flat).join(', ')}. Kindly remind with care — this is only the common account.</p>
+            </div>
+          )}
 
           <div className="report-charts-grid">
             <CompareBars

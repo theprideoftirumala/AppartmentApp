@@ -37,6 +37,22 @@ export function compareBarPercents(collection, expenses) {
   };
 }
 
+export function stillDueHighlights(maintenance = []) {
+  const rows = (maintenance || [])
+    .map((row) => {
+      const fromSheet = Number(row.stillDue);
+      const fallback = Math.max(0, (Number(row.amountDue) || 0) - (Number(row.amountPaid) || 0));
+      const stillDue = Number.isFinite(fromSheet) ? fromSheet : fallback;
+      return { flat: row.flat, stillDue, status: row.status };
+    })
+    .filter((row) => row.stillDue > 0)
+    .sort((a, b) => String(a.flat).localeCompare(String(b.flat)));
+  return {
+    rows,
+    total: rows.reduce((sum, row) => sum + row.stillDue, 0),
+  };
+}
+
 export function ytdChartRows(summaries = []) {
   const amounts = summaries.flatMap((row) => [
     Number(row.totalCollection) || 0,

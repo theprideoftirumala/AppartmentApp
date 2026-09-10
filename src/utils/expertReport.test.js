@@ -3,6 +3,7 @@ import {
   categoryChartRows,
   collectionCounts,
   compareBarPercents,
+  stillDueHighlights,
   ytdChartRows,
 } from './expertReport';
 
@@ -34,6 +35,17 @@ describe('categoryChartRows', () => {
 describe('compareBarPercents', () => {
   it('scales the larger amount to 100%', () => {
     expect(compareBarPercents(30000, 15000)).toEqual({ collectionPct: 100, expensesPct: 50 });
+  });
+});
+
+describe('stillDueHighlights', () => {
+  it('lists flats that still owe and the total', () => {
+    const out = stillDueHighlights([
+      { flat: '202', amountDue: 3000, amountPaid: 0, stillDue: 3000, status: 'PENDING' },
+      { flat: '101', amountDue: 3000, amountPaid: 3000, stillDue: 0, status: 'PAID' },
+    ]);
+    expect(out.rows).toEqual([{ flat: '202', stillDue: 3000, status: 'PENDING' }]);
+    expect(out.total).toBe(3000);
   });
 });
 

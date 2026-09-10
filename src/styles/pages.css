@@ -1218,6 +1218,31 @@
   box-shadow: 0 1px 4px rgba(92, 36, 8, 0.14);
 }
 
+.report-header-meta {
+  margin: 0.45rem 0 0;
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.02em;
+}
+
+.report-still-due {
+  margin: 0;
+  padding: var(--space-4) var(--space-5);
+  background: #fff6e8;
+  border: 1px solid rgba(255, 153, 51, 0.28);
+  border-radius: var(--radius-lg);
+}
+
+.report-still-due strong {
+  display: block;
+  color: #8a4b12;
+}
+
+.report-still-due p {
+  margin: 0.35rem 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
 .report-summary-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1923,6 +1948,9 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
+  background: #fffaf2;
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
 }
 
 .report-status-row {
