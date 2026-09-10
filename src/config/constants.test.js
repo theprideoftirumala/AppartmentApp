@@ -50,13 +50,17 @@ describe('society disclaimer', () => {
   });
 
   it('explains the report without blaming anyone', () => {
-    expect(REPORT_NOTE_TITLE).toMatch(/how to read this report/i);
+    expect(REPORT_NOTE_TITLE).toMatch(/please keep this in mind/i);
     const note = `${SOCIETY_DISCLAIMER} ${REPORT_NOTE_LINES.join(' ')}`;
     expect(note).not.toMatch(/society/i);
     expect(note).not.toMatch(/APP-TPT-Tracker/i);
     expect(note).not.toMatch(/singled out/i);
     expect(note).not.toMatch(/not final/i);
+    expect(note).not.toMatch(/IMPORTANT NOTE/i);
     expect(note).toMatch(/shared Google Sheet/i);
+    expect(note).toMatch(/repairs/i);
+    expect(note).toMatch(/damages/i);
+    expect(note).toMatch(/extra (costs|expenses)/i);
   });
 });
 

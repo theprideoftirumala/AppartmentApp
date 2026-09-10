@@ -25,7 +25,7 @@ import { CategoryBars, CollectionDonut, CompareBars, YtdBars } from '../componen
 import StatusBadge from '../components/common/StatusBadge';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Navbar from '../components/common/Navbar';
-import { REPORT_NOTE_LINES, REPORT_NOTE_TITLE } from '../config/constants';
+import { REPORT_NOTE_LINES, REPORT_NOTE_TITLE, SOCIETY_DISCLAIMER } from '../config/constants';
 
 async function loadMonthReport(month) {
   const [allMaintenance, allExpenses, config, flats] = await Promise.all([
@@ -368,11 +368,17 @@ export default function Reports() {
             ))}
           </div>
 
+          <div className="report-friendly-note report-friendly-disclaimer">
+            <p>{SOCIETY_DISCLAIMER}</p>
+          </div>
+
           <div className="report-month-seal" aria-hidden="true">
             <div className="report-month-seal-ring">
               <span className="report-month-seal-top">The Pride of Tirumala</span>
+              <span className="report-month-seal-check">✓</span>
               <strong>{reportData.month}</strong>
-              <span className="report-month-seal-bottom">Read · Record · Care</span>
+              <span className="report-month-seal-bottom">Digitally verified</span>
+              <span className="report-month-seal-foot">Common accounts</span>
             </div>
           </div>
         </div>

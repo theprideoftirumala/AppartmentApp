@@ -38,7 +38,7 @@ const TONE = {
   pending: [176, 120, 72],
   shadow: [214, 198, 178],
   paper: [255, 250, 242],
-  stamp: [196, 78, 28],
+  stamp: [28, 72, 158],
 };
 
 function mixRgb(rgb, other, amount) {
@@ -263,43 +263,48 @@ function stampMonthLabel(month) {
 function drawMonthSeal(doc, monthLabel) {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const cx = pageWidth - 28;
+  const cx = pageWidth - 29;
   const cy = pageHeight - 36;
   const ink = TONE.stamp;
-  const angle = -18;
+  const wash = mixRgb(ink, [255, 255, 255], 0.62);
+  const angle = -13;
   const label = stampMonthLabel(monthLabel);
 
-  doc.setDrawColor(...mixRgb(ink, [255, 220, 190], 0.28));
-  doc.setLineWidth(2);
-  doc.circle(cx, cy, 15.6, 'S');
+  doc.setDrawColor(...wash);
+  doc.setLineWidth(2.2);
+  doc.circle(cx + 0.35, cy + 0.25, 16.1, 'S');
   doc.setDrawColor(...ink);
-  doc.setLineWidth(0.9);
-  doc.circle(cx, cy, 14.4, 'S');
-  doc.setLineWidth(0.3);
-  doc.circle(cx, cy, 12.6, 'S');
+  doc.setLineWidth(1.05);
+  doc.circle(cx, cy, 15.1, 'S');
+  doc.setLineWidth(0.32);
+  doc.circle(cx, cy, 13.5, 'S');
   if (typeof doc.setLineDashPattern === 'function') {
-    doc.setLineDashPattern([0.65, 0.5], 0);
-    doc.setLineWidth(0.2);
-    doc.circle(cx, cy, 11.2, 'S');
+    doc.setLineDashPattern([0.55, 0.42], 0);
+    doc.setLineWidth(0.22);
+    doc.circle(cx, cy, 12.2, 'S');
     doc.setLineDashPattern([], 0);
   }
 
   doc.setTextColor(...ink);
   pdfFont(doc, 'bold');
-  doc.setFontSize(4.8);
-  doc.text('THE PRIDE OF TIRUMALA', cx, cy - 5.4, { align: 'center', angle });
-  doc.setFontSize(11.5);
-  doc.text(label, cx, cy + 1.3, { align: 'center', angle });
-  doc.setFontSize(4.8);
+  doc.setFontSize(4.3);
+  doc.text('THE PRIDE OF TIRUMALA', cx, cy - 8.5, { align: 'center', angle });
+  doc.setFontSize(8);
+  doc.text('✓', cx, cy - 5.2, { align: 'center', angle });
+  doc.setFontSize(11);
+  doc.text(label, cx, cy + 1.5, { align: 'center', angle });
+  doc.setFontSize(4.5);
+  doc.text('DIGITALLY VERIFIED', cx, cy + 6.1, { align: 'center', angle });
   pdfFont(doc, 'normal');
-  doc.text('READ · RECORD · CARE', cx, cy + 6.8, { align: 'center', angle });
+  doc.setFontSize(3.7);
+  doc.text('COMMON ACCOUNTS', cx, cy + 8.5, { align: 'center', angle });
 }
 
 function finishWithNotesAndSeal(doc, y, margin, contentWidth, noteLines, monthLabel, reportData) {
   y = drawFriendlyNote(doc, y, margin, contentWidth, REPORT_NOTE_TITLE, noteLines);
   y = drawDisclaimerBlock(doc, y, margin, contentWidth);
   const pageHeight = doc.internal.pageSize.getHeight();
-  if (y > pageHeight - 52) {
+  if (y > pageHeight - 58) {
     doc.addPage();
     washPaper(doc);
   }
