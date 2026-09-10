@@ -355,11 +355,11 @@ export default function Settings() {
                 },
                 {
                   key: 'TREASURER_FLAT', label: 'Treasurer Flat', type: 'select', options: FLATS,
-                  info: 'Flat number of the current Treasurer. Shown on the monthly report header.'
+                  info: 'Flat number of the current Treasurer. Shown on the monthly report header and footer.'
                 },
                 {
                   key: 'PRESIDENT_FLAT', label: 'President Flat', type: 'select', options: FLATS,
-                  info: 'Flat number of the current President. Shown on the monthly report header.'
+                  info: 'Flat number of the current President. Shown on the monthly report header and footer.'
                 },
                 FEATURES.SAMPLE_DATA && {
                   key: 'SAMPLE_DATA', label: 'Sample data (Y/N)', type: 'select', options: ['N', 'Y'],

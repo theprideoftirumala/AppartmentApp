@@ -238,55 +238,104 @@ function stampMonthLabel(month) {
   return new Date().toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }).replace(/\s+/g, '-');
 }
 
+function addFooter(doc, reportData, pageNum) {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 15;
+  const footerY = pageHeight - 10;
+
+  doc.setDrawColor(200, 200, 200);
+  doc.line(margin, footerY - 4, pageWidth - margin, footerY - 4);
+
+  doc.setFontSize(6.5);
+  doc.setTextColor(150, 150, 150);
+  pdfFont(doc, 'normal');
+  doc.text(
+    reportData.footerLine
+      || `${reportData.apartmentName} | Monthly Report ${reportData.month} | Treasurer: Flat ${reportData.config?.TREASURER_FLAT || '401'} | President: Flat ${reportData.config?.PRESIDENT_FLAT || '102'}`,
+    margin,
+    footerY,
+  );
+  doc.text(`Page ${pageNum}`, pageWidth - margin, footerY, { align: 'right' });
+}
+
+function stampFooters(doc, reportData) {
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i += 1) {
+    doc.setPage(i);
+    addFooter(doc, reportData, i);
+  }
+}
+
+function drawArcText(doc, text, cx, cy, radius, startDeg, endDeg) {
+  const chars = String(text).split('');
+  chars.forEach((ch, i) => {
+    const t = chars.length === 1 ? 0.5 : i / (chars.length - 1);
+    const deg = startDeg + (endDeg - startDeg) * t;
+    const rad = (deg * Math.PI) / 180;
+    const x = cx + radius * Math.cos(rad);
+    const y = cy + radius * Math.sin(rad);
+    doc.text(ch, x, y, { align: 'center', angle: -(deg + 90) });
+  });
+}
+
+function drawVerifiedTick(doc, cx, cy, ink) {
+  doc.setDrawColor(...ink);
+  doc.setLineWidth(0.45);
+  doc.circle(cx, cy, 2.35, 'S');
+  doc.setLineWidth(0.62);
+  doc.line(cx - 1.15, cy + 0.1, cx - 0.25, cy + 1.05);
+  doc.line(cx - 0.25, cy + 1.05, cx + 1.35, cy - 1.05);
+}
+
 function drawMonthSeal(doc, monthLabel) {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const cx = pageWidth - 29;
-  const cy = pageHeight - 36;
+  const cx = pageWidth - 30;
+  const cy = pageHeight - 42;
   const ink = TONE.stamp;
   const wash = mixRgb(ink, [255, 255, 255], 0.62);
-  const angle = -13;
   const label = stampMonthLabel(monthLabel);
 
   doc.setDrawColor(...wash);
-  doc.setLineWidth(2.2);
-  doc.circle(cx + 0.35, cy + 0.25, 16.1, 'S');
+  doc.setLineWidth(2.1);
+  doc.circle(cx + 0.3, cy + 0.2, 16.2, 'S');
   doc.setDrawColor(...ink);
   doc.setLineWidth(1.05);
-  doc.circle(cx, cy, 15.1, 'S');
+  doc.circle(cx, cy, 15.2, 'S');
   doc.setLineWidth(0.32);
-  doc.circle(cx, cy, 13.5, 'S');
+  doc.circle(cx, cy, 13.6, 'S');
   if (typeof doc.setLineDashPattern === 'function') {
     doc.setLineDashPattern([0.55, 0.42], 0);
-    doc.setLineWidth(0.22);
-    doc.circle(cx, cy, 12.2, 'S');
+    doc.setLineWidth(0.2);
+    doc.circle(cx, cy, 12.4, 'S');
     doc.setLineDashPattern([], 0);
   }
 
   doc.setTextColor(...ink);
   pdfFont(doc, 'bold');
-  doc.setFontSize(4.3);
-  doc.text('THE PRIDE OF TIRUMALA', cx, cy - 8.5, { align: 'center', angle });
-  doc.setFontSize(8);
-  doc.text('✓', cx, cy - 5.2, { align: 'center', angle });
-  doc.setFontSize(11);
-  doc.text(label, cx, cy + 1.5, { align: 'center', angle });
-  doc.setFontSize(4.5);
-  doc.text('DIGITALLY VERIFIED', cx, cy + 6.1, { align: 'center', angle });
+  doc.setFontSize(4.15);
+  drawArcText(doc, 'THE PRIDE OF TIRUMALA', cx, cy, 11.4, 200, 340);
+  drawVerifiedTick(doc, cx, cy - 1.6, ink);
+  doc.setFontSize(10.5);
+  doc.text(label, cx, cy + 5.2, { align: 'center' });
+  doc.setFontSize(4.2);
+  doc.text('DIGITALLY VERIFIED', cx, cy + 9.2, { align: 'center' });
   pdfFont(doc, 'normal');
-  doc.setFontSize(3.7);
-  doc.text('COMMON ACCOUNTS', cx, cy + 8.5, { align: 'center', angle });
+  doc.setFontSize(3.6);
+  doc.text('COMMON ACCOUNTS', cx, cy + 11.6, { align: 'center' });
 }
 
-function finishWithNotesAndSeal(doc, y, margin, contentWidth, noteLines, monthLabel) {
+function finishWithNotesAndSeal(doc, y, margin, contentWidth, noteLines, monthLabel, reportData) {
   y = drawFriendlyNote(doc, y, margin, contentWidth, REPORT_NOTE_TITLE, noteLines);
   y = drawDisclaimerBlock(doc, y, margin, contentWidth);
   const pageHeight = doc.internal.pageSize.getHeight();
-  if (y > pageHeight - 58) {
+  if (y > pageHeight - 62) {
     doc.addPage();
     washPaper(doc);
   }
   drawMonthSeal(doc, monthLabel);
+  stampFooters(doc, reportData);
 }
 
 function drawHeaderBanner(doc, pageWidth, { title, subtitle, line3, meta }) {
@@ -693,7 +742,7 @@ export async function generateMonthlyReport(reportData) {
     title: FEATURES.MISC_FUNDS ? '3. Expenses' : '2. Expenses',
   });
 
-  finishWithNotesAndSeal(doc, y, margin, contentWidth, REPORT_NOTE_LINES, month);
+  finishWithNotesAndSeal(doc, y, margin, contentWidth, REPORT_NOTE_LINES, month, reportData);
   return doc;
 }
 
@@ -806,7 +855,9 @@ export async function generateActivityReport({ activity, detail }) {
     { title: '2. Expenses', emptyText: 'No expenses recorded for this activity yet.' },
   );
 
-  finishWithNotesAndSeal(doc, y, margin, contentWidth, [ACTIVITY_REPORT_NOTE], stampMonthLabel());
+  finishWithNotesAndSeal(doc, y, margin, contentWidth, [ACTIVITY_REPORT_NOTE], stampMonthLabel(), {
+    footerLine: `${activity.name || 'Activity Fund'} | Activity report | Status: ${activity.status || 'Open'}`,
+  });
   return doc;
 }
 

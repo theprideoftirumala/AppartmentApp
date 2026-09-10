@@ -6,12 +6,42 @@ export function reportImageFileName(month) {
 
 export async function exportReportImage(element, month) {
   if (!element) throw new Error('The report is not on the page yet.');
+  if (document.fonts?.ready) {
+    await document.fonts.ready.catch(() => {});
+  }
+  const width = Math.max(element.scrollWidth, element.clientWidth, 980);
+  const height = Math.max(element.scrollHeight, element.clientHeight);
   const canvas = await html2canvas(element, {
-    scale: 3,
+    scale: 2,
     useCORS: true,
+    allowTaint: true,
     backgroundColor: '#fffaf2',
     logging: false,
-    windowWidth: Math.max(element.scrollWidth, 980),
+    letterRendering: true,
+    foreignObjectRendering: false,
+    scrollX: 0,
+    scrollY: 0,
+    width,
+    height,
+    windowWidth: width,
+    windowHeight: height,
+    onclone: (clonedDoc) => {
+      const clonedEl = clonedDoc.querySelector('[data-report-capture]');
+      if (clonedEl) {
+        clonedEl.style.transform = 'none';
+        clonedEl.style.maxWidth = 'none';
+        clonedEl.style.width = `${width}px`;
+        clonedEl.style.height = 'auto';
+        clonedEl.style.overflow = 'visible';
+      }
+      clonedDoc.querySelectorAll('.report-month-seal-svg').forEach((svg) => {
+        svg.setAttribute('width', '148');
+        svg.setAttribute('height', '148');
+        svg.style.display = 'block';
+        svg.style.visibility = 'visible';
+        svg.style.opacity = '1';
+      });
+    },
   });
   const blob = await new Promise((resolve, reject) => {
     canvas.toBlob((file) => {

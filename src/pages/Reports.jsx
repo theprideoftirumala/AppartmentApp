@@ -24,6 +24,7 @@ import {
 } from '../utils/expertReport';
 import { exportReportImage } from '../utils/reportImage';
 import { CategoryBars, CollectionDonut, CompareBars, YtdBars } from '../components/reports/ReportCharts';
+import ReportSeal from '../components/reports/ReportSeal';
 import StatusBadge from '../components/common/StatusBadge';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Navbar from '../components/common/Navbar';
@@ -411,15 +412,13 @@ export default function Reports() {
             <p>{SOCIETY_DISCLAIMER}</p>
           </div>
 
-          <div className="report-month-seal" aria-hidden="true">
-            <div className="report-month-seal-ring">
-              <span className="report-month-seal-top">The Pride of Tirumala</span>
-              <span className="report-month-seal-check">✓</span>
-              <strong>{reportData.month}</strong>
-              <span className="report-month-seal-bottom">Digitally verified</span>
-              <span className="report-month-seal-foot">Common accounts</span>
-            </div>
+          <div className="report-month-seal">
+            <ReportSeal month={reportData.month} />
           </div>
+
+          <footer className="report-page-footer">
+            {reportData.apartmentName} | Monthly Report {reportData.month} | Treasurer: Flat {reportData.config?.TREASURER_FLAT || '401'} | President: Flat {reportData.config?.PRESIDENT_FLAT || '102'}
+          </footer>
         </div>
       ) : null}
     </div>
