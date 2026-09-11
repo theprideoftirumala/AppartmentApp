@@ -1,3 +1,31 @@
+function circularLetters(text, cx, cy, radius, startDeg, endDeg, fill) {
+  const chars = String(text).split('');
+  if (!chars.length) return [];
+  return chars.map((ch, i) => {
+    const t = chars.length === 1 ? 0.5 : i / (chars.length - 1);
+    const deg = startDeg + (endDeg - startDeg) * t;
+    const rad = ((deg - 90) * Math.PI) / 180;
+    const x = cx + radius * Math.cos(rad);
+    const y = cy + radius * Math.sin(rad);
+    return (
+      <g key={`${ch}-${i}`} transform={`rotate(${deg.toFixed(2)} ${x.toFixed(2)} ${y.toFixed(2)})`}>
+        <text
+          x={x.toFixed(2)}
+          y={y.toFixed(2)}
+          fill={fill}
+          fontSize="6.4"
+          fontWeight="700"
+          fontFamily="Georgia, 'Times New Roman', serif"
+          textAnchor="middle"
+          dominantBaseline="middle"
+        >
+          {ch}
+        </text>
+      </g>
+    );
+  });
+}
+
 export default function ReportSeal({ month }) {
   const ink = '#2a4a86';
   return (
@@ -20,19 +48,18 @@ export default function ReportSeal({ month }) {
       <ellipse cx="44" cy="116" rx="9" ry="5" fill="#7fa0d0" />
       <ellipse cx="82" cy="82" rx="58" ry="57" fill="none" stroke="#4d73b3" strokeWidth="1.4" />
       <ellipse cx="83" cy="83" rx="51" ry="50" fill="none" stroke="#6d8fc4" strokeWidth="0.9" />
-      <text x="82" y="50" textAnchor="middle" fill={ink} fontSize="10" fontWeight="700" fontFamily="Georgia, 'Times New Roman', serif">The Pride of</text>
-      <text x="82" y="64" textAnchor="middle" fill={ink} fontSize="12" fontWeight="700" fontFamily="Georgia, 'Times New Roman', serif">Tirumala</text>
-      <ellipse cx="82" cy="80" rx="10" ry="9" fill="#eaf1fa" stroke="#2a4a86" strokeWidth="1.4" />
+      {circularLetters('The Pride of Tirumala', 82, 82, 41, -78, 78, ink)}
+      <ellipse cx="82" cy="78" rx="10" ry="9" fill="#eaf1fa" stroke="#2a4a86" strokeWidth="1.4" />
       <path
-        d="M76.6 80.2 L80.2 84.2 L88.8 73.8"
+        d="M76.6 78.2 L80.2 82.2 L88.8 71.8"
         fill="none"
         stroke={ink}
         strokeWidth="2.2"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <text x="82" y="106" textAnchor="middle" fill={ink} fontSize="18" fontWeight="700" fontFamily="Georgia, 'Times New Roman', serif">{month}</text>
-      <text x="82" y="122" textAnchor="middle" fill={ink} fontSize="6.8" fontWeight="700" letterSpacing="0.6" fontFamily="Arial, Helvetica, sans-serif">DIGITALLY VERIFIED</text>
+      <text x="82" y="102" textAnchor="middle" fill={ink} fontSize="18" fontWeight="700" fontFamily="Georgia, 'Times New Roman', serif">{month}</text>
+      <text x="82" y="118" textAnchor="middle" fill={ink} fontSize="6.6" fontWeight="700" letterSpacing="0.6" fontFamily="Arial, Helvetica, sans-serif">DIGITALLY VERIFIED</text>
     </svg>
   );
 }

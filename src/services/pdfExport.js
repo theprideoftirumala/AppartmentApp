@@ -267,6 +267,18 @@ function stampFooters(doc, reportData) {
   }
 }
 
+function drawArcText(doc, text, cx, cy, radius, startDeg, endDeg) {
+  const chars = String(text).split('');
+  chars.forEach((ch, i) => {
+    const t = chars.length === 1 ? 0.5 : i / (chars.length - 1);
+    const deg = startDeg + (endDeg - startDeg) * t;
+    const rad = (deg * Math.PI) / 180;
+    const x = cx + radius * Math.cos(rad);
+    const y = cy + radius * Math.sin(rad);
+    doc.text(ch, x, y, { align: 'center', baseline: 'middle', angle: -(deg + 90) });
+  });
+}
+
 function drawVerifiedTick(doc, cx, cy, ink) {
   doc.setDrawColor(...ink);
   doc.setLineWidth(0.45);
@@ -303,15 +315,13 @@ function drawMonthSeal(doc, monthLabel, cx, cy) {
 
   doc.setTextColor(...ink);
   pdfFont(doc, 'bold');
-  doc.setFontSize(5.4);
-  doc.text('The Pride of', cx, cy - 5.6, { align: 'center' });
-  doc.setFontSize(6.4);
-  doc.text('Tirumala', cx, cy - 2.4, { align: 'center' });
-  drawVerifiedTick(doc, cx, cy + 1.6, ink);
-  doc.setFontSize(9.6);
-  doc.text(label, cx, cy + 7.4, { align: 'center' });
-  doc.setFontSize(3.8);
-  doc.text('DIGITALLY VERIFIED', cx, cy + 10.6, { align: 'center' });
+  doc.setFontSize(4.15);
+  drawArcText(doc, 'The Pride of Tirumala', cx, cy, 8.7, 208, 332);
+  drawVerifiedTick(doc, cx, cy - 0.4, ink);
+  doc.setFontSize(10);
+  doc.text(label, cx, cy + 5.6, { align: 'center' });
+  doc.setFontSize(3.7);
+  doc.text('DIGITALLY VERIFIED', cx, cy + 9.2, { align: 'center' });
 }
 
 function finishWithNotesAndSeal(doc, y, margin, contentWidth, noteLines, monthLabel, reportData) {
@@ -323,7 +333,7 @@ function finishWithNotesAndSeal(doc, y, margin, contentWidth, noteLines, monthLa
   y = drawDisclaimerBlock(doc, y, margin, contentWidth, stampReserve);
 
   const cx = pageWidth - 28;
-  const cy = Math.max(22, Math.min(pageHeight - 26, y - 12));
+  const cy = Math.max(22, Math.min(pageHeight - 28, y - 22));
   drawMonthSeal(doc, monthLabel, cx, cy);
   stampFooters(doc, reportData);
 }
