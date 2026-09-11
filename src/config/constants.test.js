@@ -12,6 +12,8 @@ import {
   SOCIETY_DISCLAIMER,
   REPORT_NOTE_TITLE,
   REPORT_NOTE_LINES,
+  REPORT_WATER_QUOTE,
+  REPORT_WATER_QUOTE_BY,
   isSampleDataEnabled,
   isSocietySheetName,
 } from './constants';
@@ -61,6 +63,13 @@ describe('society disclaimer', () => {
     expect(note).toMatch(/repairs/i);
     expect(note).toMatch(/damages/i);
     expect(note).toMatch(/extra (costs|expenses)/i);
+  });
+
+  it('carries a famous reminder to use water with care', () => {
+    expect(REPORT_WATER_QUOTE).toMatch(/worth of water/i);
+    expect(REPORT_WATER_QUOTE).toMatch(/well is dry/i);
+    expect(REPORT_WATER_QUOTE_BY).toMatch(/Benjamin Franklin/i);
+    expect(REPORT_WATER_QUOTE).not.toMatch(/society/i);
   });
 });
 

@@ -14,6 +14,8 @@ import {
   FEATURES,
   REPORT_NOTE_LINES,
   REPORT_NOTE_TITLE,
+  REPORT_WATER_QUOTE,
+  REPORT_WATER_QUOTE_BY,
   SOCIETY_DISCLAIMER,
 } from '../config/constants';
 import { stillDueHighlights, ytdChartRows } from '../utils/expertReport';
@@ -324,12 +326,34 @@ function drawMonthSeal(doc, monthLabel, cx, cy) {
   doc.text('DIGITALLY VERIFIED', cx, cy + 9.2, { align: 'center' });
 }
 
-function finishWithNotesAndSeal(doc, y, margin, contentWidth, noteLines, monthLabel, reportData) {
+function drawWaterQuote(doc, y, margin, contentWidth, textInsetRight = 0) {
+  const quote = `“${REPORT_WATER_QUOTE}”`;
+  const wrapped = doc.splitTextToSize(quote, contentWidth - 14 - textInsetRight);
+  const height = 14 + wrapped.length * 4.2;
+  y = checkPageBreak(doc, y, margin, height + 6);
+  drawRaisedCard(doc, margin, y, contentWidth, height, TONE.openingBg);
+  doc.setFillColor(...TONE.stamp);
+  doc.roundedRect(margin, y, 2.4, height, 1, 1, 'F');
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(8);
+  doc.setTextColor(...TONE.stamp);
+  doc.text(wrapped, margin + 8, y + 6.5);
+  pdfFont(doc, 'normal');
+  doc.setFontSize(6.6);
+  doc.setTextColor(77, 115, 179);
+  doc.text(`— ${REPORT_WATER_QUOTE_BY}`, margin + 8, y + height - 4);
+  return y + height + 5;
+}
+
+function finishWithNotesAndSeal(doc, y, margin, contentWidth, noteLines, monthLabel, reportData, options = {}) {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const stampReserve = 34;
 
   y = drawFriendlyNote(doc, y, margin, contentWidth, REPORT_NOTE_TITLE, noteLines, stampReserve);
+  if (options.waterQuote) {
+    y = drawWaterQuote(doc, y, margin, contentWidth, stampReserve);
+  }
   y = drawDisclaimerBlock(doc, y, margin, contentWidth, stampReserve);
 
   const cx = pageWidth - 28;
@@ -823,7 +847,9 @@ export async function generateMonthlyReport(reportData) {
 
   y = drawYearToDate(doc, ledger, y, pageWidth, margin, contentWidth);
 
-  finishWithNotesAndSeal(doc, y, margin, contentWidth, REPORT_NOTE_LINES, month, reportData);
+  finishWithNotesAndSeal(doc, y, margin, contentWidth, REPORT_NOTE_LINES, month, reportData, {
+    waterQuote: true,
+  });
   return doc;
 }
 

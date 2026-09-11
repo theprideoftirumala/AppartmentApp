@@ -2187,8 +2187,36 @@
 }
 
 .report-closing .report-friendly-note,
-.report-closing .report-friendly-disclaimer {
+.report-closing .report-friendly-disclaimer,
+.report-closing .report-water-quote {
   padding-right: 9.75rem;
+}
+
+.report-water-quote {
+  margin: 0;
+  padding: 0.85rem var(--space-5) 0.95rem;
+  background: #eef4fb;
+  border: 1px solid rgba(42, 74, 134, 0.16);
+  border-left: 4px solid #4d73b3;
+  border-radius: var(--radius-lg);
+  color: #2a4a86;
+}
+
+.report-water-quote p {
+  margin: 0;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.report-water-quote cite {
+  display: block;
+  margin-top: 0.35rem;
+  font-style: normal;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: #4d73b3;
 }
 
 .report-friendly-disclaimer {

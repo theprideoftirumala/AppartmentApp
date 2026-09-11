@@ -61,6 +61,10 @@ export const REPORT_NOTE_LINES = [
 export const ACTIVITY_REPORT_NOTE =
   'This sheet is only for the named activity. It does not change monthly maintenance. Please read each line once before forwarding it to the group.';
 
+/** Resident reminder on the monthly report. Franklin, 1746 Poor Richard. */
+export const REPORT_WATER_QUOTE = 'When the well is dry, we know the worth of water.';
+export const REPORT_WATER_QUOTE_BY = 'Benjamin Franklin';
+
 /** Carry-forward surplus into Sep 2026. Typed on Configuration as OPENING_SURPLUS. */
 export const OPENING_SURPLUS = 612;
 
