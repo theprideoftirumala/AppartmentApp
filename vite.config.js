@@ -49,7 +49,7 @@ export default defineConfig(() => {
           ],
         },
         workbox: {
-          cacheId: 'tpt-v67',
+          cacheId: 'tpt-v68',
           cleanupOutdatedCaches: true,
           skipWaiting: true,
           clientsClaim: true,

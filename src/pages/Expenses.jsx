@@ -27,6 +27,8 @@ export default function Expenses() {
   const { user } = useAuth();
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -96,15 +98,19 @@ export default function Expenses() {
     }
   };
 
-  const handleDelete = async (expenseId) => {
-    if (!confirm('Are you sure you want to delete this expense?')) return;
+  const handleDelete = async () => {
+    if (!pendingDelete?.id) return;
     try {
-      await deleteExpense(expenseId);
-      await addAuditLog(user.email, 'DELETE_EXPENSE', `Deleted expense ${expenseId}`);
+      setDeleting(true);
+      await deleteExpense(pendingDelete.id);
+      await addAuditLog(user.email, 'DELETE_EXPENSE', `Deleted expense ${pendingDelete.id}: ${pendingDelete.description || ''}`);
       showToast('Expense deleted', 'success');
+      setPendingDelete(null);
       fetchData();
     } catch (err) {
       showToast('Failed to delete expense', 'error');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -227,7 +233,13 @@ export default function Expenses() {
                     </td>
                     <td>
                       {isOwner !== false && (
-                        <button className="btn btn-ghost btn-sm text-danger" onClick={() => handleDelete(expense.id)}>
+                        <button
+                          className="btn btn-ghost btn-sm text-danger"
+                          type="button"
+                          title="Delete expense"
+                          aria-label={`Delete ${expense.description || 'expense'}`}
+                          onClick={() => setPendingDelete(expense)}
+                        >
                           <Trash2 size={14} />
                         </button>
                       )}
@@ -247,6 +259,38 @@ export default function Expenses() {
         saving={saving}
         monthOptions={monthOptions}
       />
+
+      <Modal
+        isOpen={Boolean(pendingDelete)}
+        onClose={() => { if (!deleting) setPendingDelete(null); }}
+        title="Delete this expense?"
+      >
+        <p>
+          This will remove{' '}
+          <strong>{pendingDelete?.description || 'this expense'}</strong>
+          {pendingDelete?.amount != null ? ` (${formatCurrency(pendingDelete.amount)})` : ''}
+          {pendingDelete?.month ? ` from ${pendingDelete.month}` : ''}{' '}
+          on the Google Sheet. This cannot be undone.
+        </p>
+        <div className="form-actions">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            disabled={deleting}
+            onClick={() => setPendingDelete(null)}
+          >
+            Keep expense
+          </button>
+          <button
+            type="button"
+            className="btn btn-danger"
+            disabled={deleting}
+            onClick={handleDelete}
+          >
+            {deleting ? 'Deleting…' : 'Delete expense'}
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }
