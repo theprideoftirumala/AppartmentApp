@@ -104,25 +104,37 @@ export default function Login() {
           </button>
         ) : (
           <form onSubmit={handleGuestLogin} className="guest-pin-form">
-            <p className="text-muted text-sm">Enter the PIN shared by the Treasurer (read-only access, 24 h)</p>
+            <label htmlFor="guest-pin" className="form-label guest-pin-label">Guest PIN</label>
+            <p id="guest-pin-help" className="text-muted text-sm">
+              Enter the PIN shared by the Treasurer. Read-only for 24 hours.
+            </p>
             <div className="guest-pin-input-wrap">
               <input
+                id="guest-pin"
                 type={pinVisible ? 'text' : 'password'}
                 className="form-input"
-                placeholder="6–12 digit PIN"
+                placeholder="6–12 digits"
                 value={pin}
                 onChange={e => setPin(e.target.value)}
                 autoFocus
                 inputMode="numeric"
+                autoComplete="one-time-code"
                 maxLength={12}
+                aria-describedby={displayError ? 'guest-pin-help guest-pin-error' : 'guest-pin-help'}
+                aria-invalid={Boolean(displayError)}
               />
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setPinVisible(v => !v)}>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => setPinVisible(v => !v)}
+                aria-label={pinVisible ? 'Hide PIN' : 'Show PIN'}
+              >
                 {pinVisible ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
             <div className="flex gap-2">
               <button type="submit" className="btn btn-primary" disabled={guestLoading || !pin.trim()}>
-                {guestLoading ? 'Verifying...' : 'Enter'}
+                {guestLoading ? 'Checking PIN…' : 'Enter'}
               </button>
               <button type="button" className="btn btn-ghost" onClick={() => { setShowGuestForm(false); setPin(''); setError(null); }}>
                 Cancel
@@ -132,7 +144,7 @@ export default function Login() {
         )}
 
         {displayError && (
-          <p className="login-error">{displayError}</p>
+          <p id="guest-pin-error" className="login-error" role="alert">{displayError}</p>
         )}
 
         <p className="login-note">

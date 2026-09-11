@@ -2,6 +2,7 @@
  * Sidebar Navigation (Desktop)
  */
 
+import { useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Building2, Receipt, FileBarChart,
@@ -39,17 +40,30 @@ export default function Sidebar() {
 
   const sheetUrl = getSpreadsheetUrl();
 
+  useEffect(() => {
+    if (!sidebarOpen) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') setSidebarOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [sidebarOpen, setSidebarOpen]);
+
   return (
     <>
-      {/* Backdrop for mobile */}
       {sidebarOpen && (
         <div
           className="sidebar-backdrop"
           onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
         />
       )}
 
-      <aside className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}>
+      <aside
+        id="app-sidebar"
+        className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}
+        aria-label="Main menu"
+      >
         {/* Brand */}
         <div className="sidebar-brand">
           <div className="sidebar-logo">

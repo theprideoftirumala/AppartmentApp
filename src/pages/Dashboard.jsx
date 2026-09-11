@@ -223,10 +223,10 @@ export default function Dashboard() {
       <Navbar onRefresh={() => fetchData(true)} refreshing={refreshing} />
 
       {isGuest && (
-        <div className="guest-banner">
+        <div className="guest-banner guest-banner--info" role="status">
           <Info size={16} />
           <span>
-            <strong>Guest View</strong> — Read-only. Data from last Owner sync
+            <strong>Guest view</strong> — read-only. Figures from the last Owner sync
             {lastSync ? ` on ${new Date(lastSync).toLocaleDateString('en-IN')}` : ''}.
           </span>
           <button className="btn btn-ghost btn-sm" onClick={() => { signOutGuest(); navigate('/login'); }}>
@@ -236,7 +236,7 @@ export default function Dashboard() {
       )}
 
       {isOwner && data?.dataHealth?.blocking && (
-        <div className="guest-banner data-health-banner">
+        <div className="guest-banner guest-banner--warn data-health-banner" role="status">
           <AlertCircle size={16} />
           <span>
             <strong>Data health</strong> — {data.dataHealth.summary}. Totals may be overstated until duplicates are fixed.
@@ -248,14 +248,14 @@ export default function Dashboard() {
       )}
 
       {isOwner && localStorage.getItem(STORAGE_KEYS.LAST_BACKUP_ERROR) && (
-        <div className="guest-banner">
+        <div className="guest-banner guest-banner--warn" role="status">
           <AlertCircle size={16} />
           <span>The last Drive backup did not finish. Create a backup from Settings when you have a moment.</span>
         </div>
       )}
 
       {isOwner && sheetUpgrade !== 'done' && (
-        <div className="guest-banner">
+        <div className="guest-banner guest-banner--info" role="status">
           <Table2 size={16} />
           <span>
             <strong>Update the Google Sheet</strong> — adds the Balance tab and formulas so anyone can see surplus or deficit in Drive.
@@ -272,6 +272,11 @@ export default function Dashboard() {
           <h1 className="page-title">Dashboard</h1>
           <p className="page-subtitle">
             {config.APARTMENT_NAME || 'The Pride of Tirumala'} — {currentMonth}
+            {lastSync && (
+              <span className="page-sync-chip">
+                Updated {new Date(lastSync).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+              </span>
+            )}
           </p>
         </div>
         {isOwner && (

@@ -151,18 +151,19 @@ export default function Expenses() {
           <div className="search-input-wrap">
             <Search size={16} className="search-icon" />
             <input
-              type="text"
+              type="search"
               className="form-input search-input"
-              placeholder="Search expenses..."
+              placeholder="Search expenses…"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
+              aria-label="Search expenses"
             />
           </div>
           <select
             className="form-select"
             value={filterMonth}
             onChange={e => setFilterMonth(e.target.value)}
-            style={{ width: 130 }}
+            aria-label="Filter by month"
           >
             <option value="">All Months</option>
             {monthOptions.map(m => <option key={m} value={m}>{m}</option>)}
@@ -171,7 +172,7 @@ export default function Expenses() {
             className="form-select"
             value={filterCategory}
             onChange={e => setFilterCategory(e.target.value)}
-            style={{ width: 170 }}
+            aria-label="Filter by category"
           >
             <option value="">All Categories</option>
             {EXPENSE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}

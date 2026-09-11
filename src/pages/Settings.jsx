@@ -261,17 +261,19 @@ export default function Settings() {
           <h1 className="page-title">Settings</h1>
           <p className="page-subtitle">Manage configuration, users, and backups</p>
         </div>
-        <div className="flex gap-2">
-          {sheetUrl && (
-            <a href={sheetUrl} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm">
-              <ExternalLink size={14} /> Open Sheet
-            </a>
-          )}
-          {driveUrl && (
-            <a href={driveUrl} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm">
-              <ExternalLink size={14} /> Open Drive
-            </a>
-          )}
+        <div className="page-toolbar">
+          <div className="page-toolbar-actions">
+            {sheetUrl && (
+              <a href={sheetUrl} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm">
+                <ExternalLink size={14} /> Open Sheet
+              </a>
+            )}
+            {driveUrl && (
+              <a href={driveUrl} target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-sm">
+                <ExternalLink size={14} /> Open Drive
+              </a>
+            )}
+          </div>
         </div>
       </div>
 

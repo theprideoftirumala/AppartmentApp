@@ -3,11 +3,14 @@
  */
 
 import { Menu, RefreshCw } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { useApp } from '../../contexts/AppContext';
-import { APP_SHORT_NAME } from '../../config/constants';
+import { pageTitleForPath } from '../../utils/pageTitles';
 
 export default function Navbar({ onRefresh, refreshing }) {
   const { toggleSidebar } = useApp();
+  const { pathname } = useLocation();
+  const title = pageTitleForPath(pathname);
 
   return (
     <header className="navbar mobile-only">
@@ -18,8 +21,8 @@ export default function Navbar({ onRefresh, refreshing }) {
       >
         <Menu size={22} />
       </button>
-      <h1 className="navbar-title">{APP_SHORT_NAME}</h1>
-      {onRefresh && (
+      <h1 className="navbar-title">{title}</h1>
+      {onRefresh ? (
         <button
           className={`btn-ghost btn-icon ${refreshing ? 'animate-spin' : ''}`}
           onClick={onRefresh}
@@ -28,6 +31,8 @@ export default function Navbar({ onRefresh, refreshing }) {
         >
           <RefreshCw size={20} />
         </button>
+      ) : (
+        <span className="navbar-spacer" aria-hidden="true" />
       )}
     </header>
   );

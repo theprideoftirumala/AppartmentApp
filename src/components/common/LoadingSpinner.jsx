@@ -7,12 +7,17 @@ export default function LoadingSpinner({ size = 'md', text = 'Loading...' }) {
   const s = sizes[size] || sizes.md;
 
   return (
-    <div className="loading-spinner-container">
+    <div
+      className="loading-spinner-container"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+      {...(text ? {} : { 'aria-label': 'Loading' })}
+    >
       <div
         className="loading-spinner"
         style={{ width: s, height: s }}
-        role="status"
-        aria-label="Loading"
+        aria-hidden="true"
       >
         <svg viewBox="0 0 50 50">
           <circle

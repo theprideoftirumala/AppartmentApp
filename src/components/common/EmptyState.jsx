@@ -5,7 +5,7 @@
 
 export default function EmptyState({ icon: Icon, title, description, action }) {
   return (
-    <div className="empty-state animate-fade-in-up">
+    <div className="empty-state animate-fade-in-up" role="status">
       {Icon && (
         <div className="empty-state-icon">
           <Icon size={48} />

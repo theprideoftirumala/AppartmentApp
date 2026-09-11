@@ -93,6 +93,12 @@ function AccessBootstrap() {
   return null;
 }
 
+function skipToMainContent(event) {
+  event.preventDefault();
+  const main = document.getElementById('main-content');
+  main?.focus();
+}
+
 function AppLayout({ children }) {
   const { user, isGuest } = useAuth();
 
@@ -100,8 +106,11 @@ function AppLayout({ children }) {
 
   return (
     <div className="app-layout">
+      <button type="button" className="skip-link" onClick={skipToMainContent}>
+        Skip to content
+      </button>
       <Sidebar />
-      <div className="app-column">
+      <div className="app-column" id="main-content" tabIndex={-1}>
         {children}
         <SocietyDisclaimer />
       </div>

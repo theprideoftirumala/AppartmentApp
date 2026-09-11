@@ -19,6 +19,7 @@ import {
 import { getFlats } from '../services/googleSheets';
 import { downloadActivityReport } from '../services/pdfExport';
 import { formatCurrency } from '../utils/helpers';
+import EmptyState from '../components/common/EmptyState';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Modal from '../components/common/Modal';
 import Navbar from '../components/common/Navbar';
@@ -93,9 +94,16 @@ export default function ActivityFunds() {
       {loading ? (
         <LoadingSpinner text="Loading activities…" />
       ) : activities.length === 0 ? (
-        <div className="card">
-          <p className="text-muted">No activity funds yet. An Owner can start one — members who want to join can be marked later.</p>
-        </div>
+        <EmptyState
+          icon={PartyPopper}
+          title="No activity funds yet"
+          description="An Owner can start one — members who want to join can be marked later."
+          action={isOwner && (
+            <button className="btn btn-primary" onClick={() => setShowStart(true)}>
+              <Plus size={16} /> Start activity
+            </button>
+          )}
+        />
       ) : (
         <div className="table-container">
           <table>

@@ -165,36 +165,41 @@ export default function Maintenance() {
             Next to add is {nextMonthLabel}.
           </p>
         </div>
-        <div className="flex gap-2 items-center flex-wrap">
-          <select
-            className="form-select"
-            value={selectedMonth}
-            onChange={e => setSelectedMonth(e.target.value)}
-            style={{ width: 140 }}
-          >
-            {monthOptions.map(m => (
-              <option key={m} value={m}>{m}</option>
-            ))}
-          </select>
-          {isOwner && (
-            <button className="btn btn-secondary btn-sm" onClick={handleAddNextMonth} disabled={saving}>
-              <Plus size={16} /> Add next month ({nextMonthLabel})
-            </button>
-          )}
-          {isOwner && records.length > 0 && (
-            <button
-              className="btn btn-secondary btn-sm"
-              onClick={() => openPaymentModal(null, checkedFlats.length ? checkedFlats : unpaidFlats(records))}
-              disabled={saving}
+        <div className="page-toolbar">
+          <label className="page-toolbar-field">
+            <span className="sr-only">Collection month</span>
+            <select
+              className="form-select"
+              value={selectedMonth}
+              onChange={e => setSelectedMonth(e.target.value)}
+              aria-label="Collection month"
             >
-              {checkedFlats.length ? `Mark ${checkedFlats.length} paid` : 'Mark unpaid paid'}
-            </button>
-          )}
-          {isOwner && (
-            <button className="btn btn-primary btn-sm" onClick={() => openPaymentModal()}>
-              <Plus size={16} /> Record Payment
-            </button>
-          )}
+              {monthOptions.map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+          </label>
+          <div className="page-toolbar-actions">
+            {isOwner && (
+              <button className="btn btn-secondary btn-sm" onClick={handleAddNextMonth} disabled={saving}>
+                <Plus size={16} /> Add next month ({nextMonthLabel})
+              </button>
+            )}
+            {isOwner && records.length > 0 && (
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => openPaymentModal(null, checkedFlats.length ? checkedFlats : unpaidFlats(records))}
+                disabled={saving}
+              >
+                {checkedFlats.length ? `Mark ${checkedFlats.length} paid` : 'Mark unpaid paid'}
+              </button>
+            )}
+            {isOwner && (
+              <button className="btn btn-primary btn-sm" onClick={() => openPaymentModal()}>
+                <Plus size={16} /> Record Payment
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

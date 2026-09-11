@@ -185,27 +185,32 @@ export default function Reports() {
           <h1 className="page-title">Monthly Report</h1>
           <p className="page-subtitle">Collected, spent, and available — same figures as the Balance tab of the shared Google Sheet</p>
         </div>
-        <div className="flex gap-2 items-center flex-wrap">
-          <select
-            className="form-select"
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            style={{ width: 130 }}
-          >
-            {monthOptions.map((m) => <option key={m} value={m}>{m}</option>)}
-          </select>
-          <button className="btn btn-primary btn-sm" onClick={handleDownload} disabled={!reportData || loading}>
-            <Download size={14} /> PDF
-          </button>
-          <button className="btn btn-secondary btn-sm" onClick={handleExportImage} disabled={!reportData || loading || exportingImage}>
-            <ImageDown size={14} /> {exportingImage ? 'Image…' : 'Image'}
-          </button>
-          <button className="btn btn-success btn-sm" onClick={handleShare} disabled={!reportData || loading || sharing}>
-            <Send size={14} /> {sharing ? 'Sharing...' : 'WhatsApp'}
-          </button>
-          <button className="btn btn-secondary btn-sm" onClick={handleEmailShare} disabled={!reportData || loading}>
-            <Mail size={14} /> Email
-          </button>
+        <div className="page-toolbar">
+          <label className="page-toolbar-field">
+            <span className="sr-only">Report month</span>
+            <select
+              className="form-select"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              aria-label="Report month"
+            >
+              {monthOptions.map((m) => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </label>
+          <div className="page-toolbar-actions">
+            <button className="btn btn-primary btn-sm" onClick={handleDownload} disabled={!reportData || loading}>
+              <Download size={14} /> PDF
+            </button>
+            <button className="btn btn-secondary btn-sm" onClick={handleExportImage} disabled={!reportData || loading || exportingImage}>
+              <ImageDown size={14} /> {exportingImage ? 'Image…' : 'Image'}
+            </button>
+            <button className="btn btn-success btn-sm" onClick={handleShare} disabled={!reportData || loading || sharing}>
+              <Send size={14} /> {sharing ? 'Sharing…' : 'WhatsApp'}
+            </button>
+            <button className="btn btn-secondary btn-sm" onClick={handleEmailShare} disabled={!reportData || loading}>
+              <Mail size={14} /> Email
+            </button>
+          </div>
         </div>
       </div>
 

@@ -15,12 +15,12 @@ const bottomNavItems = [
 ];
 
 export default function BottomNav() {
-  const { toggleSidebar } = useApp();
+  const { toggleSidebar, sidebarOpen } = useApp();
   const { isGuest } = useAuth();
   const items = isGuest ? bottomNavItems.filter((item) => item.to === '/') : bottomNavItems;
 
   return (
-    <nav className="bottom-nav" aria-label="Bottom navigation">
+    <nav className="bottom-nav" aria-label="Primary">
       {items.map(item => (
         <NavLink
           key={item.to}
@@ -30,16 +30,19 @@ export default function BottomNav() {
           }
           end={item.to === '/'}
         >
-          <item.icon size={20} />
+          <item.icon size={22} />
           <span>{item.label}</span>
         </NavLink>
       ))}
       <button
-        className="bottom-nav-item"
+        type="button"
+        className={`bottom-nav-item ${sidebarOpen ? 'bottom-nav-active' : ''}`}
         onClick={toggleSidebar}
         aria-label="More options"
+        aria-expanded={sidebarOpen}
+        aria-controls="app-sidebar"
       >
-        <Menu size={20} />
+        <Menu size={22} />
         <span>More</span>
       </button>
     </nav>

@@ -34,7 +34,7 @@ Shipped in this change set, without altering cash-book math:
 - Dashboard “flats still due” includes partial payments
 - Reports, PDF, and image share one wording model; PDF has the fifth “This month” card
 - Theme bootstrap moved to `public/theme-init.js`; Azure microphone policy allows voice expenses
-- Documentation updated; PWA cache id is `tpt-v69`
+- Documentation updated; PWA cache id is `tpt-v70`
 
 Still later (not a silent rewrite): splitting `googleSheets.js` behind a facade, Playwright E2E, month-close workflow, and a guided backup restore.
 
