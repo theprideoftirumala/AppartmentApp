@@ -37,13 +37,6 @@ export function compareBarPercents(collection, expenses) {
   };
 }
 
-export function largestExpense(expenses = []) {
-  if (!expenses.length) return null;
-  return expenses.reduce((best, row) => (
-    Number(row.amount) > Number(best?.amount || 0) ? row : best
-  ), expenses[0]);
-}
-
 export function stillDueHighlights(maintenance = []) {
   const rows = (maintenance || [])
     .map((row) => {

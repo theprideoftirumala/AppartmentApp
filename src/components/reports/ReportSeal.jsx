@@ -1,4 +1,4 @@
-function circularLetters(text, cx, cy, radius, startDeg, endDeg) {
+function circularLetters(text, cx, cy, radius, startDeg, endDeg, fill) {
   const chars = String(text).split('');
   if (!chars.length) return [];
   return chars.map((ch, i) => {
@@ -10,7 +10,7 @@ function circularLetters(text, cx, cy, radius, startDeg, endDeg) {
         key={`${ch}-${i}`}
         x={(cx + radius * Math.cos(rad)).toFixed(2)}
         y={(cy + radius * Math.sin(rad)).toFixed(2)}
-        fill="#1a3d8f"
+        fill={fill}
         fontSize="7"
         fontWeight="700"
         fontFamily="Georgia, 'Times New Roman', serif"
@@ -24,6 +24,7 @@ function circularLetters(text, cx, cy, radius, startDeg, endDeg) {
 }
 
 export default function ReportSeal({ month }) {
+  const ink = '#2a4a86';
   return (
     <svg
       className="report-month-seal-svg"
@@ -31,30 +32,31 @@ export default function ReportSeal({ month }) {
       width="158"
       height="158"
       role="img"
-      aria-label={`${month} pressed digitally verified stamp`}
+      aria-label={`${month} digitally verified watercolor stamp`}
     >
-      <ellipse cx="88" cy="92" rx="74" ry="10" fill="#d8cfc0" />
-      <circle cx="86" cy="86" r="76" fill="none" stroke="#b7c6e4" strokeWidth="5" />
-      <circle cx="82" cy="82" r="76" fill="#f4efe6" stroke="#1a3d8f" strokeWidth="3.8" />
-      <circle cx="82.6" cy="82.4" r="76" fill="none" stroke="#4d6fb3" strokeWidth="1.1" />
-      <circle cx="82" cy="82" r="69" fill="none" stroke="#1a3d8f" strokeWidth="1.2" />
-      <circle cx="82" cy="82" r="63.5" fill="none" stroke="#1a3d8f" strokeWidth="0.75" strokeDasharray="2 1.5" />
-      <ellipse cx="128" cy="50" rx="4" ry="2" fill="#c5d0e8" />
-      <ellipse cx="42" cy="118" rx="3.4" ry="1.7" fill="#c5d0e8" />
-      <ellipse cx="118" cy="126" rx="2.6" ry="1.4" fill="#a8b8dc" />
-      {circularLetters('THE PRIDE OF TIRUMALA', 82, 82, 58, -94, 94)}
-      <circle cx="82" cy="64" r="10" fill="#eef2fa" stroke="#1a3d8f" strokeWidth="1.8" />
+      <ellipse cx="90" cy="94" rx="70" ry="11" fill="#d9cfc0" />
+      <ellipse cx="86" cy="84" rx="78" ry="74" fill="#d7e3f4" />
+      <ellipse cx="76" cy="78" rx="72" ry="70" fill="#b7cbe6" />
+      <ellipse cx="88" cy="88" rx="68" ry="66" fill="#8eadd8" />
+      <ellipse cx="82" cy="80" rx="62" ry="60" fill="#cfe0f2" />
+      <ellipse cx="70" cy="70" rx="18" ry="12" fill="#e8f0fa" />
+      <ellipse cx="108" cy="108" rx="14" ry="9" fill="#9bb8dc" />
+      <ellipse cx="124" cy="52" rx="10" ry="6" fill="#a9c2e4" />
+      <ellipse cx="44" cy="116" rx="9" ry="5" fill="#7fa0d0" />
+      <ellipse cx="82" cy="82" rx="58" ry="57" fill="none" stroke="#4d73b3" strokeWidth="1.4" />
+      <ellipse cx="83" cy="83" rx="51" ry="50" fill="none" stroke="#6d8fc4" strokeWidth="0.9" />
+      {circularLetters('THE PRIDE OF TIRUMALA', 82, 82, 56, -94, 94, ink)}
+      <ellipse cx="82" cy="64" rx="11" ry="10" fill="#eaf1fa" stroke="#2a4a86" strokeWidth="1.5" />
       <path
         d="M76.4 64.4 L80.2 68.6 L89.2 57.6"
         fill="none"
-        stroke="#1a3d8f"
+        stroke={ink}
         strokeWidth="2.3"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <text x="82" y="94" textAnchor="middle" fill="#1a3d8f" fontSize="19" fontWeight="700" fontFamily="Georgia, 'Times New Roman', serif">{month}</text>
-      <text x="82" y="110" textAnchor="middle" fill="#1a3d8f" fontSize="7.2" fontWeight="700" letterSpacing="0.7" fontFamily="Arial, Helvetica, sans-serif">DIGITALLY VERIFIED</text>
-      <text x="82" y="122" textAnchor="middle" fill="#3d5a99" fontSize="6.2" letterSpacing="1.1" fontFamily="Arial, Helvetica, sans-serif">PRESSED COPY</text>
+      <text x="82" y="94" textAnchor="middle" fill={ink} fontSize="19" fontWeight="700" fontFamily="Georgia, 'Times New Roman', serif">{month}</text>
+      <text x="82" y="112" textAnchor="middle" fill={ink} fontSize="7.2" fontWeight="700" letterSpacing="0.7" fontFamily="Arial, Helvetica, sans-serif">DIGITALLY VERIFIED</text>
     </svg>
   );
 }

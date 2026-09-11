@@ -57,7 +57,7 @@ describe('society disclaimer', () => {
     expect(note).not.toMatch(/singled out/i);
     expect(note).not.toMatch(/not final/i);
     expect(note).not.toMatch(/IMPORTANT NOTE/i);
-    expect(note).toMatch(/shared Google Sheet/i);
+    expect(note).toMatch(/Google Sheet is the source of truth/i);
     expect(note).toMatch(/repairs/i);
     expect(note).toMatch(/damages/i);
     expect(note).toMatch(/extra (costs|expenses)/i);

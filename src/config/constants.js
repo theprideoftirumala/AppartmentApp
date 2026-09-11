@@ -51,11 +51,11 @@ export function isSampleDataEnabled(config) {
 }
 
 export const SOCIETY_DISCLAIMER =
-  'These accounts are kept by resident volunteers alongside their own work. Figures may be updated as bills arrive. Please bear with us and support one another — we will help as soon as we can. The shared Google Sheet is the record we all follow.';
+  'These accounts are kept by resident volunteers alongside their own work. Figures may be updated as bills arrive. Please bear with us and support one another — we will help as soon as we can. The Google Sheet is the source of truth.';
 
 export const REPORT_NOTE_TITLE = 'For your information';
 export const REPORT_NOTE_LINES = [
-  'The expenses shown in this report are for information and reference. Any missed or pending expenses may be added to the shared Google Sheet when they arrive.',
+  'The expenses shown in this report are for information and reference. Any missed or pending expenses may be added to the Google Sheet when they arrive.',
   'Household repairs, personal damages, and extra costs that were not paid from the common account sit outside this statement. Kindly take those up with the person or vendor concerned.',
 ];
 export const ACTIVITY_REPORT_NOTE =

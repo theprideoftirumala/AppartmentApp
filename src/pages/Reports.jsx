@@ -19,7 +19,6 @@ import {
   categoryChartRows,
   collectionCounts,
   compareBarPercents,
-  largestExpense,
   stillDueHighlights,
   ytdChartRows,
 } from '../utils/expertReport';
@@ -113,10 +112,6 @@ export default function Reports() {
   );
   const stillDue = useMemo(
     () => stillDueHighlights(reportData?.maintenance),
-    [reportData],
-  );
-  const topBill = useMemo(
-    () => largestExpense(reportData?.expenses),
     [reportData],
   );
 
@@ -276,12 +271,6 @@ export default function Reports() {
               <strong>Still to collect {formatCurrency(stillDue.total)}</strong>
               <p>Flats {stillDue.rows.map((row) => row.flat).join(', ')}. Kindly remind with care — this is only the common account.</p>
             </div>
-          )}
-
-          {topBill && (
-            <p className="report-top-bill">
-              Largest bill this month: <strong>{topBill.description || topBill.category}</strong> — {formatCurrency(topBill.amount)}
-            </p>
           )}
 
           <div className="report-charts-grid">

@@ -16,7 +16,8 @@ import {
   REPORT_NOTE_TITLE,
   SOCIETY_DISCLAIMER,
 } from '../config/constants';
-import { largestExpense, stillDueHighlights } from '../utils/expertReport';
+import { stillDueHighlights, ytdChartRows } from '../utils/expertReport';
+import { ytdRowsFromLedger } from '../utils/ledgerMath';
 
 /** Ivory paper, espresso ink, India-flag saffron accents, forest / terracotta figures. */
 const TONE = {
@@ -39,7 +40,7 @@ const TONE = {
   pending: [176, 112, 48],
   shadow: [214, 198, 178],
   paper: [251, 246, 238],
-  stamp: [26, 61, 143],
+  stamp: [42, 74, 134],
   tableHead: [138, 74, 38],
 };
 
@@ -292,47 +293,39 @@ function drawMonthSeal(doc, monthLabel) {
   const pageHeight = doc.internal.pageSize.getHeight();
   const cx = pageWidth - 30;
   const cy = pageHeight - 42;
-  const ink = TONE.stamp;
-  const ghost = [183, 198, 228];
-  const blot = [197, 208, 232];
+  const ink = [42, 74, 134];
   const label = stampMonthLabel(monthLabel);
 
-  doc.setFillColor(216, 207, 192);
-  doc.ellipse(cx + 1.6, cy + 9.5, 15.5, 2.1, 'F');
-  doc.setDrawColor(...ghost);
-  doc.setLineWidth(2.4);
-  doc.circle(cx + 1.1, cy + 1.1, 15.6, 'S');
-  doc.setFillColor(244, 239, 230);
-  doc.circle(cx, cy, 15.3, 'F');
-  doc.setDrawColor(...ink);
-  doc.setLineWidth(1.15);
-  doc.circle(cx, cy, 15.3, 'S');
+  doc.setFillColor(217, 207, 192);
+  doc.ellipse(cx + 1.8, cy + 9.2, 15.8, 2.2, 'F');
+  doc.setFillColor(215, 227, 244);
+  doc.ellipse(cx + 0.8, cy + 0.4, 16.4, 15.6, 'F');
+  doc.setFillColor(183, 203, 230);
+  doc.ellipse(cx - 0.8, cy - 0.6, 15.2, 14.8, 'F');
+  doc.setFillColor(142, 173, 216);
+  doc.ellipse(cx + 0.5, cy + 0.7, 14.4, 13.8, 'F');
+  doc.setFillColor(207, 224, 242);
+  doc.ellipse(cx - 0.3, cy - 0.4, 13.2, 12.6, 'F');
+  doc.setFillColor(232, 240, 250);
+  doc.ellipse(cx - 3.4, cy - 4.2, 4.2, 2.6, 'F');
+  doc.setFillColor(155, 184, 220);
+  doc.ellipse(cx + 5.8, cy + 5.2, 3.4, 2.1, 'F');
+  doc.setDrawColor(77, 115, 179);
+  doc.setLineWidth(0.7);
+  doc.ellipse(cx, cy, 12.4, 12, 'S');
+  doc.setDrawColor(109, 143, 196);
   doc.setLineWidth(0.35);
-  doc.circle(cx + 0.25, cy + 0.18, 15.3, 'S');
-  doc.setLineWidth(0.32);
-  doc.circle(cx, cy, 13.6, 'S');
-  if (typeof doc.setLineDashPattern === 'function') {
-    doc.setLineDashPattern([0.55, 0.42], 0);
-    doc.setLineWidth(0.22);
-    doc.circle(cx, cy, 12.3, 'S');
-    doc.setLineDashPattern([], 0);
-  }
-  doc.setFillColor(...blot);
-  doc.ellipse(cx + 9.4, cy - 8.2, 1.5, 0.7, 'F');
-  doc.ellipse(cx - 9.8, cy + 7.4, 1.3, 0.65, 'F');
+  doc.ellipse(cx, cy, 10.8, 10.5, 'S');
 
   doc.setTextColor(...ink);
   pdfFont(doc, 'bold');
   doc.setFontSize(4.05);
-  drawArcText(doc, 'THE PRIDE OF TIRUMALA', cx, cy, 11.5, 200, 340);
+  drawArcText(doc, 'THE PRIDE OF TIRUMALA', cx, cy, 11.2, 200, 340);
   drawVerifiedTick(doc, cx, cy - 1.8, ink);
   doc.setFontSize(10.8);
-  doc.text(label, cx, cy + 5.4, { align: 'center' });
+  doc.text(label, cx, cy + 5.6, { align: 'center' });
   doc.setFontSize(4.1);
-  doc.text('DIGITALLY VERIFIED', cx, cy + 9.3, { align: 'center' });
-  pdfFont(doc, 'normal');
-  doc.setFontSize(3.5);
-  doc.text('PRESSED COPY', cx, cy + 11.7, { align: 'center' });
+  doc.text('DIGITALLY VERIFIED', cx, cy + 9.6, { align: 'center' });
 }
 
 function finishWithNotesAndSeal(doc, y, margin, contentWidth, noteLines, monthLabel, reportData) {
@@ -418,6 +411,76 @@ function washPaper(doc) {
   const pageHeight = doc.internal.pageSize.getHeight();
   doc.setFillColor(...TONE.paper);
   doc.rect(0, 0, pageWidth, pageHeight, 'F');
+}
+
+function drawYearToDate(doc, ledger, y, pageWidth, margin, contentWidth) {
+  const rows = ytdChartRows(ytdRowsFromLedger(ledger));
+  if (!rows.length) return y;
+
+  y = checkPageBreak(doc, y, margin, 48 + rows.length * 7);
+  y = drawSectionHeader(
+    doc,
+    FEATURES.MISC_FUNDS ? '4. Year to date' : '3. Year to date',
+    y,
+    pageWidth,
+    margin,
+  );
+  y += 6;
+  doc.setFillColor(...TONE.collect);
+  doc.rect(margin, y - 3, 3.2, 3.2, 'F');
+  pdfFont(doc, 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(...TONE.ink);
+  doc.text('Collected', margin + 5, y);
+  doc.setFillColor(...TONE.spend);
+  doc.rect(margin + 32, y - 3, 3.2, 3.2, 'F');
+  doc.text('Spent', margin + 37, y);
+  y += 8;
+
+  const max = Math.max(1, ...rows.flatMap((row) => [row.collection, row.expenses]));
+  const barMax = 20;
+  const slot = contentWidth / rows.length;
+  const barW = Math.min(7, Math.max(4, slot / 3.6));
+  const base = y + barMax + 2;
+  rows.forEach((row, i) => {
+    const x = margin + i * slot + slot / 2 - barW - 1.4;
+    draw3dBar(doc, x, base, barW, Math.max(3, (row.collection / max) * barMax), TONE.collect);
+    draw3dBar(doc, x + barW + 2.4, base, barW, Math.max(3, (row.expenses / max) * barMax), TONE.spend);
+    pdfFont(doc, 'normal');
+    doc.setFontSize(6.5);
+    doc.setTextColor(...TONE.muted);
+    doc.text(row.month, margin + i * slot + slot / 2, base + 5, { align: 'center' });
+  });
+  y = base + 10;
+
+  const cols = [32, 38, 38, 38, 34];
+  y = drawTableHeader(doc, ['Month', 'Collected', 'Spent', 'Net', 'Available'], cols, y, margin, contentWidth);
+  rows.forEach((row, index) => {
+    y = checkPageBreak(doc, y, margin, 7);
+    const bg = index % 2 === 0 ? [255, 255, 255] : [248, 246, 240];
+    doc.setFillColor(...bg);
+    doc.rect(margin, y, contentWidth, 7, 'F');
+    doc.setFontSize(7.5);
+    let colX = margin + 2;
+    const vals = [
+      row.month,
+      formatCurrency(row.collection),
+      formatCurrency(row.expenses),
+      formatCurrency(row.net),
+      formatCurrency(row.running),
+    ];
+    vals.forEach((val, i) => {
+      pdfFont(doc, i === 0 ? 'bold' : 'normal');
+      if (i === 1) doc.setTextColor(...TONE.collect);
+      else if (i === 2) doc.setTextColor(...TONE.spend);
+      else if (i === 3) doc.setTextColor(...(row.net >= 0 ? TONE.collect : TONE.spend));
+      else doc.setTextColor(...TONE.ink);
+      doc.text(String(val), colX, y + 5);
+      colX += cols[i];
+    });
+    y += 7;
+  });
+  return y + 8;
 }
 
 function drawExpenseReport(doc, expenses, totalExpenses, y, pageWidth, margin, contentWidth, options = {}) {
@@ -557,6 +620,7 @@ export async function generateMonthlyReport(reportData) {
     monthStatus,
     availableStatus,
     flats,
+    ledger,
   } = reportData;
 
   const doc = await createPdfDoc();
@@ -621,20 +685,6 @@ export async function generateMonthlyReport(reportData) {
       y + 7.5,
     );
     y += 16;
-  }
-
-  const topBill = largestExpense(expenses);
-  if (topBill) {
-    y = checkPageBreak(doc, y, margin, 12);
-    doc.setFontSize(8);
-    pdfFont(doc, 'normal');
-    doc.setTextColor(...TONE.muted);
-    doc.text(
-      `Largest bill this month: ${String(topBill.description || topBill.category || 'Expense').substring(0, 42)}  ·  ${formatCurrency(topBill.amount)}`,
-      margin + 1,
-      y + 4,
-    );
-    y += 10;
   }
 
   // ─── Remaining / Deficit Summary ──────────────────────
@@ -772,6 +822,8 @@ export async function generateMonthlyReport(reportData) {
   y = drawExpenseReport(doc, expenses, totalExpenses, y, pageWidth, margin, contentWidth, {
     title: FEATURES.MISC_FUNDS ? '3. Expenses' : '2. Expenses',
   });
+
+  y = drawYearToDate(doc, ledger, y, pageWidth, margin, contentWidth);
 
   finishWithNotesAndSeal(doc, y, margin, contentWidth, REPORT_NOTE_LINES, month, reportData);
   return doc;
