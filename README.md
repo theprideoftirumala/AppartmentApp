@@ -9,19 +9,19 @@ A **Progressive Web App** for apartment maintenance finances. One Google Sheet i
 ## What’s in 2.0.0
 
 - **One workbook:** `APP-TPT-Tracker` in Drive folder `TPT-APP-Tracker`
-- **Books start Sep-26.** Opening surplus **₹612**
+- **Books start Sep-26.** Opening surplus **₹612** (after Aug 2026 — that is Sep-26’s opening)
 - **Balance tab** (formulas): collected, spent, available, SURPLUS / DEFICIT / BALANCED
-- **PDF** prints opening surplus, this month surplus/deficit, and available balance
+- **PDF / report** first card is the previous month’s available (surplus or deficit); then this month; then available after this month
 - Local CSV proof: `npm run workbook:csv` → `test-fixtures/APP-TPT-Tracker/`
 
-See `Architecture.md` for colorful diagrams.
+See `Architecture.md` for diagrams. Agent notes: `AGENTS.md`.
 
 ## Features
 
 - Dashboard — available balance, collection %, expenses, pending flats
 - Maintenance — PAID default, multi-flat save, add next month
 - Expenses — categories, receipts, voice or camera fill (review before save)
-- Reports + WhatsApp/email PDF
+- Reports + WhatsApp/email PDF + image export
 - Activity Funds, Payees (GPay / PhonePe), Reminders, Emergency contacts
 - Access Control (Owner / Reader, max 20 / 2)
 - Guest PIN (device-local cached dashboard)
@@ -46,4 +46,4 @@ Sign in as the founding owner → Setup creates `TPT-APP-Tracker/APP-TPT-Tracker
 
 Push to `main`. GitHub Actions publishes to GitHub Pages. Details in `DEPLOYMENT.md`.
 
-After deploy: hard-refresh or Settings → Clear cache (PWA `tpt-v50`).
+After deploy: hard-refresh or Settings → Clear cache (PWA `tpt-v67`).

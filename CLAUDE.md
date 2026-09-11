@@ -14,7 +14,7 @@
 - **PWA**: vite-plugin-pwa with Workbox
 - **Voice fill**: browser Web Speech API + local parse
 - **Receipt fill**: Tesseract.js `eng` OCR in the browser
-- Architecture: `Architecture.md`
+- Architecture: `Architecture.md`. Agent rules: `AGENTS.md`.
 
 ## Key Design Decisions
 
@@ -22,7 +22,7 @@
 2. **HashRouter** for GitHub Pages.
 3. **One workbook** named `APP-TPT-Tracker` in Drive folder `TPT-APP-Tracker`.
 4. **Books start Sep 2026.** Earlier history is ignored.
-5. **Opening surplus is ₹612** (`OPENING_SURPLUS` on Configuration). Available balance = 612 + collected − spent.
+5. **Opening surplus is ₹612** (`OPENING_SURPLUS`) — cash after Aug 2026, used as **Sep-26’s opening**. Balance tab = 612 + all collected − all spent. Each later month’s report opens with the previous month’s available surplus or deficit.
 6. **Balance tab** shows surplus / deficit / available from formulas so a layman can read it without the app.
 7. **Max 20 users, 2 owners.** Fiscal year Sep–Aug.
 
@@ -39,10 +39,10 @@ src/
 │   ├── sheetSetup.js        # Create/connect APP-TPT-Tracker + formulas
 │   ├── sheetFormulas.js     # Balance, Monthly Summary, Pending Dues, Still Due
 │   ├── activityFunds.js
-│   └── pdfExport.js         # Opening + month + available on every PDF
+│   └── pdfExport.js         # Month opening + this month + available + YTD
 ├── utils/
-│   ├── ledgerMath.js        # Surplus / deficit / running (same as the sheet)
-│   ├── months.js            # Sep-26 onward
+│   ├── ledgerMath.js        # Month opening, surplus / deficit, running (same as the sheet)
+│   ├── months.js            # Sep-26 onward, previousMonthLabel
 │   ├── workbookCsv.js       # Local CSV stand-in for tests
 │   ├── gapi.js
 │   ├── voiceExpense.js
@@ -75,7 +75,7 @@ Backup on first Setup (if reconnecting), on each Google sign-in, and Settings �
 ## Configuration
 
 - Monthly maintenance: ₹3,000
-- Opening surplus: ₹612
+- Opening surplus: ₹612 (after Aug 2026; Sep-26 opening only)
 - Fiscal year start: 2026-09
 - Treasurer: Flat 401, President: Flat 102
 - Sample data compile-time off
@@ -98,6 +98,9 @@ Reuse `isFoundingOwner`, `effectiveAppRole`, `normalizeRequestedRole`, `canCreat
 - Add a flat owner: Settings → Flat Details
 - Add a resident: Settings → Access Control (default Reader)
 - Add a month: Maintenance → Add next month
+- Monthly report first card: available after the previous month (Sep uses ₹612)
+
+Architecture diagrams: `Architecture.md`. Agent rules: `AGENTS.md`.
 
 ## Client ID
 

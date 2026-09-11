@@ -1,8 +1,8 @@
 # Architecture — The Pride of Tirumala Expense Tracker
 
-**One Google Sheet. One Drive folder. Books from Sep 2026. Opening surplus ₹612.**
+**One Google Sheet. One Drive folder. Books from Sep 2026. Opening surplus ₹612 after Aug 2026 (Sep-26 opening; later months carry the previous available).**
 
-Stack: React 19 · Vite 8 · Google Sheets API v4 · Google Drive API v3 · Google Identity Services · jsPDF · Web Speech API · Tesseract.js
+Stack: React 19 · Vite 8 · Google Sheets API v4 · Google Drive API v3 · Google Identity Services · jsPDF · html2canvas · Web Speech API · Tesseract.js
 
 ---
 
@@ -17,8 +17,8 @@ flowchart TB
         UI["Pages: Dashboard · Maintenance · Expenses · Reports"]
         AUTH["AuthContext — GIS OAuth + Guest PIN"]
         APP["AppContext — cache + toasts"]
-        MATH["ledgerMath.js — surplus / deficit / running"]
-        PDF["pdfExport.js — monthly PDF"]
+        MATH["ledgerMath.js — month opening / surplus / running"]
+        PDF["pdfExport.js — monthly PDF + YTD"]
         VOICE["Voice fill — Web Speech"]
         OCR["Receipt fill — Tesseract.js"]
     end
@@ -37,7 +37,7 @@ flowchart TB
     UI --> VOICE
     UI --> OCR
     APP -->|"batchGet / append"| SHEET
-    PDF -->|"prints opening + month + available"| UI
+    PDF -->|"month opening + this month + available"| UI
     UI --> EVID
     UI --> ACT
     AUTH -->|"login backup"| BAK
@@ -64,19 +64,29 @@ flowchart LR
 
 ## 3. Cash-book math (source of truth)
 
-Opening surplus **₹612** is typed on Configuration as `OPENING_SURPLUS`. The Balance tab and Monthly Summary are formulas. The app uses the same math in `ledgerMath.js`.
+Opening surplus **₹612** is cash in hand **after August 2026**. It is typed on Configuration as `OPENING_SURPLUS`. That is **September’s opening**, not a figure that repeats on every monthly report.
+
+The **Balance** tab is the whole-books position:
 
 ```
-Available balance = 612 + all Amount Paid − all Expense amounts
-This month = collected this month − spent this month
-Status = SURPLUS if > 0, DEFICIT if < 0, BALANCED if 0
-Running balance after a month = opening + every month result up to that month
+Available (Balance tab) = 612 + all Amount Paid − all Expense amounts
 ```
+
+Each **month** on Monthly Summary and on the report is:
+
+```
+This month = collected this month − spent this month
+Month opening = ₹612 for Sep-26, else the previous month’s available
+Available after this month = month opening + collected − spent
+Status = SURPLUS if > 0, DEFICIT if < 0, BALANCED if 0
+```
+
+`ledgerMath.js` (`monthOpening`, `pdfMoneySummary`) uses the same rules as the sheet formulas.
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#ef6c00', 'secondaryColor': '#2e7d32', 'tertiaryColor': '#c62828', 'background': '#1a1208', 'primaryTextColor': '#fff8e1', 'lineColor': '#ffcc80'}}}%%
 flowchart TD
-    O["Opening surplus ₹612<br/>1 Sep 2026"] --> C["+ Collected<br/>Maintenance Amount Paid"]
+    O["Opening surplus ₹612<br/>after Aug 2026"] --> C["+ Collected<br/>Maintenance Amount Paid"]
     C --> S["− Spent<br/>Expenses Amount"]
     S --> A{"Available balance"}
     A -->|"> 0"| SUR["🟢 SURPLUS"]
@@ -84,7 +94,17 @@ flowchart TD
     A -->|"< 0"| DEF["🔴 DEFICIT"]
 ```
 
-A treasurer who never opens this website can still see surplus or deficit on the **Balance** tab.
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#1565c0', 'secondaryColor': '#2e7d32', 'tertiaryColor': '#c62828', 'background': '#061018', 'primaryTextColor': '#e3f2fd', 'lineColor': '#90caf9'}}}%%
+flowchart LR
+    AUG["After Aug-26<br/>₹612"] --> SEP["Sep-26 opening"]
+    SEP --> SEPA["Sep collected − spent<br/>= available after Sep"]
+    SEPA --> OCT["Oct-26 opening"]
+    OCT --> OCTA["Oct collected − spent<br/>= available after Oct"]
+    OCTA --> NOV["Nov-26 opening"]
+```
+
+A treasurer who never opens this website can still see surplus or deficit on the **Balance** tab. A monthly PDF’s first card is **available after the previous month**.
 
 ---
 
@@ -194,17 +214,23 @@ erDiagram
 
 ---
 
-## 7. PDF report
+## 7. Monthly report (screen, PDF, image)
 
-Every monthly PDF prints:
+The first card is **Opening surplus** or **Opening deficit** — cash in hand **after the previous month**. Sep-26 uses ₹612 (after Aug-26). Oct-26 uses whatever was left after Sep.
 
-1. Opening surplus ₹612  
-2. Collected this month  
-3. Spent this month  
-4. This month SURPLUS / DEFICIT / BALANCED  
-5. Available balance (running) and its status  
+Every monthly PDF / on-screen report prints:
 
-Same numbers as the Balance tab.
+1. Opening surplus or deficit (brought forward after the previous month)  
+2. Collected this month · spent this month  
+3. This month SURPLUS / DEFICIT / BALANCED (collected − spent)  
+4. Available after this month (opening + collected − spent)  
+5. Year to date (chart + table)  
+6. Notes, Franklin water quote, volunteer disclaimer — **The Google Sheet is the source of truth**  
+7. Watercolor digitally verified stamp (apartment name on an inner circular arc, month inside). If the page is tight, the stamp overlaps the last notes — it does not start a blank page  
+
+Footer on every PDF page: apartment · Monthly Report · treasurer · president · page number.
+
+Do not use the word *society* in resident-facing report copy. Do not print `APP-TPT-Tracker` on the report.
 
 ---
 
@@ -232,4 +258,6 @@ Same numbers as the Balance tab.
 
 ## 10. Local CSV proof
 
-`npm run workbook:csv` and `src/utils/workbookCsv.test.js` write `test-fixtures/APP-TPT-Tracker/*.csv` and evaluate the same ledger as the live sheet. Sep-26 sample: collected ₹25,500, spent ₹14,400, running ₹11,712 surplus. Oct-26 sample month is a deficit; available remains a surplus at ₹6,712.
+`npm run workbook:csv` and `src/utils/workbookCsv.test.js` write `test-fixtures/APP-TPT-Tracker/*.csv` and evaluate the same ledger as the live sheet. Sep-26 sample: collected ₹25,500, spent ₹14,400, available after Sep ₹11,712 surplus (opening ₹612). Oct-26 sample opens at ₹11,712, is a deficit month, and ends with ₹6,712 still in surplus.
+
+See `AGENTS.md` and `llms.txt` for agent-facing rules.

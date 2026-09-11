@@ -13,6 +13,7 @@ The Pride of Tirumala (TPT) Apartment Expense Tracker — a Progressive Web App 
 - Google Drive API v3 (receipts, backups, activity funds)
 - Google Identity Services (OAuth 2.0)
 - jsPDF
+- html2canvas (report image export)
 - Tesseract.js v5 `eng` (on-device OCR)
 - Web Speech API
 - vite-plugin-pwa
@@ -23,9 +24,18 @@ The Pride of Tirumala (TPT) Apartment Expense Tracker — a Progressive Web App 
 
 ## Purpose
 
-Track monthly maintenance (₹3,000 × 10 flats) from **Sep 2026**, log expenses, generate PDFs that show surplus/deficit/available balance. Opening surplus is **₹612**.
+Track monthly maintenance (₹3,000 × 10 flats) from **Sep 2026**, log expenses, generate PDFs that show month opening, this month surplus/deficit, and available after the month.
 
 **The Google Sheet is the source of truth.** Adding a row on Maintenance or Expenses and refreshing the app must show that change.
+
+## Cash book (critical)
+
+- **₹612** (`OPENING_SURPLUS`) is cash in hand **after Aug 2026**. It is **Sep-26’s opening**.
+- **Balance tab:** `612 + all Amount Paid − all expenses` = overall available. SURPLUS / DEFICIT / BALANCED.
+- **Each later month** opens with the **previous month’s available** (surplus or deficit). Oct-26 first card = available after Sep-26.
+- `this month` = collected that month − spent that month.
+- Available after the month = that month’s opening + collected − spent.
+- `src/utils/ledgerMath.js` must match Monthly Summary / Balance formulas.
 
 ## Society workbook (critical)
 
@@ -34,13 +44,20 @@ There is **one** workbook: `APP-TPT-Tracker` in Drive folder `TPT-APP-Tracker`.
 - Founding owner may **create** it if Drive search finds none
 - If it already exists, Setup connects it (backup first when reconnecting)
 - Do not create `TPT-MaintenanceTracker`, `The Pride of Tirumala-APP`, or a LIVE twin
-- Balance tab formulas: opening 612 + collected − spent = available; SURPLUS / DEFICIT / BALANCED
-- Monthly Summary formulas: per month collected, spent, month result, running balance, status
 - First month label: `Sep-26`
 - `public/sheet-config.json` may list a published id after create. Do not invent one in source
 - Payees: GPay/PhonePe `number@ybl`; optional UPI overrides. Duplicates rejected
 - Expenses with same date + description + amount are rejected
 - Maintenance Record Payment defaults to PAID; several flats at once; no late fee
+
+## Monthly report
+
+- Screen, PDF, and PNG share the same money story
+- Opening card label: Opening surplus or Opening deficit, subtitle “Available after {previous month}”
+- Year to date chart + table
+- Notes + Franklin quote (“When the well is dry, we know the worth of water.”) + volunteer disclaimer
+- Stamp: watercolor, **The Pride of Tirumala** on an inner circular arc; overlap last notes if the page is short — never a stamp-only page
+- Resident copy: no *society*, no `APP-TPT-Tracker`
 
 ## Access model (critical)
 
@@ -59,16 +76,19 @@ Policy helpers live in `src/config/accessPolicy.js`.
 ## Key files
 
 - `src/config/accessPolicy.js`
-- `src/config/constants.js` — `DRIVE_ROOT_FOLDER`, `SHEET_FILE_NAME`, `OPENING_SURPLUS`, `FIRST_APP_MONTH_LABEL`
-- `src/utils/ledgerMath.js` — opening + collected − spent
-- `src/utils/months.js` — Sep-26 sequence
+- `src/config/constants.js` — folder + sheet names, `OPENING_SURPLUS`, report copy, water quote
+- `src/utils/ledgerMath.js` — month opening + collected − spent
+- `src/utils/months.js` — Sep-26 sequence, `previousMonthLabel`
 - `src/utils/workbookCsv.js` — local CSV workbook for tests
 - `src/services/sheetSetup.js` — create/connect + formulas
 - `src/services/sheetFormulas.js`
 - `src/services/googleSheets.js`
 - `src/services/googleDrive.js`
 - `src/services/pdfExport.js`
+- `src/components/reports/ReportSeal.jsx`
 - `Architecture.md`
+- `AGENTS.md`
+- `CLAUDE.md`
 
 ## Constraints
 
@@ -82,4 +102,4 @@ Policy helpers live in `src/config/accessPolicy.js`.
 
 - Push to `main` → GitHub Actions Pages
 - After create, optionally paste the sheet id into `public/sheet-config.json`
-- Hard-refresh or Settings → Clear cache after deploy (PWA `tpt-v50`)
+- Hard-refresh or Settings → Clear cache after deploy (PWA `tpt-v67`)

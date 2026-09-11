@@ -216,7 +216,7 @@ Do **not** create `TPT-MaintenanceTracker`, `The Pride of Tirumala-APP`, or a se
 | Blank page after deploy | Check `base` in `vite.config.js` matches your deployment path |
 | Setup cannot find the sheet | Sign in as the founding owner. Setup creates **APP-TPT-Tracker** in **TPT-APP-Tracker** if none exists |
 | Old TPT-MaintenanceTracker or The Pride of Tirumala-APP still opens | Clear cache. This app binds only **APP-TPT-Tracker** |
-| Balance looks wrong | Open the Balance tab. Available = OPENING_SURPLUS (612) + Maintenance paid − Expenses. Fix typed rows, not formula cells |
+| Balance looks wrong | Open the Balance tab. Available = OPENING_SURPLUS (612) + all Maintenance paid − all Expenses. A monthly report’s first card is the previous month’s leftover, not 612 after Sep. Fix typed rows, not formula cells |
 | Unable to parse range Configuration | Founding owner: Setup or Settings → Refresh sheet layout |
 | Payees: `.catch is not a function` | Settings → Clear cache. Google thenables must be wrapped with `gapiCall` |
 | Failed to create backup | Create Backup copies APP-TPT-Tracker; clones tabs if Drive copy is blocked |

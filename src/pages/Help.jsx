@@ -26,7 +26,7 @@ Open the Balance tab in Google Sheets first. A layman can see surplus or deficit
     text: `1. Add the month on Maintenance if it is not there yet (Add next month).
 2. Record payments (defaults to PAID; several flats at once).
 3. Add expenses. Attach a receipt if you have one. Voice or camera fill only drafts the form — review before Save.
-4. Open Reports. Download or share the PDF. It prints opening surplus, this month surplus/deficit, and available balance.
+4. Open Reports. Download or share the PDF. The first card is cash after the previous month (₹${OPENING_SURPLUS} for ${FIRST_APP_MONTH_LABEL}). Then this month’s collected, spent, surplus or deficit, and available after this month.
 5. Share the PDF in the WhatsApp group.`,
   },
   {

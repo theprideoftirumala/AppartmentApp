@@ -347,7 +347,7 @@ export default function Settings() {
                 },
                 {
                   key: 'OPENING_SURPLUS', label: 'Opening surplus (₹)', type: 'number', readonly: true,
-                  info: 'Carry-forward into Sep 2026. Fixed at ₹612. Balance tab and PDFs start from this number.'
+                  info: 'Cash in hand after Aug 2026. Fixed at ₹612. That is Sep-26 opening. The Balance tab starts here. Each later monthly report opens with the previous month available.',
                 },
                 {
                   key: 'FISCAL_YEAR_START', label: 'Books start (YYYY-MM)', type: 'text',

@@ -138,7 +138,7 @@ export const CONFIG_DESCRIPTIONS = {
   APARTMENT_NAME: 'Name of the apartment complex (shown on dashboard and PDF reports)',
   MONTHLY_MAINTENANCE: 'Monthly maintenance amount each flat pays (₹). Example: 3000',
   CORPUS_FUND: 'One-time corpus fund balance (₹). Edit here; the app reads this value.',
-  OPENING_SURPLUS: 'Money already in hand on 1 Sep 2026 (₹612 carry-forward). Balance tab and PDFs start from this number.',
+  OPENING_SURPLUS: 'Money already in hand after Aug 2026 (₹612). Balance tab starts here. Each monthly report after Sep-26 opens with the previous month’s available.',
   APARTMENT_ADDRESS: 'Postal address of the apartment',
   FISCAL_YEAR_START: 'First month on the books as YYYY-MM. Always 2026-09 for this tracker.',
   TREASURER_FLAT: 'Flat number of the current Treasurer (must match a row in the Flats tab)',
