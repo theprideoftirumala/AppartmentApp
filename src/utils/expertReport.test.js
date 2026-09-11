@@ -3,6 +3,7 @@ import {
   categoryChartRows,
   collectionCounts,
   compareBarPercents,
+  largestExpense,
   stillDueHighlights,
   ytdChartRows,
 } from './expertReport';
@@ -35,6 +36,17 @@ describe('categoryChartRows', () => {
 describe('compareBarPercents', () => {
   it('scales the larger amount to 100%', () => {
     expect(compareBarPercents(30000, 15000)).toEqual({ collectionPct: 100, expensesPct: 50 });
+  });
+});
+
+describe('largestExpense', () => {
+  it('returns the highest bill', () => {
+    const row = largestExpense([
+      { description: 'Garbage', amount: 1500 },
+      { description: 'Watchman Salary', amount: 8500 },
+    ]);
+    expect(row.description).toBe('Watchman Salary');
+    expect(row.amount).toBe(8500);
   });
 });
 

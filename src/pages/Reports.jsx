@@ -19,6 +19,7 @@ import {
   categoryChartRows,
   collectionCounts,
   compareBarPercents,
+  largestExpense,
   stillDueHighlights,
   ytdChartRows,
 } from '../utils/expertReport';
@@ -112,6 +113,10 @@ export default function Reports() {
   );
   const stillDue = useMemo(
     () => stillDueHighlights(reportData?.maintenance),
+    [reportData],
+  );
+  const topBill = useMemo(
+    () => largestExpense(reportData?.expenses),
     [reportData],
   );
 
@@ -212,7 +217,8 @@ export default function Reports() {
         <div className="expert-report animate-fade-in" ref={reportRef} data-report-capture>
           <header className="report-header">
             <h2>{reportData.apartmentName}</h2>
-            <p className="text-muted">Apartment accounts — {reportData.month}</p>
+            <p className="report-kicker">Monthly apartment accounts</p>
+            <p className="report-month-mark">{reportData.month}</p>
             <p className="report-header-meta">
               Treasurer Flat {reportData.config?.TREASURER_FLAT || '401'}
               {' · '}
@@ -256,7 +262,11 @@ export default function Reports() {
             </div>
           </div>
 
-          <p className="report-expected text-muted text-sm">
+          <p className="report-glance">
+            This month the building collected {formatCurrency(reportData.totalCollection)}, spent {formatCurrency(reportData.totalExpenses)}, and has {formatCurrency(available)} available.
+          </p>
+
+          <p className="report-expected">
             Monthly rate {formatCurrency(rate)} × 10 flats = {formatCurrency(expected)} expected.
             Opening {formatCurrency(reportData.openingSurplus)} + collected {formatCurrency(reportData.totalCollection)} − spent {formatCurrency(reportData.totalExpenses)} = {formatCurrency(available)}.
           </p>
@@ -266,6 +276,12 @@ export default function Reports() {
               <strong>Still to collect {formatCurrency(stillDue.total)}</strong>
               <p>Flats {stillDue.rows.map((row) => row.flat).join(', ')}. Kindly remind with care — this is only the common account.</p>
             </div>
+          )}
+
+          {topBill && (
+            <p className="report-top-bill">
+              Largest bill this month: <strong>{topBill.description || topBill.category}</strong> — {formatCurrency(topBill.amount)}
+            </p>
           )}
 
           <div className="report-charts-grid">

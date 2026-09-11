@@ -16,38 +16,35 @@ import {
   REPORT_NOTE_TITLE,
   SOCIETY_DISCLAIMER,
 } from '../config/constants';
-import { stillDueHighlights } from '../utils/expertReport';
+import { largestExpense, stillDueHighlights } from '../utils/expertReport';
 
-/** India-flag saffron (#FF9933) lightened for the header; cream paper; sage / terracotta figures. */
+/** Ivory paper, espresso ink, India-flag saffron accents, forest / terracotta figures. */
 const TONE = {
   saffronTop: [255, 214, 168],
   saffron: [255, 176, 92],
   saffronDeep: [255, 153, 51],
-  headerInk: [92, 36, 8],
-  section: [186, 96, 42],
-  ink: [62, 42, 28],
-  muted: [112, 82, 58],
-  collect: [72, 128, 104],
-  collectBg: [236, 246, 238],
-  spend: [176, 98, 88],
-  spendBg: [252, 240, 236],
-  opening: [86, 118, 148],
-  openingBg: [238, 244, 248],
-  noteBg: [255, 246, 232],
+  headerInk: [46, 32, 20],
+  section: [138, 74, 38],
+  ink: [46, 32, 20],
+  muted: [96, 74, 56],
+  collect: [31, 122, 76],
+  collectBg: [232, 245, 236],
+  spend: [184, 78, 64],
+  spendBg: [252, 238, 234],
+  opening: [61, 107, 153],
+  openingBg: [236, 243, 248],
+  noteBg: [255, 247, 234],
   noteInk: [102, 48, 16],
-  discBg: [255, 250, 242],
-  pending: [176, 120, 72],
+  discBg: [252, 248, 241],
+  pending: [176, 112, 48],
   shadow: [214, 198, 178],
-  paper: [255, 250, 242],
-  stamp: [28, 72, 158],
+  paper: [251, 246, 238],
+  stamp: [26, 61, 143],
+  tableHead: [138, 74, 38],
 };
 
 function mixRgb(rgb, other, amount) {
   return rgb.map((c, i) => Math.round(c * (1 - amount) + other[i] * amount));
-}
-
-function clampRgb(rgb) {
-  return rgb.map((c) => Math.max(0, Math.min(255, Math.round(c))));
 }
 
 function drawRaisedCard(doc, x, y, w, h, fill) {
@@ -62,29 +59,29 @@ function drawRaisedCard(doc, x, y, w, h, fill) {
 }
 
 function draw3dBar(doc, x, baseY, w, h, rgb) {
-  const dx = 3.4;
-  const dy = 1.9;
+  const dx = 3.6;
+  const dy = 2;
   const top = baseY - h;
-  const light = mixRgb(rgb, [255, 255, 255], 0.3);
-  const dark = mixRgb(rgb, [42, 28, 18], 0.32);
-  doc.setFillColor(230, 218, 204);
-  doc.ellipse(x + w / 2 + 1.5, baseY + 1.7, w / 2 + 2.6, 1.25, 'F');
-  doc.setFillColor(240, 230, 218);
-  doc.ellipse(x + w / 2 + 0.7, baseY + 1.15, w / 2 + 1.2, 0.75, 'F');
+  const light = mixRgb(rgb, [255, 255, 255], 0.28);
+  const dark = mixRgb(rgb, [28, 18, 12], 0.3);
+  doc.setFillColor(226, 214, 198);
+  doc.ellipse(x + w / 2 + 1.8, baseY + 1.8, w / 2 + 3, 1.35, 'F');
+  doc.setFillColor(238, 228, 214);
+  doc.ellipse(x + w / 2 + 0.6, baseY + 1.1, w / 2 + 1.1, 0.7, 'F');
   doc.setFillColor(...dark);
   doc.triangle(x + w, top, x + w + dx, top - dy, x + w + dx, baseY - dy, 'F');
   doc.triangle(x + w, top, x + w + dx, baseY - dy, x + w, baseY, 'F');
-  doc.setFillColor(...mixRgb(light, [255, 246, 232], 0.18));
+  doc.setFillColor(...mixRgb(light, [255, 248, 236], 0.22));
   doc.triangle(x, top, x + dx, top - dy, x + w + dx, top - dy, 'F');
   doc.triangle(x, top, x + w + dx, top - dy, x + w, top, 'F');
-  const strips = 12;
+  const strips = 14;
   for (let i = 0; i < strips; i += 1) {
     const t = i / (strips - 1);
-    doc.setFillColor(...mixRgb(light, rgb, 0.12 + t * 0.88));
-    doc.rect(x, top + (h * i) / strips, w, h / strips + 0.22, 'F');
+    doc.setFillColor(...mixRgb(light, rgb, 0.08 + t * 0.92));
+    doc.rect(x, top + (h * i) / strips, w, h / strips + 0.2, 'F');
   }
-  doc.setFillColor(...mixRgb(light, [255, 255, 255], 0.45));
-  doc.rect(x, top, 0.7, h, 'F');
+  doc.setFillColor(...mixRgb(light, [255, 255, 255], 0.5));
+  doc.rect(x, top, 0.9, h, 'F');
 }
 
 const PDF_FONT = 'NotoSans';
@@ -189,18 +186,20 @@ function drawSectionHeader(doc, text, y, pageWidth, margin) {
  * Draw a table header row
  */
 function drawTableHeader(doc, headers, colWidths, y, margin, contentWidth) {
-  doc.setFillColor(235, 238, 245);
-  doc.rect(margin, y, contentWidth, 7, 'F');
-  doc.setTextColor(60, 60, 80);
-  doc.setFontSize(7.5);
+  doc.setFillColor(...TONE.tableHead);
+  doc.rect(margin, y, contentWidth, 7.4, 'F');
+  doc.setFillColor(...mixRgb(TONE.tableHead, [255, 220, 180], 0.22));
+  doc.rect(margin, y, contentWidth, 1.2, 'F');
+  doc.setTextColor(255, 250, 242);
+  doc.setFontSize(7.6);
   pdfFont(doc, 'bold');
 
   let colX = margin + 2;
   headers.forEach((header, i) => {
-    doc.text(header, colX, y + 5);
+    doc.text(header, colX, y + 5.2);
     colX += colWidths[i];
   });
-  return y + 7;
+  return y + 7.4;
 }
 
 /**
@@ -294,36 +293,46 @@ function drawMonthSeal(doc, monthLabel) {
   const cx = pageWidth - 30;
   const cy = pageHeight - 42;
   const ink = TONE.stamp;
-  const wash = mixRgb(ink, [255, 255, 255], 0.62);
+  const ghost = [183, 198, 228];
+  const blot = [197, 208, 232];
   const label = stampMonthLabel(monthLabel);
 
-  doc.setDrawColor(...wash);
-  doc.setLineWidth(2.1);
-  doc.circle(cx + 0.3, cy + 0.2, 16.2, 'S');
+  doc.setFillColor(216, 207, 192);
+  doc.ellipse(cx + 1.6, cy + 9.5, 15.5, 2.1, 'F');
+  doc.setDrawColor(...ghost);
+  doc.setLineWidth(2.4);
+  doc.circle(cx + 1.1, cy + 1.1, 15.6, 'S');
+  doc.setFillColor(244, 239, 230);
+  doc.circle(cx, cy, 15.3, 'F');
   doc.setDrawColor(...ink);
-  doc.setLineWidth(1.05);
-  doc.circle(cx, cy, 15.2, 'S');
+  doc.setLineWidth(1.15);
+  doc.circle(cx, cy, 15.3, 'S');
+  doc.setLineWidth(0.35);
+  doc.circle(cx + 0.25, cy + 0.18, 15.3, 'S');
   doc.setLineWidth(0.32);
   doc.circle(cx, cy, 13.6, 'S');
   if (typeof doc.setLineDashPattern === 'function') {
     doc.setLineDashPattern([0.55, 0.42], 0);
-    doc.setLineWidth(0.2);
-    doc.circle(cx, cy, 12.4, 'S');
+    doc.setLineWidth(0.22);
+    doc.circle(cx, cy, 12.3, 'S');
     doc.setLineDashPattern([], 0);
   }
+  doc.setFillColor(...blot);
+  doc.ellipse(cx + 9.4, cy - 8.2, 1.5, 0.7, 'F');
+  doc.ellipse(cx - 9.8, cy + 7.4, 1.3, 0.65, 'F');
 
   doc.setTextColor(...ink);
   pdfFont(doc, 'bold');
-  doc.setFontSize(4.15);
-  drawArcText(doc, 'THE PRIDE OF TIRUMALA', cx, cy, 11.4, 200, 340);
-  drawVerifiedTick(doc, cx, cy - 1.6, ink);
-  doc.setFontSize(10.5);
-  doc.text(label, cx, cy + 5.2, { align: 'center' });
-  doc.setFontSize(4.2);
-  doc.text('DIGITALLY VERIFIED', cx, cy + 9.2, { align: 'center' });
+  doc.setFontSize(4.05);
+  drawArcText(doc, 'THE PRIDE OF TIRUMALA', cx, cy, 11.5, 200, 340);
+  drawVerifiedTick(doc, cx, cy - 1.8, ink);
+  doc.setFontSize(10.8);
+  doc.text(label, cx, cy + 5.4, { align: 'center' });
+  doc.setFontSize(4.1);
+  doc.text('DIGITALLY VERIFIED', cx, cy + 9.3, { align: 'center' });
   pdfFont(doc, 'normal');
-  doc.setFontSize(3.6);
-  doc.text('COMMON ACCOUNTS', cx, cy + 11.6, { align: 'center' });
+  doc.setFontSize(3.5);
+  doc.text('PRESSED COPY', cx, cy + 11.7, { align: 'center' });
 }
 
 function finishWithNotesAndSeal(doc, y, margin, contentWidth, noteLines, monthLabel, reportData) {
@@ -340,31 +349,31 @@ function finishWithNotesAndSeal(doc, y, margin, contentWidth, noteLines, monthLa
 
 function drawHeaderBanner(doc, pageWidth, { title, subtitle, line3, meta }) {
   const height = 50;
-  for (let i = 0; i < height; i += 1) {
-    const t = i / (height - 1);
-    const eased = t * 0.55 + t * t * 0.45;
-    doc.setFillColor(...clampRgb(mixRgb(TONE.saffronTop, TONE.saffronDeep, eased)));
-    doc.rect(0, i, pageWidth, 1.2, 'F');
-  }
+  doc.setFillColor(...TONE.paper);
+  doc.rect(0, 0, pageWidth, height + 3, 'F');
+  doc.setFillColor(...TONE.saffronDeep);
+  doc.rect(0, 0, pageWidth, 5.2, 'F');
+  doc.setFillColor(...mixRgb(TONE.saffronDeep, [255, 255, 255], 0.35));
+  doc.rect(0, 5.2, pageWidth, 0.7, 'F');
   doc.setFillColor(...TONE.saffronDeep);
   doc.rect(0, height, pageWidth, 2.8, 'F');
-  doc.setFillColor(...mixRgb(TONE.saffronDeep, [255, 255, 255], 0.22));
-  doc.rect(0, height, pageWidth, 0.6, 'F');
 
   doc.setTextColor(...TONE.headerInk);
-  doc.setFontSize(21);
+  doc.setFontSize(20);
   pdfFont(doc, 'bold');
   doc.text(title, pageWidth / 2, 18, { align: 'center' });
 
-  doc.setFontSize(11);
+  doc.setFontSize(10.5);
   pdfFont(doc, 'normal');
-  doc.text(subtitle, pageWidth / 2, 28, { align: 'center' });
+  doc.setTextColor(...TONE.muted);
+  doc.text(subtitle, pageWidth / 2, 26.5, { align: 'center' });
 
-  doc.setFontSize(14);
+  doc.setFontSize(15);
   pdfFont(doc, 'bold');
-  doc.text(line3, pageWidth / 2, 38, { align: 'center' });
+  doc.setTextColor(...TONE.section);
+  doc.text(line3, pageWidth / 2, 37, { align: 'center' });
 
-  doc.setFontSize(8);
+  doc.setFontSize(7.6);
   pdfFont(doc, 'normal');
   doc.setTextColor(...TONE.muted);
   doc.text(
@@ -380,14 +389,14 @@ function drawSummaryCards(doc, summaryCards, y, margin, contentWidth) {
   summaryCards.forEach((card, i) => {
     const x = margin + i * (cardWidth + 4);
     drawRaisedCard(doc, x, y, cardWidth, 22, card.bg);
-    doc.setFontSize(7);
+    doc.setFontSize(6.8);
     pdfFont(doc, 'normal');
     doc.setTextColor(...TONE.muted);
-    doc.text(card.label, x + 3, y + 7.5);
-    doc.setFontSize(11);
+    doc.text(card.label, x + 3, y + 7.2);
+    doc.setFontSize(12);
     pdfFont(doc, 'bold');
     doc.setTextColor(...card.color);
-    doc.text(card.value, x + 3, y + 17);
+    doc.text(card.value, x + 3, y + 17.2);
   });
   return y + 30;
 }
@@ -576,6 +585,14 @@ export async function generateMonthlyReport(reportData) {
   ];
   y = drawSummaryCards(doc, summaryCards, y, margin, contentWidth);
 
+  const glance = `This month the building collected ${formatCurrency(totalCollection)}, spent ${formatCurrency(totalExpenses)}, and has ${formatCurrency(available)} available.`;
+  doc.setFontSize(8.4);
+  pdfFont(doc, 'bold');
+  doc.setTextColor(...TONE.ink);
+  const glanceLines = doc.splitTextToSize(glance, contentWidth - 4);
+  doc.text(glanceLines, margin + 1, y);
+  y += 4 + glanceLines.length * 4.1;
+
   // ─── Configuration Summary ─────────────────────────────
   doc.setFillColor(248, 249, 252);
   doc.roundedRect(margin, y, contentWidth, 14, 2, 2, 'F');
@@ -604,6 +621,20 @@ export async function generateMonthlyReport(reportData) {
       y + 7.5,
     );
     y += 16;
+  }
+
+  const topBill = largestExpense(expenses);
+  if (topBill) {
+    y = checkPageBreak(doc, y, margin, 12);
+    doc.setFontSize(8);
+    pdfFont(doc, 'normal');
+    doc.setTextColor(...TONE.muted);
+    doc.text(
+      `Largest bill this month: ${String(topBill.description || topBill.category || 'Expense').substring(0, 42)}  ·  ${formatCurrency(topBill.amount)}`,
+      margin + 1,
+      y + 4,
+    );
+    y += 10;
   }
 
   // ─── Remaining / Deficit Summary ──────────────────────

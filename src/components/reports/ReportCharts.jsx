@@ -1,13 +1,6 @@
 import { formatCurrency } from '../../utils/helpers';
 
-const CATEGORY_COLORS = [
-  'var(--color-primary)',
-  'var(--color-secondary)',
-  'var(--color-success)',
-  'var(--color-warning)',
-  'var(--color-info)',
-  'var(--color-danger)',
-];
+const CATEGORY_COLORS = ['#1f7a4c', '#b84e40', '#3d6b99', '#d4893a', '#6b5b95', '#8a4b12'];
 
 export function CollectionDonut({ pct, paid, total }) {
   const ring = 2 * Math.PI * 42;
@@ -16,13 +9,14 @@ export function CollectionDonut({ pct, paid, total }) {
     <div className="report-chart-block">
       <h4 className="report-chart-title">Collection</h4>
       <svg className="report-donut" viewBox="0 0 120 120" aria-label={`${pct}% collected`}>
-        <circle cx="60" cy="60" r="42" fill="none" stroke="var(--glass-border)" strokeWidth="12" />
+        <circle cx="62" cy="62" r="42" fill="none" stroke="#e4d8c6" strokeWidth="12" />
+        <circle cx="60" cy="60" r="42" fill="none" stroke="#efe6d8" strokeWidth="12" />
         <circle
           cx="60"
           cy="60"
           r="42"
           fill="none"
-          stroke="var(--color-success)"
+          stroke="#1f7a4c"
           strokeWidth="12"
           strokeLinecap="round"
           strokeDasharray={`${filled} ${ring}`}
