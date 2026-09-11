@@ -6,6 +6,7 @@ import {
   buildLedger,
   cashStatus,
   monthNet,
+  monthOpening,
   pdfMoneySummary,
 } from './ledgerMath';
 import {
@@ -82,9 +83,27 @@ describe('ledger math', () => {
     });
     const pdf = pdfMoneySummary(ledger, 'Sep-26');
     expect(pdf.openingSurplus).toBe(612);
+    expect(pdf.openingStatus).toBe('SURPLUS');
+    expect(pdf.openingFromMonth).toBe('Aug-26');
     expect(pdf.monthStatus).toBe('SURPLUS');
     expect(pdf.availableBalance).toBe(11712);
     expect(pdf.availableStatus).toBe('SURPLUS');
+
+    const oct = pdfMoneySummary(ledger, 'Oct-26');
+    expect(monthOpening(ledger, 'Oct-26')).toBe(11712);
+    expect(oct.openingSurplus).toBe(11712);
+    expect(oct.openingFromMonth).toBe('Sep-26');
+    expect(oct.monthStatus).toBe('DEFICIT');
+    expect(oct.availableBalance).toBe(6712);
+    expect(oct.openingSurplus + oct.monthCollection - oct.monthExpenses).toBe(oct.availableBalance);
+
+    const sepOnly = buildLedger({
+      opening: OPENING_SURPLUS,
+      maintenance: maintenanceFromCsvRows([SHEET_HEADERS[SHEET_NAMES.MAINTENANCE], ...SAMPLE_SEP_PAYMENTS]),
+      expenses: expensesFromCsvRows([SHEET_HEADERS[SHEET_NAMES.EXPENSES], ...SAMPLE_SEP_EXPENSES]),
+    });
+    expect(monthOpening(sepOnly, 'Oct-26')).toBe(11712);
+    expect(pdfMoneySummary(sepOnly, 'Oct-26').openingSurplus).toBe(11712);
   });
 
   it('ignores months before Sep-26', () => {

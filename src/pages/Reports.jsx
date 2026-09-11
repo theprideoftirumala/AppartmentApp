@@ -14,7 +14,7 @@ import { downloadReport, shareReport } from '../services/pdfExport';
 import { formatCurrency, formatDate, getCurrentMonthLabel, sheetOpeningSurplus } from '../utils/helpers';
 import { useWorkingMonths } from '../hooks/useWorkingMonths';
 import { pickDefaultWorkingMonth } from '../utils/months';
-import { buildLedger, pdfMoneySummary, ytdRowsFromLedger } from '../utils/ledgerMath';
+import { buildLedger, openingCardLabel, pdfMoneySummary, ytdRowsFromLedger } from '../utils/ledgerMath';
 import {
   categoryChartRows,
   collectionCounts,
@@ -63,6 +63,8 @@ async function loadMonthReport(month) {
     netBalance: money.monthNet,
     cumulativeBalance: money.availableBalance,
     openingSurplus: money.openingSurplus,
+    openingStatus: money.openingStatus,
+    openingFromMonth: money.openingFromMonth,
     monthStatus: money.monthStatus,
     availableStatus: money.availableStatus,
     ledger,
@@ -178,6 +180,8 @@ export default function Reports() {
   const expected = rate * 10;
   const available = reportData?.cumulativeBalance ?? 612;
   const monthClass = reportData?.netBalance < 0 ? 'report-deficit' : 'report-surplus';
+  const openingClass = reportData?.openingSurplus < 0 ? 'report-deficit' : 'report-surplus';
+  const openingLabel = openingCardLabel(reportData?.openingSurplus);
 
   return (
     <div className="main-content">
@@ -236,10 +240,10 @@ export default function Reports() {
           </header>
 
           <div className="report-summary-grid report-summary-grid-5">
-            <div className="report-summary-card">
-              <span className="report-summary-label">Opening</span>
+            <div className={`report-summary-card ${openingClass}`}>
+              <span className="report-summary-label">{openingLabel}</span>
               <span className="report-summary-value">{formatCurrency(reportData.openingSurplus)}</span>
-              <span className="report-summary-sub">Carry-forward into Sep-26</span>
+              <span className="report-summary-sub">Available after {reportData.openingFromMonth}</span>
             </div>
             <div className="report-summary-card report-income">
               <span className="report-summary-label">Collected</span>

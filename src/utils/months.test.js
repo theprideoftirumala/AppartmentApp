@@ -4,6 +4,7 @@ import {
   nextMonthLabel,
   nextSequentialMonthLabel,
   pickDefaultWorkingMonth,
+  previousMonthLabel,
   sortMonthLabels,
   workingMonthsFromRows,
 } from './months';
@@ -13,6 +14,8 @@ describe('months', () => {
     expect(coerceMonthLabel('Sep-26')).toBe('Sep-26');
     expect(nextMonthLabel('Sep-26')).toBe('Oct-26');
     expect(nextMonthLabel('Dec-26')).toBe('Jan-27');
+    expect(previousMonthLabel('Sep-26')).toBe('Aug-26');
+    expect(previousMonthLabel('Jan-27')).toBe('Dec-26');
   });
 
   it('sorts and sequences from Sep-26', () => {

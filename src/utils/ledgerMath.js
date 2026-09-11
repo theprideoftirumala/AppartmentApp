@@ -1,13 +1,13 @@
 /**
  * Cash-book math for The Pride of Tirumala.
  *
- * Opening surplus is ₹612 (carry-forward into Sep 2026).
- * Each month: collected − spent = surplus (positive) or deficit (negative).
- * Running / available balance = opening + all collected − all spent.
- * A layman can read the same numbers on the Balance and Monthly Summary tabs.
+ * Opening surplus is ₹612 (cash in hand after Aug 2026, into Sep-26).
+ * Each month starts with the previous month's available surplus or deficit.
+ * This month: collected − spent = surplus (positive) or deficit (negative).
+ * Running / available after the month = that opening + collected − spent.
  */
 
-import { coerceMonthLabel, sortMonthLabels } from './months';
+import { coerceMonthLabel, previousMonthLabel, sortMonthLabels } from './months';
 
 export const OPENING_SURPLUS = 612;
 export const FIRST_BOOKS_MONTH = 'Sep-26';
@@ -108,18 +108,50 @@ export function ledgerMonth(ledger, monthLabel) {
 }
 
 /**
+ * Cash in hand at the start of this month: books opening for Sep-26,
+ * otherwise the previous month's available surplus or deficit.
+ */
+export function monthOpening(ledger, monthLabel) {
+  const start = asMoney(ledger?.opening);
+  const months = ledger?.months || [];
+  if (!monthLabel) return start;
+  const idx = months.findIndex((row) => row.month === monthLabel);
+  if (idx === 0) return start;
+  if (idx > 0) return asMoney(months[idx - 1].running);
+  const prior = [...months].reverse().find((row) => {
+    const ordered = sortMonthLabels([row.month, monthLabel]);
+    return ordered[0] === row.month && row.month !== monthLabel;
+  });
+  return prior ? asMoney(prior.running) : start;
+}
+
+export function openingCardLabel(amount) {
+  const status = cashStatus(amount);
+  if (status === 'SURPLUS') return 'Opening surplus';
+  if (status === 'DEFICIT') return 'Opening deficit';
+  return 'Opening';
+}
+
+/**
  * Numbers the monthly PDF must print: opening, this month, running available.
  */
 export function pdfMoneySummary(ledger, monthLabel) {
   const month = ledgerMonth(ledger, monthLabel);
+  const opening = monthOpening(ledger, monthLabel);
+  const collection = asMoney(month?.collection);
+  const expenses = asMoney(month?.expenses);
+  const net = month ? asMoney(month.net) : monthNet(collection, expenses);
+  const available = month ? asMoney(month.running) : opening + net;
   return {
-    openingSurplus: asMoney(ledger?.opening),
-    monthCollection: asMoney(month?.collection),
-    monthExpenses: asMoney(month?.expenses),
-    monthNet: asMoney(month?.net),
-    monthStatus: month?.status || cashStatus(month?.net),
-    availableBalance: asMoney(month?.running ?? ledger?.available),
-    availableStatus: month?.runningStatus || ledger?.status || cashStatus(ledger?.available),
+    openingSurplus: opening,
+    openingStatus: cashStatus(opening),
+    openingFromMonth: previousMonthLabel(monthLabel) || 'Aug-26',
+    monthCollection: collection,
+    monthExpenses: expenses,
+    monthNet: net,
+    monthStatus: month?.status || cashStatus(net),
+    availableBalance: available,
+    availableStatus: month?.runningStatus || cashStatus(available),
   };
 }
 

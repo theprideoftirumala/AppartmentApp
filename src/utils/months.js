@@ -78,6 +78,14 @@ export function nextMonthLabel(label) {
   return formatMonthLabel(parsed.year, nextMonth);
 }
 
+export function previousMonthLabel(label) {
+  const parsed = parseMonthLabel(coerceMonthLabel(label));
+  if (!parsed) return '';
+  const prevMonth = parsed.month - 1;
+  if (prevMonth < 0) return formatMonthLabel(parsed.year - 1, 11);
+  return formatMonthLabel(parsed.year, prevMonth);
+}
+
 export function generateMonthSequence(startLabel, count = 12) {
   const first = coerceMonthLabel(startLabel);
   if (!first) return [];

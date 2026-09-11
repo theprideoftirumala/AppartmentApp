@@ -19,7 +19,8 @@ import {
   SOCIETY_DISCLAIMER,
 } from '../config/constants';
 import { stillDueHighlights, ytdChartRows } from '../utils/expertReport';
-import { ytdRowsFromLedger } from '../utils/ledgerMath';
+import { openingCardLabel, ytdRowsFromLedger } from '../utils/ledgerMath';
+import { previousMonthLabel } from '../utils/months';
 
 /** Ivory paper, espresso ink, India-flag saffron accents, forest / terracotta figures. */
 const TONE = {
@@ -662,9 +663,12 @@ export async function generateMonthlyReport(reportData) {
   const available = Number.isFinite(Number(cumulativeBalance)) ? Number(cumulativeBalance) : opening + Number(netBalance || 0);
   const thisMonthStatus = monthStatus || (netBalance > 0 ? 'SURPLUS' : netBalance < 0 ? 'DEFICIT' : 'BALANCED');
   const runningStatus = availableStatus || (available > 0 ? 'SURPLUS' : available < 0 ? 'DEFICIT' : 'BALANCED');
+  const openingFrom = reportData.openingFromMonth || previousMonthLabel(month) || 'Aug-26';
+  const openingTone = opening >= 0 ? TONE.opening : TONE.spend;
+  const openingBg = opening >= 0 ? TONE.openingBg : TONE.spendBg;
 
   const summaryCards = [
-    { label: 'Opening surplus', value: formatCurrency(opening), color: TONE.opening, bg: TONE.openingBg },
+    { label: openingCardLabel(opening), value: formatCurrency(opening), color: openingTone, bg: openingBg },
     { label: 'Collected this month', value: formatCurrency(totalCollection), color: TONE.collect, bg: TONE.collectBg },
     { label: 'Spent this month', value: formatCurrency(totalExpenses), color: TONE.spend, bg: TONE.spendBg },
     { label: 'Available balance', value: formatCurrency(available), color: available >= 0 ? TONE.collect : TONE.spend, bg: available >= 0 ? TONE.collectBg : TONE.spendBg },
@@ -685,7 +689,7 @@ export async function generateMonthlyReport(reportData) {
   doc.setFontSize(7.5);
   pdfFont(doc, 'normal');
   doc.setTextColor(80, 80, 80);
-  doc.text(`Monthly Maintenance: ${formatCurrency(config?.MONTHLY_MAINTENANCE || 3000)} per flat  |  Total Flats: 10  |  Expected: ${formatCurrency((config?.MONTHLY_MAINTENANCE || 3000) * 10)}  |  Opening surplus: ${formatCurrency(opening)}`, margin + 4, y + 6);
+  doc.text(`Monthly Maintenance: ${formatCurrency(config?.MONTHLY_MAINTENANCE || 3000)} per flat  |  Total Flats: 10  |  Expected: ${formatCurrency((config?.MONTHLY_MAINTENANCE || 3000) * 10)}  |  Brought forward after ${openingFrom}: ${formatCurrency(opening)}`, margin + 4, y + 6);
 
   const paidCount = (maintenance || []).filter(r => r.status === 'PAID').length;
   const pendingCount = (maintenance || []).filter(r => r.status === 'PENDING').length;
