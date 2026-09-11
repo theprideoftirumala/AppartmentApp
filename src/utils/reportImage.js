@@ -1,5 +1,11 @@
 import html2canvas from 'html2canvas';
 
+export function reportImageScale() {
+  if (typeof window === 'undefined') return 1.5;
+  const dpr = Number(window.devicePixelRatio) || 1;
+  return Math.min(2, Math.max(1, dpr >= 2 ? 1.5 : 1.25));
+}
+
 export function reportImageFileName(month) {
   return `TPT_Report_${month || 'Monthly'}.png`;
 }
@@ -12,7 +18,7 @@ export async function exportReportImage(element, month) {
   const width = Math.max(element.scrollWidth, element.clientWidth, 980);
   const height = Math.max(element.scrollHeight, element.clientHeight);
   const canvas = await html2canvas(element, {
-    scale: 2,
+    scale: reportImageScale(),
     useCORS: true,
     allowTaint: true,
     backgroundColor: '#fffaf2',

@@ -46,4 +46,4 @@ Sign in as the founding owner → Setup creates `TPT-APP-Tracker/APP-TPT-Tracker
 
 Push to `main`. GitHub Actions publishes to GitHub Pages. Details in `DEPLOYMENT.md`.
 
-After deploy: hard-refresh or Settings → Clear cache (PWA `tpt-v67`).
+After deploy: hard-refresh or Settings → Clear cache (PWA cache id lives in `vite.config.js`).

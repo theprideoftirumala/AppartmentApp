@@ -128,7 +128,7 @@ export default function EmergencyContacts() {
           <button className="btn btn-secondary btn-sm" onClick={handleShareAll} title="Share all contacts via WhatsApp">
             <MessageCircle size={15} /> Share All
           </button>
-          {isOwner !== false && (
+          {isOwner && (
             <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
               <Plus size={16} /> Add Contact
             </button>
@@ -157,7 +157,7 @@ export default function EmergencyContacts() {
           icon={Phone}
           title="No contacts saved"
           description="Add emergency contacts for plumber, electrician, medical services, and more"
-          action={isOwner !== false && (
+          action={isOwner && (
             <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
               <Plus size={16} /> Add Contact
             </button>
@@ -208,7 +208,7 @@ export default function EmergencyContacts() {
                       >
                         <Share2 size={15} />
                       </button>
-                      {isOwner !== false && (
+                      {isOwner && (
                         <button
                           className="btn btn-ghost btn-sm btn-icon text-danger"
                           onClick={() => handleDelete(contact.originalIndex)}

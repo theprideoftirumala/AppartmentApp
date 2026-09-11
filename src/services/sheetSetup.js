@@ -163,10 +163,12 @@ async function moveFileToFolder(fileId, folderId) {
 
 export async function applyBalanceFormulas(spreadsheetId) {
   await addSheetIfMissing(spreadsheetId, SHEET_NAMES.BALANCE);
-  await writeValues(spreadsheetId, [{
-    range: `'${SHEET_NAMES.BALANCE}'!A1`,
-    values: balanceStaticRows(),
-  }]);
+  if (await sheetIsEmpty(spreadsheetId, SHEET_NAMES.BALANCE)) {
+    await writeValues(spreadsheetId, [{
+      range: `'${SHEET_NAMES.BALANCE}'!A1`,
+      values: balanceStaticRows(),
+    }]);
+  }
   const cells = balanceFormulaCells();
   await writeFormulas(spreadsheetId, Object.entries(cells).map(([cell, formula]) => ({
     range: `'${SHEET_NAMES.BALANCE}'!${cell}`,
@@ -243,10 +245,12 @@ export async function applyMonthlySummaryFormulas(spreadsheetId, extraMonths = [
 
 export async function writePendingDuesTemplate(spreadsheetId, monthLabel = FIRST_APP_MONTH_LABEL) {
   await addSheetIfMissing(spreadsheetId, SHEET_NAMES.PENDING_DUES);
-  await writeValues(spreadsheetId, [{
-    range: `'${SHEET_NAMES.PENDING_DUES}'!A1`,
-    values: pendingDuesStaticRows(monthLabel),
-  }]);
+  if (await sheetIsEmpty(spreadsheetId, SHEET_NAMES.PENDING_DUES)) {
+    await writeValues(spreadsheetId, [{
+      range: `'${SHEET_NAMES.PENDING_DUES}'!A1`,
+      values: pendingDuesStaticRows(monthLabel),
+    }]);
+  }
   const cells = pendingDuesFormulaCells();
   await writeFormulas(spreadsheetId, Object.entries(cells).map(([cell, formula]) => ({
     range: `'${SHEET_NAMES.PENDING_DUES}'!${cell}`,
@@ -282,10 +286,12 @@ export async function ensureSheetStructure(spreadsheetId = getSpreadsheetId()) {
     }
     await deleteSheetByTitle(spreadsheetId, 'Sheet1');
 
-    await writeValues(spreadsheetId, [{
-      range: `'${SHEET_NAMES.GUIDE}'!A1`,
-      values: [SHEET_HEADERS[SHEET_NAMES.GUIDE], ...guideRows()],
-    }]);
+    if (await sheetIsEmpty(spreadsheetId, SHEET_NAMES.GUIDE)) {
+      await writeValues(spreadsheetId, [{
+        range: `'${SHEET_NAMES.GUIDE}'!A1`,
+        values: [SHEET_HEADERS[SHEET_NAMES.GUIDE], ...guideRows()],
+      }]);
+    }
 
     if (await sheetIsEmpty(spreadsheetId, SHEET_NAMES.CONFIGURATION)) {
       await writeValues(spreadsheetId, [{

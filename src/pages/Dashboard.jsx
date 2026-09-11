@@ -14,6 +14,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useApp } from '../contexts/AppContext';
 import { getDashboardData, getAccessControl, parseApiError, ensureSheetStructure } from '../services/googleSheets';
 import { STORAGE_KEYS } from '../config/constants';
+import { toGuestDashboardSnapshot } from '../utils/guestCache';
+import { flatsStillDue } from '../utils/dataHealth';
 import { effectiveAppRole, isFoundingOwner } from '../config/accessPolicy';
 import { formatCurrency, getCurrentMonthLabel, getCollectionPercentage, daysUntil, getRelativeTime, groupExpensesByCategory, parseJsonSafe, normalizeEmail } from '../utils/helpers';
 import { cashStatus } from '../utils/ledgerMath';
@@ -54,7 +56,9 @@ export default function Dashboard() {
   const fetchData = useCallback(async (showRefresh = false) => {
     // Guest users have no Google token — serve cached data from localStorage
     if (isGuest) {
-      const data = parseJsonSafe(localStorage.getItem(STORAGE_KEYS.CACHED_DASHBOARD), null);
+      const guest = parseJsonSafe(localStorage.getItem(STORAGE_KEYS.CACHED_GUEST_DASHBOARD), null);
+      const legacy = parseJsonSafe(localStorage.getItem(STORAGE_KEYS.CACHED_DASHBOARD), null);
+      const data = guest || (legacy ? toGuestDashboardSnapshot(legacy) : null);
       if (data) {
         setDashboardData(data);
         setConfig(data.config);
@@ -185,7 +189,7 @@ export default function Dashboard() {
   const totals = data?.totals || {};
   const currentMonthMaintenance = (data?.maintenance || []).filter(m => m.month === currentMonth);
   const collectionPct = getCollectionPercentage(currentMonthMaintenance);
-  const pendingFlats = currentMonthMaintenance.filter(m => m.status === 'PENDING');
+  const pendingFlats = flatsStillDue(currentMonthMaintenance);
   const currentMonthExpenses = (data?.expenses || []).filter(e => e.month === currentMonth);
   const currentMonthExpenseTotal = currentMonthExpenses.reduce((s, e) => s + e.amount, 0);
   const currentMonthCollection = currentMonthMaintenance.reduce((s, m) => s + m.amountPaid, 0);
@@ -228,6 +232,25 @@ export default function Dashboard() {
           <button className="btn btn-ghost btn-sm" onClick={() => { signOutGuest(); navigate('/login'); }}>
             Sign out guest
           </button>
+        </div>
+      )}
+
+      {isOwner && data?.dataHealth?.blocking && (
+        <div className="guest-banner data-health-banner">
+          <AlertCircle size={16} />
+          <span>
+            <strong>Data health</strong> — {data.dataHealth.summary}. Totals may be overstated until duplicates are fixed.
+          </span>
+          <button className="btn btn-primary btn-sm" onClick={() => navigate('/health')}>
+            Review
+          </button>
+        </div>
+      )}
+
+      {isOwner && localStorage.getItem(STORAGE_KEYS.LAST_BACKUP_ERROR) && (
+        <div className="guest-banner">
+          <AlertCircle size={16} />
+          <span>The last Drive backup did not finish. Create a backup from Settings when you have a moment.</span>
         </div>
       )}
 
@@ -312,7 +335,7 @@ export default function Dashboard() {
         {/* Pending Payments */}
         <div className="stat-card">
           <div className="stat-card-header">
-            <span className="stat-card-label">Pending Payments</span>
+            <span className="stat-card-label">Flats still due</span>
             <div className="stat-card-icon-wrap stat-icon-warning">
               <Users size={20} />
             </div>
@@ -321,7 +344,7 @@ export default function Dashboard() {
           <div className="stat-card-trend">
             {pendingFlats.length > 0 ? (
               <span className="text-warning">
-                Flats: {pendingFlats.map(f => f.flat).join(', ')}
+                {isGuest ? `${pendingFlats.length} flat(s) still due` : `Flats: ${pendingFlats.map(f => f.flat).join(', ')}`}
               </span>
             ) : (
               <span className="text-success">All collected! 🎉</span>
@@ -346,6 +369,13 @@ export default function Dashboard() {
           <strong className="widget-value">{formatCurrency(Number.isFinite(totals.currentBalance) ? totals.currentBalance : 612)}</strong>
           <span className="widget-hint">{availableStatus} — same figure as the Balance tab in the Google Sheet</span>
         </div>
+        {Number(totals.corpusFund) > 0 && (
+          <div className="widget-card">
+            <span className="widget-label">Corpus (reserved)</span>
+            <strong className="widget-value">{formatCurrency(totals.corpusFund)}</strong>
+            <span className="widget-hint">Not included in available maintenance cash</span>
+          </div>
+        )}
         <div className="widget-card">
           <span className="widget-label">Reminders due soon</span>
           <strong className="widget-value">{remindersDueSoon}</strong>
@@ -500,7 +530,7 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Quick Actions */}
+        {!isGuest && (
         <div className="card">
           <h4 className="card-title mb-4">Quick Actions</h4>
           <div className="quick-actions">
@@ -522,8 +552,9 @@ export default function Dashboard() {
             </button>
           </div>
         </div>
+        )}
 
-        {/* Emergency Contacts */}
+        {!isGuest && (
         <div className="card">
           <div className="card-header">
             <h4 className="card-title">
@@ -550,6 +581,7 @@ export default function Dashboard() {
             <p className="text-muted text-sm" style={{ padding: '1rem 0' }}>No contacts added yet</p>
           )}
         </div>
+        )}
       </div>
 
       {/* Deficit/Opening Balance Note */}

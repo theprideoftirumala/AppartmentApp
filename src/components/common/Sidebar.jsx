@@ -6,7 +6,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Building2, Receipt, FileBarChart,
   Bell, Phone, Settings, LogOut, ExternalLink,
-  ChevronLeft, Shield, HelpCircle, PartyPopper, IndianRupee
+  ChevronLeft, Shield, HelpCircle, PartyPopper, IndianRupee, HeartPulse
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useApp } from '../../contexts/AppContext';
@@ -23,12 +23,13 @@ const navItems = [
   { to: '/payees', icon: IndianRupee, label: 'Payees' },
   { to: '/reminders', icon: Bell, label: 'Reminders' },
   { to: '/contacts', icon: Phone, label: 'Emergency' },
+  { to: '/health', icon: HeartPulse, label: 'Data Health', ownerOnly: true },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
 
 export default function Sidebar() {
   const { user, signOut } = useAuth();
-  const { sidebarOpen, setSidebarOpen, userRole } = useApp();
+  const { sidebarOpen, setSidebarOpen, userRole, isOwner } = useApp();
   const navigate = useNavigate();
 
   const handleSignOut = () => {
@@ -69,7 +70,7 @@ export default function Sidebar() {
 
         {/* Navigation */}
         <nav className="sidebar-nav">
-          {navItems.map(item => (
+          {navItems.filter((item) => !item.ownerOnly || isOwner).map(item => (
             <NavLink
               key={item.to}
               to={item.to}

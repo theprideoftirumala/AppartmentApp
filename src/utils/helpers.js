@@ -43,6 +43,19 @@ export function sheetText(value, max = 300) {
 }
 
 /**
+ * Keep a leading + on phone numbers. Generic sheetText would strip it as a formula prefix.
+ */
+export function sheetPhone(value, max = 20) {
+  if (value === null || value === undefined) return '';
+  const raw = String(value).trim();
+  if (!raw) return '';
+  const plus = raw.startsWith('+');
+  const digits = raw.replace(/\D/g, '');
+  if (!digits) return '';
+  return truncateForSheet(plus ? `+${digits}` : digits, max);
+}
+
+/**
  * Coerce to a finite number string so formulas cannot reach the sheet.
  */
 export function sheetNumber(value) {
@@ -455,6 +468,14 @@ export function getFirstDayOfNextMonth() {
  * @returns {Promise<*>} Result of `fn` on the first successful call.
  * @throws The last error if all attempts fail.
  */
+export function isRetryableGoogleError(err) {
+  const code = err?.result?.error?.code ?? err?.error?.code;
+  if (code === 401 || code === 403 || code === 400 || code === 404) return false;
+  if (code === 429 || code === 500 || code === 503) return true;
+  const msg = String(err?.message || '');
+  return /Failed to fetch|NetworkError|Load failed|Timed out/i.test(msg);
+}
+
 export async function withRetry(fn, maxAttempts = 3, delayMs = 800) {
   let lastError;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -462,12 +483,9 @@ export async function withRetry(fn, maxAttempts = 3, delayMs = 800) {
       return await fn();
     } catch (err) {
       lastError = err;
-      const code = err?.result?.error?.code;
-      // Do not retry authentication / authorisation failures
-      if (code === 401 || code === 403) throw err;
-      if (attempt < maxAttempts) {
-        await new Promise(r => setTimeout(r, delayMs * attempt));
-      }
+      if (!isRetryableGoogleError(err) || attempt === maxAttempts) throw err;
+      const jitter = Math.floor(Math.random() * 200);
+      await new Promise((resolve) => setTimeout(resolve, delayMs * attempt + jitter));
     }
   }
   throw lastError;

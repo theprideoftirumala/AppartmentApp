@@ -5,6 +5,7 @@
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, Building2, Receipt, FileBarChart, Menu } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 const bottomNavItems = [
   { to: '/', icon: LayoutDashboard, label: 'Home' },
@@ -15,10 +16,12 @@ const bottomNavItems = [
 
 export default function BottomNav() {
   const { toggleSidebar } = useApp();
+  const { isGuest } = useAuth();
+  const items = isGuest ? bottomNavItems.filter((item) => item.to === '/') : bottomNavItems;
 
   return (
     <nav className="bottom-nav" aria-label="Bottom navigation">
-      {bottomNavItems.map(item => (
+      {items.map(item => (
         <NavLink
           key={item.to}
           to={item.to}

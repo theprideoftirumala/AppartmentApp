@@ -2562,3 +2562,51 @@
   align-items: center;
   gap: var(--space-2);
 }
+
+.data-health-banner {
+  border-color: var(--color-warning);
+}
+
+.data-health-hero {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-4);
+}
+
+.data-health-hero-ok {
+  background: color-mix(in srgb, var(--color-success) 12%, var(--color-surface));
+}
+
+.data-health-hero-alert {
+  background: color-mix(in srgb, var(--color-warning) 16%, var(--color-surface));
+}
+
+.data-health-issue h3 {
+  margin-bottom: var(--space-2);
+}
+
+.data-health-high {
+  border-left: 4px solid var(--color-danger);
+}
+
+.data-health-medium {
+  border-left: 4px solid var(--color-warning);
+}
+
+.data-health-low {
+  border-left: 4px solid var(--color-info);
+}
+
+.expert-report .report-summary-card {
+  box-shadow: 0 10px 24px rgba(46, 32, 20, 0.08);
+}
+
+@media print {
+  .expert-report {
+    background: #fffaf2 !important;
+    box-shadow: none;
+  }
+}

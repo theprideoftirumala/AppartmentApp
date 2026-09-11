@@ -16,16 +16,16 @@ import {
   getAccessControl, addAccessControl, removeAccessControl, updateAccessControlRole,
   getFlats, updateFlat, addAuditLog,
   getWatchmanDetails, addWatchmanDetail, updateWatchmanDetail, deleteWatchmanDetail,
-  ensureSheetStructure,
+  ensureSheetStructure, syncUserDriveAccess, revokeUserDriveAccess,
 } from '../services/googleSheets';
 import {
   backupAllWorkbooks, listBackups,
   getSpreadsheetUrl, getRootFolderUrl,
-  shareSpreadsheet, shareFolder, removeSharing,
 } from '../services/googleDrive';
 import { DRIVE_ROOT_FOLDER, FEATURES, FLATS, STORAGE_KEYS, SHEET_FILE_NAME } from '../config/constants';
 import { clearAppCachesAndReload } from '../utils/appCache';
-import { DRIVE_ROLE_BY_APP_ROLE, FOUNDING_OWNER_EMAIL, canGrantOwner, canRemoveUser, isFoundingOwner } from '../config/accessPolicy';
+import { FOUNDING_OWNER_EMAIL, canGrantOwner, canRemoveUser, isFoundingOwner, maskEmail } from '../config/accessPolicy';
+import { assertPinFormat, PIN_MIN_DIGITS } from '../utils/pinGuard';
 import { formatDate, formatCurrency, isValidEmail, isValidSpreadsheetId, getSpreadsheetIdFromStorage } from '../utils/helpers';
 import { InfoBubble } from '../components/common/Tooltip';
 import { hashPin } from '../contexts/AuthContext';
@@ -104,9 +104,7 @@ export default function Settings() {
         addedBy: user.email,
       });
 
-      const driveRole = DRIVE_ROLE_BY_APP_ROLE[savedRole] || 'reader';
-      await shareSpreadsheet(email, driveRole);
-      await shareFolder(email, driveRole).catch(() => {});
+      await syncUserDriveAccess(email, savedRole);
 
       await addAuditLog(user.email, 'ADD_USER', `${email} as ${savedRole}`);
       showToast(`Added ${email} as ${savedRole}. They can sign in after you share; they will not create a new sheet.`, 'success');
@@ -122,8 +120,7 @@ export default function Settings() {
   const handleChangeRole = async (email, nextRole) => {
     try {
       const savedRole = await updateAccessControlRole(email, nextRole);
-      const driveRole = DRIVE_ROLE_BY_APP_ROLE[savedRole] || 'reader';
-      await shareSpreadsheet(email, driveRole);
+      await syncUserDriveAccess(email, savedRole);
       await addAuditLog(user.email, 'UPDATE_ROLE', `${email} → ${savedRole}`);
       showToast(`${email} is now ${savedRole}`, 'success');
       fetchData();
@@ -140,7 +137,7 @@ export default function Settings() {
     if (!confirm(`Remove access for ${email}? They will lose Drive access to the shared sheet.`)) return;
     try {
       await removeAccessControl(email);
-      await removeSharing(email).catch(() => {});
+      await revokeUserDriveAccess(email).catch(() => {});
       await addAuditLog(user.email, 'REMOVE_USER', email);
       showToast(`Removed ${email}`, 'success');
       fetchData();
@@ -387,7 +384,7 @@ export default function Settings() {
         )}
 
         {/* Guest PIN Tab (inside config area) rendered as separate card */}
-        {activeTab === 'config' && isOwner !== false && (
+        {activeTab === 'config' && isOwner && (
           <GuestPinSection showToast={showToast} />
         )}
 
@@ -423,7 +420,7 @@ export default function Settings() {
                         </span>
                       </td>
                       <td>
-                        {isOwner !== false && (
+                        {isOwner && (
                           <button className="btn btn-ghost btn-sm" onClick={() => setShowEditFlat(flat)}>
                             Edit
                           </button>
@@ -449,7 +446,8 @@ export default function Settings() {
               )}
             </div>
             <p className="text-muted text-sm mb-4">
-              One shared workbook. Founding owner is <strong>{FOUNDING_OWNER_EMAIL}</strong>.
+              One shared workbook. Founding owner is <strong>{maskEmail(FOUNDING_OWNER_EMAIL)}</strong>.
+              Role changes update both the sheet and the Drive folder. The folder includes receipts; keep backups Owner-only in practice by not adding private files there.
               New users default to <strong>Reader</strong> (Google Sheet Viewer). Max {config.MAX_USERS || 20} users,
               max {config.MAX_OWNERS || 2} owners. Only the founding owner can grant Owner.
             </p>
@@ -525,7 +523,7 @@ export default function Settings() {
           <div className="card">
             <div className="card-header">
               <h3 className="card-title">Backups</h3>
-              {isOwner !== false && (
+              {isOwner && (
                 <button className="btn btn-primary btn-sm" onClick={handleBackup} disabled={backingUp}>
                   {backingUp ? <RefreshCw size={14} className="animate-spin" /> : <Download size={14} />}
                   {backingUp ? 'Creating...' : 'Create Backup'}
@@ -536,6 +534,17 @@ export default function Settings() {
               Copies of <strong>{SHEET_FILE_NAME}</strong> go into Drive / {DRIVE_ROOT_FOLDER} / backups.
               If Drive blocks a direct copy, the app clones the tabs instead. A copy also runs on each Google sign-in.
               Guest PIN sessions do not back up.
+            </p>
+            <p className="text-muted text-sm mb-4">
+              Last successful backup: {localStorage.getItem(STORAGE_KEYS.LAST_BACKUP_AT)
+                ? new Date(localStorage.getItem(STORAGE_KEYS.LAST_BACKUP_AT)).toLocaleString('en-IN')
+                : 'not recorded on this device'}.
+              {localStorage.getItem(STORAGE_KEYS.LAST_BACKUP_ERROR) && (
+                <span className="text-warning"> Last backup attempt failed — try Create Backup again.</span>
+              )}
+              {localStorage.getItem(STORAGE_KEYS.LAST_AUDIT_ERROR) && (
+                <span className="text-warning"> An activity-log write failed recently.</span>
+              )}
             </p>
 
             {backups.length > 0 ? (
@@ -599,7 +608,7 @@ export default function Settings() {
           <div className="card">
             <div className="card-header">
               <h3 className="card-title">Watchman Details</h3>
-              {isOwner !== false && (
+              {isOwner && (
                 <button className="btn btn-primary btn-sm" onClick={() => { setEditingWatchman(null); setShowWatchmanModal(true); }}>
                   <Plus size={14} /> Add Watchman
                 </button>
@@ -650,7 +659,7 @@ export default function Settings() {
                     </div>
                     {w.address && <p className="text-muted text-xs mt-2">Address: {w.address}</p>}
                     {w.remarks && <p className="text-muted text-xs mt-1">Note: {w.remarks}</p>}
-                    {isOwner !== false && (
+                    {isOwner && (
                       <div className="flex gap-2 mt-4" style={{ justifyContent: 'flex-end' }}>
                         <button className="btn btn-ghost btn-sm" onClick={() => { setEditingWatchman(w); setShowWatchmanModal(true); }}>Edit</button>
                         <button className="btn btn-ghost btn-sm text-danger" onClick={() => handleDeleteWatchman(w.index)}>
@@ -1027,7 +1036,12 @@ function GuestPinSection({ showToast }) {
     e.preventDefault();
     if (!pin.trim()) return;
     if (pin !== pinConfirm) { showToast('PINs do not match', 'error'); return; }
-    if (pin.length < 4) { showToast('PIN must be at least 4 characters', 'error'); return; }
+    try {
+      assertPinFormat(pin);
+    } catch (err) {
+      showToast(err.message, 'error');
+      return;
+    }
     try {
       setSaving(true);
       const hashed = await hashPin(pin);
@@ -1047,6 +1061,8 @@ function GuestPinSection({ showToast }) {
     if (!window.confirm('Disable guest access on this device?')) return;
     localStorage.removeItem(STORAGE_KEYS.GUEST_PIN_HASH);
     localStorage.removeItem(STORAGE_KEYS.GUEST_SESSION);
+    localStorage.removeItem(STORAGE_KEYS.CACHED_GUEST_DASHBOARD);
+    localStorage.removeItem(STORAGE_KEYS.GUEST_PIN_LOCK);
     setPinSet(false);
     showToast('Guest access disabled', 'success');
   };
@@ -1056,13 +1072,13 @@ function GuestPinSection({ showToast }) {
       <div className="card-header">
         <div>
           <h3 className="card-title">Guest Access PIN</h3>
-          <p className="text-muted text-sm mt-1">Device-local convenience only — the PIN lives in this browser, not in Google. Residents see the last Owner-synced dashboard, read-only, for 24 hours.</p>
+          <p className="text-muted text-sm mt-1">Device-local convenience only — the PIN lives in this browser, not in Google. Guests see a slim snapshot (totals and flat status), not phones or emails. Five wrong tries pause sign-in for a minute.</p>
         </div>
         {pinSet && <span className="badge badge-success">Active</span>}
       </div>
       <form onSubmit={handleSave} className="form-grid mt-4" style={{ maxWidth: 380 }}>
         <div className="form-group">
-          <label className="form-label">New PIN (min 4 chars)</label>
+          <label className="form-label">New PIN ({PIN_MIN_DIGITS}–12 digits)</label>
           <input type="password" className="form-input" value={pin} onChange={e => setPin(e.target.value)} placeholder="Enter PIN" autoComplete="new-password" />
         </div>
         <div className="form-group">
@@ -1072,6 +1088,17 @@ function GuestPinSection({ showToast }) {
         <div className="flex gap-2">
           <button type="submit" className="btn btn-primary btn-sm" disabled={saving || !pin.trim()}>{saving ? 'Saving...' : pinSet ? 'Update PIN' : 'Enable'}</button>
           {pinSet && <button type="button" className="btn btn-ghost btn-sm text-danger" onClick={handleClear}>Disable</button>}
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => {
+              localStorage.removeItem(STORAGE_KEYS.CACHED_GUEST_DASHBOARD);
+              localStorage.removeItem(STORAGE_KEYS.GUEST_SESSION);
+              showToast('Guest snapshot cleared on this device', 'success');
+            }}
+          >
+            Clear guest data
+          </button>
         </div>
       </form>
     </div>

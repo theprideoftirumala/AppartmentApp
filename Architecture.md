@@ -224,7 +224,7 @@ Every monthly PDF / on-screen report prints:
 2. Collected this month · spent this month  
 3. This month SURPLUS / DEFICIT / BALANCED (collected − spent)  
 4. Available after this month (opening + collected − spent)  
-5. Year to date (chart + table)  
+5. Year to date through the selected month (chart + table)  
 6. Notes, Franklin water quote, volunteer disclaimer — **The Google Sheet is the source of truth**  
 7. Watercolor digitally verified stamp (apartment name on an inner circular arc, month inside). If the page is tight, the stamp overlaps the last notes — it does not start a blank page  
 
@@ -248,9 +248,9 @@ Do not use the word *society* in resident-facing report copy. Do not print `APP-
 
 ## 9. Security
 
-- `sanitizeForSheet()` strips leading `= + - @` before every typed cell  
+- `sanitizeForSheet()` strips leading `= + - @` on generic text; phones use `sheetPhone()` so `+91…` is kept  
 - Tokens stay in `sessionStorage` (no stored refresh token)  
-- CSP + `X-Frame-Options: DENY`  
+- HTML meta CSP on all hosts. Azure SWA also sets response headers including `X-Frame-Options: DENY`. GitHub Pages does not apply `staticwebapp.config.json`.  
 - Readers cannot write even if Drive leftover is Writer  
 - Private copies owned by a non-founder are ignored  
 

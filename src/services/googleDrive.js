@@ -513,12 +513,15 @@ export async function createBackup(spreadsheetId = null, options = {}) {
     try {
       const file = await copyWorkbookToBackups(fileId, backupName, backupsId);
       if (!file?.id) throw new Error('Backup copy returned no file.');
+      localStorage.setItem(STORAGE_KEYS.LAST_BACKUP_AT, now.toISOString());
+      localStorage.removeItem(STORAGE_KEYS.LAST_BACKUP_ERROR);
       return {
         id: file.id,
         name: file.name || backupName,
         createdTime: file.createdTime || now.toISOString(),
       };
     } catch (err) {
+      localStorage.setItem(STORAGE_KEYS.LAST_BACKUP_ERROR, now.toISOString());
       throw new Error(apiErrorMessage(err, 'Could not copy the workbook into Drive/backups.'));
     }
   });
@@ -633,24 +636,29 @@ export async function shareFolder(email, role = 'reader') {
 /**
  * Remove sharing for a user
  */
+async function removePermissionFromFile(fileId, address) {
+  if (!fileId) return;
+  const response = await window.gapi.client.drive.permissions.list({
+    fileId,
+    fields: 'permissions(id, emailAddress)',
+    supportsAllDrives: true,
+  });
+  const perm = (response.result.permissions || []).find((p) => normalizeEmail(p.emailAddress) === address);
+  if (perm) {
+    await window.gapi.client.drive.permissions.delete({
+      fileId,
+      permissionId: perm.id,
+      supportsAllDrives: true,
+    });
+  }
+}
+
 export async function removeSharing(email) {
   return withAuth(async () => {
     const address = normalizeEmail(email);
-    const ids = [getSpreadsheetIdFromStorage()].filter(isValidSpreadsheetId);
-    for (const spreadsheetId of ids) {
-      const response = await window.gapi.client.drive.permissions.list({
-        fileId: spreadsheetId,
-        fields: 'permissions(id, emailAddress)',
-        supportsAllDrives: true,
-      });
-      const perm = (response.result.permissions || []).find((p) => normalizeEmail(p.emailAddress) === address);
-      if (perm) {
-        await window.gapi.client.drive.permissions.delete({
-          fileId: spreadsheetId,
-          permissionId: perm.id,
-          supportsAllDrives: true,
-        });
-      }
+    const ids = [getSpreadsheetIdFromStorage(), getRootFolderId()].filter(Boolean);
+    for (const fileId of ids) {
+      await removePermissionFromFile(fileId, address);
     }
   });
 }

@@ -30,8 +30,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Test
+        run: npm test
+
+      - name: Lint
+        run: npm run lint
+
       - name: Build
         run: npm run build
+
+      - name: Validate Pages entry
+        run: npm run validate:pages
+
+      - name: Dependency audit (report only)
+        continue-on-error: true
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

@@ -190,7 +190,7 @@ export const SHEET_HEADERS = {
   ],
   [SHEET_NAMES.MONTHLY_SUMMARY]: [
     'Month (MMM-YY)', 'Collected (₹)', 'Spent (₹)', 'This month surplus / deficit (₹)',
-    'Running balance (₹)', 'Status (SURPLUS/DEFICIT/BALANCED)', 'Collection %', 'Pending flats',
+    'Running balance (₹)', 'This month status (SURPLUS/DEFICIT/BALANCED)', 'Collection %', 'Pending flats',
   ],
   [SHEET_NAMES.WATCHMAN_DETAILS]: [
     'Name', 'Phone', 'Alt Phone', 'Address', 'Salary (₹)', 'Shift Timing',
@@ -382,6 +382,11 @@ export const STORAGE_KEYS = {
   LAST_SYNC: 'tpt_last_sync',
   GUEST_PIN_HASH: 'tpt_guest_pin_hash',
   GUEST_SESSION: 'tpt_guest_session',
+  GUEST_PIN_LOCK: 'tpt_guest_pin_lock',
+  CACHED_GUEST_DASHBOARD: 'tpt_cached_guest_dashboard',
+  LAST_BACKUP_AT: 'tpt_last_backup_at',
+  LAST_BACKUP_ERROR: 'tpt_last_backup_error',
+  LAST_AUDIT_ERROR: 'tpt_last_audit_error',
   BOUND_EMAIL: 'tpt_bound_email',
   OAUTH_SCOPE_VERSION: 'tpt_oauth_scope_version',
   LOGIN_BACKUP_DONE: 'tpt_login_backup_done',

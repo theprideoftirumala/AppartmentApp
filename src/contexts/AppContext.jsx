@@ -3,7 +3,7 @@
  * Manages global app state: config, dashboard data, access role, toasts
  */
 
-import { createContext, useContext, useState, useCallback, useReducer } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, useReducer } from 'react';
 import { STORAGE_KEYS } from '../config/constants';
 
 const AppContext = createContext(null);
@@ -12,7 +12,7 @@ const AppContext = createContext(null);
 function toastReducer(state, action) {
   switch (action.type) {
     case 'ADD':
-      return [...state, { id: Date.now(), ...action.payload }];
+      return [...state, { ...action.payload, id: action.payload.id ?? Date.now() }];
     case 'REMOVE':
       return state.filter(t => t.id !== action.id);
     case 'CLEAR':
@@ -38,8 +38,8 @@ export function AppProvider({ children }) {
 
   // Toast helpers
   const showToast = useCallback((message, type = 'info', duration = 4000) => {
-    const id = Date.now();
-    dispatchToast({ type: 'ADD', payload: { message, type, duration } });
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    dispatchToast({ type: 'ADD', payload: { id, message, type, duration } });
     if (duration > 0) {
       setTimeout(() => dispatchToast({ type: 'REMOVE', id }), duration);
     }
@@ -64,44 +64,37 @@ export function AppProvider({ children }) {
     localStorage.removeItem(STORAGE_KEYS.BOUND_EMAIL);
   }, []);
 
-  const value = {
-    // Config
+  const toggleSidebar = useCallback(() => setSidebarOpen((prev) => !prev), []);
+  const isOwner = userRole === 'Owner';
+  const isReader = userRole === 'Reader';
+
+  const value = useMemo(() => ({
     config,
     setConfig,
-
-    // Dashboard
     dashboardData,
     setDashboardData,
-
-    // User role
     userRole,
     setUserRole,
-    isOwner: userRole === 'Owner',
-    isReader: userRole === 'Reader',
-
-    // Setup
+    isOwner,
+    isReader,
     isSetupComplete,
     completeSetup,
     resetSetup,
-
-    // Loading
     loading,
     setLoading,
-
-    // Sync
     lastSync,
     setLastSync,
-
-    // Sidebar
     sidebarOpen,
     setSidebarOpen,
-    toggleSidebar: () => setSidebarOpen(prev => !prev),
-
-    // Toast notifications
+    toggleSidebar,
     toasts,
     showToast,
     removeToast,
-  };
+  }), [
+    config, dashboardData, userRole, isOwner, isReader, isSetupComplete,
+    completeSetup, resetSetup, loading, lastSync, sidebarOpen, toggleSidebar,
+    toasts, showToast, removeToast,
+  ]);
 
   return (
     <AppContext.Provider value={value}>

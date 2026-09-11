@@ -21,9 +21,9 @@ Live: `https://theprideoftirumala.github.io/AppartmentApp/` (HashRouter, base `/
 
 - First card: **Opening surplus** or **Opening deficit** = available after the previous month.
 - Then this month collected / spent / net, then available after this month.
-- Include year-to-date, notes, Franklin water quote, volunteer disclaimer, **The Google Sheet is the source of truth**.
+- Include year-to-date **through the selected month**, notes, Franklin water quote, volunteer disclaimer, **The Google Sheet is the source of truth**.
 - Stamp: watercolor, name on an **inner** circular arc, month inside. If space is tight, overlap the last notes — **do not add a blank page for the stamp**.
-- Resident copy: no *society*, no `APP-TPT-Tracker`, no blaming a flat.
+- Resident copy: no *society*, no `APP-TPT-Tracker`, no blaming a flat. Still-due on the report is a total and count, not a named list.
 
 ## Must not
 

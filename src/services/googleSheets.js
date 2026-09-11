@@ -6,9 +6,12 @@
 
 import { CONFIG_DESCRIPTIONS, FIRST_APP_MONTH_LABEL, SHEET_NAMES, DEFAULT_CONFIG, FLATS, STORAGE_KEYS, SHEET_FILE_NAME, isSocietySheetName, isGoogleSpreadsheetMime } from '../config/constants';
 import { isMissingSheetRangeError } from '../utils/sheetRangeError';
-import { duplicateExpenseMessage, firstDuplicateExpense } from '../utils/expenseDuplicate';
+import { duplicateExpenseMessage, expenseFingerprint, firstDuplicateExpense } from '../utils/expenseDuplicate';
 import { firstDuplicatePayee } from '../utils/payeeDuplicate';
+import { assessDataHealth, findDuplicateExpenseFingerprints, findDuplicateMaintenanceKeys, maintenanceKey } from '../utils/dataHealth';
+import { toGuestDashboardSnapshot } from '../utils/guestCache';
 import {
+  DRIVE_ROLE_BY_APP_ROLE,
   FOUNDING_OWNER_EMAIL,
   canGrantOwner,
   canManageUsers,
@@ -19,11 +22,12 @@ import {
   normalizeRequestedRole,
 } from '../config/accessPolicy';
 import { ensureValidToken, getCurrentUser } from './googleAuth';
-import { findSocietySpreadsheet, getSpreadsheetFileMeta, isPrivateCopyOwnedByUser } from './googleDrive';
+import { findSocietySpreadsheet, getSpreadsheetFileMeta, isPrivateCopyOwnedByUser, removeSharing, shareFolder, shareSpreadsheet } from './googleDrive';
 import {
   sanitizeForSheet,
   truncateForSheet,
   sheetText,
+  sheetPhone,
   sheetNumber,
   normalizeEmail,
   sanitizeDriveUrl,
@@ -34,7 +38,7 @@ import {
   getActiveSpreadsheetIdFromStorage,
   getCurrentMonthLabel,
 } from '../utils/helpers';
-import { gapiCall, gapiCallSafe } from '../utils/gapi';
+import { gapiCall, gapiCallSafe, gapiRetry } from '../utils/gapi';
 import { isGoogleApiNotEnabledMessage } from '../utils/googleApiError';
 import { coerceMonthLabel, workingMonthsFromRows } from '../utils/months';
 import { buildLedger } from '../utils/ledgerMath';
@@ -46,7 +50,7 @@ import {
   seedSampleLiveData,
   applyMonthlySummaryFormulas,
   applyMaintenanceStillDueFormulas,
-  upgradeWorkbookLayout,
+  upgradeWorkbookLayout as upgradeWorkbookLayoutRaw,
   appendNextMonthColumn,
 } from './sheetSetup';
 
@@ -57,7 +61,6 @@ export {
   seedSampleLiveData,
   applyMonthlySummaryFormulas,
   applyMaintenanceStillDueFormulas,
-  upgradeWorkbookLayout,
 };
 
 /**
@@ -104,6 +107,30 @@ async function withWriteAuth(fn) {
   await ensureValidToken();
   await assertCanWriteFinancialData();
   return fn();
+}
+
+async function withManageUsersAuth(fn) {
+  await ensureValidToken();
+  await assertCanManageUsers();
+  return fn();
+}
+
+export async function upgradeWorkbookLayout(spreadsheetId) {
+  return withWriteAuth(() => upgradeWorkbookLayoutRaw(spreadsheetId));
+}
+
+export async function syncUserDriveAccess(email, appRole) {
+  return withManageUsersAuth(async () => {
+    const driveRole = DRIVE_ROLE_BY_APP_ROLE[appRole] || 'reader';
+    await shareSpreadsheet(email, driveRole);
+    await shareFolder(email, driveRole).catch(() => {});
+  });
+}
+
+export async function revokeUserDriveAccess(email) {
+  return withManageUsersAuth(async () => {
+    await removeSharing(email);
+  });
 }
 
 async function assertCanManageUsers() {
@@ -397,10 +424,10 @@ export async function updateFlat(flatNumber, data) {
         values: [[
           flatNumber,
           sheetText(data.ownerName, 100),
-          sheetText(data.phone, 20),
+          sheetPhone(data.phone, 20),
           normalizeEmail(data.email),
           sheetText(data.member2Name, 100),
-          sheetText(data.member2Phone, 20),
+          sheetPhone(data.member2Phone, 20),
           normalizeEmail(data.member2Email),
           sheetText(data.role || 'Member', 40),
         ]],
@@ -489,6 +516,16 @@ export async function upsertMaintenancePayments(month, flats, data) {
         insertDataOption: 'INSERT_ROWS',
         resource: { values: appends },
       }));
+    }
+    const verify = await gapiRetry(() => window.gapi.client.sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `'${SHEET_NAMES.MAINTENANCE}'!A2:B5000`,
+    }));
+    const after = (verify.result.values || []).map((cells) => ({ month: cells[0], flat: cells[1] }));
+    const dups = findDuplicateMaintenanceKeys(after);
+    const touched = new Set(list.map((flat) => maintenanceKey(month, flat)));
+    if (dups.some((row) => touched.has(row.key))) {
+      throw new Error('Two rows exist for the same month and flat. Open Data Health to keep one row before totals can be trusted.');
     }
     await applyMaintenanceStillDueFormulas(spreadsheetId);
   });
@@ -622,6 +659,13 @@ export async function addExpenses(items) {
       resource: { values },
     });
 
+    const after = await getExpenses();
+    const dups = findDuplicateExpenseFingerprints(after);
+    const newKeys = new Set(items.map((item) => expenseFingerprint(item)));
+    if (dups.some((row) => newKeys.has(row.key))) {
+      throw new Error('That expense appears more than once. Open Data Health to remove the extra row.');
+    }
+
     return values.map((row) => row[0]);
   });
 }
@@ -642,33 +686,34 @@ export async function deleteExpense(expenseId) {
     const rows = response.result.values || [];
     const rowIndex = rows.findIndex(r => r[0] === expenseId);
 
-    if (rowIndex >= 0) {
-      // Get sheet ID
-      const sheetMeta = await window.gapi.client.sheets.spreadsheets.get({
-        spreadsheetId,
-        fields: 'sheets.properties',
-      });
-
-      const sheet = sheetMeta.result.sheets.find(
-        s => s.properties.title === SHEET_NAMES.EXPENSES
-      );
-
-      await window.gapi.client.sheets.spreadsheets.batchUpdate({
-        spreadsheetId,
-        resource: {
-          requests: [{
-            deleteDimension: {
-              range: {
-                sheetId: sheet.properties.sheetId,
-                dimension: 'ROWS',
-                startIndex: rowIndex + 1, // +1 for header
-                endIndex: rowIndex + 2,
-              },
-            },
-          }],
-        },
-      });
+    if (rowIndex < 0) {
+      throw new Error('Expense no longer exists; refresh the list.');
     }
+
+    const sheetMeta = await window.gapi.client.sheets.spreadsheets.get({
+      spreadsheetId,
+      fields: 'sheets.properties',
+    });
+
+    const sheet = sheetMeta.result.sheets.find(
+      s => s.properties.title === SHEET_NAMES.EXPENSES
+    );
+
+    await window.gapi.client.sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      resource: {
+        requests: [{
+          deleteDimension: {
+            range: {
+              sheetId: sheet.properties.sheetId,
+              dimension: 'ROWS',
+              startIndex: rowIndex + 1, // +1 for header
+              endIndex: rowIndex + 2,
+            },
+          },
+        }],
+      },
+    });
   });
 }
 
@@ -716,8 +761,8 @@ export async function addEmergencyContact(data) {
           sanitizeForSheet(data.category),
           truncateForSheet(sanitizeForSheet(data.name), 100),
           truncateForSheet(sanitizeForSheet(data.role), 100),
-          sanitizeForSheet(data.phone),
-          sanitizeForSheet(data.altPhone),
+          sheetPhone(data.phone, 20),
+          sheetPhone(data.altPhone, 20),
           truncateForSheet(sanitizeForSheet(data.address), 200),
           truncateForSheet(sanitizeForSheet(data.notes), 300),
         ]],
@@ -1125,25 +1170,28 @@ export async function checkAccess(email) {
  */
 export async function addAuditLog(user, action, details) {
   try {
-    const spreadsheetId = getSpreadsheetId();
-    if (!spreadsheetId) return;
+    await withWriteAuth(async () => {
+      const spreadsheetId = getSpreadsheetId();
+      if (!spreadsheetId) return;
 
-    await window.gapi.client.sheets.spreadsheets.values.append({
-      spreadsheetId,
-      range: `'${SHEET_NAMES.AUDIT_LOG}'!A:D`,
-      valueInputOption: 'RAW',
-      insertDataOption: 'INSERT_ROWS',
-      resource: {
-        values: [[
-          new Date().toISOString(),
-          sheetText(user || 'System', 80),
-          sheetText(action, 40),
-          sheetText(details, 400),
-        ]],
-      },
+      await window.gapi.client.sheets.spreadsheets.values.append({
+        spreadsheetId,
+        range: `'${SHEET_NAMES.AUDIT_LOG}'!A:D`,
+        valueInputOption: 'RAW',
+        insertDataOption: 'INSERT_ROWS',
+        resource: {
+          values: [[
+            new Date().toISOString(),
+            sheetText(user || 'System', 80),
+            sheetText(action, 40),
+            sheetText(details, 400),
+          ]],
+        },
+      });
     });
+    localStorage.removeItem(STORAGE_KEYS.LAST_AUDIT_ERROR);
   } catch (error) {
-    // Don't throw on audit log failures — non-critical
+    localStorage.setItem(STORAGE_KEYS.LAST_AUDIT_ERROR, new Date().toISOString());
     console.warn('Audit log failed:', error);
   }
 }
@@ -1300,7 +1348,7 @@ export async function getDashboardData() {
     const rangesWithMisc = coreRanges;
 
     const batchGetRanges = async (rangeList) => {
-      const response = await gapiCall(window.gapi.client.sheets.spreadsheets.values.batchGet({
+      const response = await gapiRetry(() => window.gapi.client.sheets.spreadsheets.values.batchGet({
         spreadsheetId,
         ranges: rangeList,
       }));
@@ -1324,18 +1372,6 @@ export async function getDashboardData() {
         ranges = await batchGetRanges(coreRanges);
       }
     }
-    const parseMisc = (rows) => (rows || []).map(row => ({
-      id: row[0] || '',
-      date: row[1] || '',
-      month: row[2] || '',
-      flat: row[3] || '',
-      amount: Number(row[4]) || 0,
-      description: row[5] || '',
-      paymentMode: row[6] || '',
-      collectedBy: row[7] || '',
-      remarks: row[8] || '',
-    }));
-
     // Parse configuration
     const configRows = ranges[0]?.values || [];
     const config = { ...DEFAULT_CONFIG };
@@ -1422,7 +1458,7 @@ export async function getDashboardData() {
 
     const summaryRows = ranges[6]?.values || [];
     const summaries = summaryRows.map(parseMonthlySummaryRow);
-    const miscFunds = parseMisc(ranges[7]?.values);
+    const miscFunds = [];
 
     const ledger = buildLedger({
       opening: sheetOpeningSurplus(config),
@@ -1432,7 +1468,7 @@ export async function getDashboardData() {
     const totalCollected = ledger.totalCollection;
     const totalMiscFunds = 0;
     const totalExpenseAmount = ledger.totalExpenses;
-    const currentBalance = ledger.available + (Number(config.CORPUS_FUND) || 0);
+    const currentBalance = ledger.available;
     const monthLabel = getCurrentMonthLabel();
     const monthMaintenance = maintenance.filter((row) => row.month === monthLabel);
     const monthExpenses = expenses.filter((row) => row.month === monthLabel);
@@ -1451,6 +1487,7 @@ export async function getDashboardData() {
     const corrections = [];
 
     // Cache dashboard data
+    const dataHealth = assessDataHealth({ maintenance, expenses, flats });
     const dashboardData = {
       config,
       maintenance,
@@ -1462,6 +1499,7 @@ export async function getDashboardData() {
       miscFunds,
       liveSnapshot,
       corrections,
+      dataHealth,
       totals: {
         totalCollected,
         totalMiscFunds,
@@ -1477,8 +1515,15 @@ export async function getDashboardData() {
       ledger,
     };
 
-    localStorage.setItem(STORAGE_KEYS.CACHED_DASHBOARD, JSON.stringify(dashboardData));
-    localStorage.setItem(STORAGE_KEYS.LAST_SYNC, new Date().toISOString());
+    queueMicrotask(() => {
+      try {
+        localStorage.setItem(STORAGE_KEYS.CACHED_DASHBOARD, JSON.stringify(dashboardData));
+        localStorage.setItem(STORAGE_KEYS.CACHED_GUEST_DASHBOARD, JSON.stringify(toGuestDashboardSnapshot(dashboardData)));
+        localStorage.setItem(STORAGE_KEYS.LAST_SYNC, new Date().toISOString());
+      } catch {
+        // Quota or private-mode failures must not block the live dashboard.
+      }
+    });
 
     return dashboardData;
   });
@@ -1553,8 +1598,8 @@ export async function addWatchmanDetail(data) {
       resource: {
         values: [[
           sheetText(data.name, 100),
-          sheetText(data.phone, 20),
-          sheetText(data.altPhone, 20),
+          sheetPhone(data.phone, 20),
+          sheetPhone(data.altPhone, 20),
           sheetText(data.address, 200),
           sheetNumber(data.salary),
           sheetText(data.shiftTiming, 60),
@@ -1562,7 +1607,7 @@ export async function addWatchmanDetail(data) {
           sheetText(data.idProofType, 40),
           sheetText(data.idProofNumber, 40),
           sheetText(data.emergencyContact, 80),
-          sheetText(data.emergencyPhone, 20),
+          sheetPhone(data.emergencyPhone, 20),
           sanitizeDriveUrl(data.photoDriveLink),
           sheetText(data.status || 'Active', 20),
           sheetText(data.remarks, 300),
@@ -1588,8 +1633,8 @@ export async function updateWatchmanDetail(rowIndex, data) {
       resource: {
         values: [[
           sheetText(data.name, 100),
-          sheetText(data.phone, 20),
-          sheetText(data.altPhone, 20),
+          sheetPhone(data.phone, 20),
+          sheetPhone(data.altPhone, 20),
           sheetText(data.address, 200),
           sheetNumber(data.salary),
           sheetText(data.shiftTiming, 60),
@@ -1597,7 +1642,7 @@ export async function updateWatchmanDetail(rowIndex, data) {
           sheetText(data.idProofType, 40),
           sheetText(data.idProofNumber, 40),
           sheetText(data.emergencyContact, 80),
-          sheetText(data.emergencyPhone, 20),
+          sheetPhone(data.emergencyPhone, 20),
           sanitizeDriveUrl(data.photoDriveLink),
           sheetText(data.status || 'Active', 20),
           sheetText(data.remarks, 300),
@@ -1692,7 +1737,8 @@ export async function getPayees() {
       spreadsheetId,
       range: `'${SHEET_NAMES.PAYEES}'!A2:G100`,
     }), { result: { values: [] } });
-    return (response.result.values || []).filter((row) => row[0] || row[2]).map((row) => ({
+    return (response.result.values || []).map((row, index) => ({
+      sheetRow: index + 2,
       key: row[0] || '',
       category: row[1] || '',
       name: row[2] || '',
@@ -1700,7 +1746,7 @@ export async function getPayees() {
       upiId: row[4] || '',
       defaultAmount: row[5] || '',
       notes: row[6] || '',
-    }));
+    })).filter((row) => row.key || row.name);
   });
 }
 
@@ -1713,7 +1759,7 @@ export async function addPayee(payee) {
     if (duplicate) {
       throw new Error('That payee already exists (same phone number or same UPI ID).');
     }
-    if (!sheetText(payee.name, 80) && !sheetText(payee.phone, 20)) {
+    if (!sheetText(payee.name, 80) && !sheetPhone(payee.phone, 20)) {
       throw new Error('Enter a display name or a 10-digit phone. UPI ID is optional — do not invent one.');
     }
     const key = sheetText(payee.key || `payee-${Date.now()}`, 40);
@@ -1727,7 +1773,7 @@ export async function addPayee(payee) {
           key,
           sheetText(payee.category, 40),
           sheetText(payee.name, 80),
-          sheetText(payee.phone, 20),
+          sheetPhone(payee.phone, 20),
           sheetText(payee.upiId, 80),
           payee.defaultAmount === '' || payee.defaultAmount == null ? '' : sheetNumber(payee.defaultAmount),
           sheetText(payee.notes, 200),
@@ -1743,21 +1789,23 @@ export async function updatePayee(index, payee) {
     const spreadsheetId = getSpreadsheetId();
     if (!spreadsheetId) throw new Error('Spreadsheet is not connected.');
     const existing = await getPayees();
-    const others = existing.filter((_, i) => i !== index);
+    const target = existing[index];
+    if (!target?.sheetRow) throw new Error('Payee not found. Refresh the list and try again.');
+    const others = existing.filter((row) => row.sheetRow !== target.sheetRow);
     const duplicate = firstDuplicatePayee(payee, others);
     if (duplicate) {
       throw new Error('That payee already exists (same phone number or same UPI ID).');
     }
     await gapiCall(window.gapi.client.sheets.spreadsheets.values.update({
       spreadsheetId,
-      range: `'${SHEET_NAMES.PAYEES}'!A${index + 2}:G${index + 2}`,
+      range: `'${SHEET_NAMES.PAYEES}'!A${target.sheetRow}:G${target.sheetRow}`,
       valueInputOption: 'RAW',
       resource: {
         values: [[
           sheetText(payee.key, 40),
           sheetText(payee.category, 40),
           sheetText(payee.name, 80),
-          sheetText(payee.phone, 20),
+          sheetPhone(payee.phone, 20),
           sheetText(payee.upiId, 80),
           payee.defaultAmount === '' ? '' : sheetNumber(payee.defaultAmount),
           sheetText(payee.notes, 200),

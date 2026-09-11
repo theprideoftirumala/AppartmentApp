@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { gapiCall, gapiCallSafe } from './gapi';
+import { gapiCall, gapiCallSafe, gapiRetry } from './gapi';
 
 describe('gapiCall', () => {
   it('turns a thenable without catch into a real Promise', async () => {
@@ -20,5 +20,20 @@ describe('gapiCall', () => {
     };
     const result = await gapiCallSafe(thenable, { result: { values: [] } });
     expect(result.result.values).toEqual([]);
+  });
+});
+
+describe('gapiRetry', () => {
+  it('retries a factory after 503 then succeeds', async () => {
+    let calls = 0;
+    const result = await gapiRetry(() => {
+      calls += 1;
+      if (calls === 1) {
+        return Promise.reject({ result: { error: { code: 503 } } });
+      }
+      return Promise.resolve({ ok: true });
+    });
+    expect(calls).toBe(2);
+    expect(result.ok).toBe(true);
   });
 });

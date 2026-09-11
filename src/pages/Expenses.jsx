@@ -138,7 +138,7 @@ export default function Expenses() {
           <h1 className="page-title">Expenses</h1>
           <p className="page-subtitle">Log one bill or several in the same sitting</p>
         </div>
-        {isOwner !== false && (
+        {isOwner && (
           <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
             <Plus size={16} /> Add expenses
           </button>
@@ -190,7 +190,7 @@ export default function Expenses() {
           icon={Receipt}
           title="No expenses found"
           description={searchQuery || filterMonth || filterCategory ? 'Try adjusting your filters' : 'Start by adding your first expense'}
-          action={isOwner !== false && (
+          action={isOwner && (
             <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
               <Plus size={16} /> Add expenses
             </button>
@@ -232,7 +232,7 @@ export default function Expenses() {
                       )}
                     </td>
                     <td>
-                      {isOwner !== false && (
+                      {isOwner && (
                         <button
                           className="btn btn-ghost btn-sm text-danger"
                           type="button"

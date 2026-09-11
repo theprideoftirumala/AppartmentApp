@@ -109,11 +109,12 @@ export default function Login() {
               <input
                 type={pinVisible ? 'text' : 'password'}
                 className="form-input"
-                placeholder="Enter PIN"
+                placeholder="6–12 digit PIN"
                 value={pin}
                 onChange={e => setPin(e.target.value)}
                 autoFocus
-                maxLength={20}
+                inputMode="numeric"
+                maxLength={12}
               />
               <button type="button" className="btn btn-ghost btn-sm" onClick={() => setPinVisible(v => !v)}>
                 {pinVisible ? <EyeOff size={16} /> : <Eye size={16} />}

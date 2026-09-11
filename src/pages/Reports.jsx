@@ -6,15 +6,13 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Download, ImageDown, Send, Mail } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
-import {
-  getMaintenanceRecords, getExpenses, getConfiguration, getFlats,
-  parseApiError,
-} from '../services/googleSheets';
+import { getDashboardData, parseApiError } from '../services/googleSheets';
 import { downloadReport, shareReport } from '../services/pdfExport';
-import { formatCurrency, formatDate, getCurrentMonthLabel, sheetOpeningSurplus } from '../utils/helpers';
+import { formatCurrency, formatDate, getCurrentMonthLabel } from '../utils/helpers';
 import { useWorkingMonths } from '../hooks/useWorkingMonths';
 import { pickDefaultWorkingMonth } from '../utils/months';
-import { buildLedger, openingCardLabel, pdfMoneySummary, ytdRowsFromLedger } from '../utils/ledgerMath';
+import { openingCardLabel, pdfMoneySummary } from '../utils/ledgerMath';
+import { stillDueResidentCopy, ytdRowsThroughMonth } from '../utils/reportViewModel';
 import {
   categoryChartRows,
   collectionCounts,
@@ -37,19 +35,14 @@ import {
 } from '../config/constants';
 
 async function loadMonthReport(month) {
-  const [allMaintenance, allExpenses, config, flats] = await Promise.all([
-    getMaintenanceRecords(),
-    getExpenses(),
-    getConfiguration(),
-    getFlats(),
-  ]);
+  const dash = await getDashboardData();
+  const allMaintenance = dash.maintenance || [];
+  const allExpenses = dash.expenses || [];
+  const config = dash.config || {};
+  const flats = dash.flats || [];
   const maintenance = allMaintenance.filter((row) => row.month === month);
   const expenses = allExpenses.filter((row) => row.month === month);
-  const ledger = buildLedger({
-    opening: sheetOpeningSurplus(config),
-    maintenance: allMaintenance,
-    expenses: allExpenses,
-  });
+  const ledger = dash.ledger;
   const money = pdfMoneySummary(ledger, month);
   return {
     month,
@@ -115,8 +108,8 @@ export default function Reports() {
     [reportData],
   );
   const ytd = useMemo(
-    () => ytdChartRows(reportData?.ledger ? ytdRowsFromLedger(reportData.ledger) : []),
-    [reportData],
+    () => ytdChartRows(reportData?.ledger ? ytdRowsThroughMonth(reportData.ledger, selectedMonth) : []),
+    [reportData, selectedMonth],
   );
   const stillDue = useMemo(
     () => stillDueHighlights(reportData?.maintenance),
@@ -185,9 +178,9 @@ export default function Reports() {
 
   return (
     <div className="main-content">
-      <Navbar />
+      <div className="no-print"><Navbar /></div>
 
-      <div className="page-header">
+      <div className="page-header no-print">
         <div>
           <h1 className="page-title">Monthly Report</h1>
           <p className="page-subtitle">Collected, spent, and available — same figures as the Balance tab of the shared Google Sheet</p>
@@ -279,7 +272,7 @@ export default function Reports() {
           {stillDue.total > 0 && (
             <div className="report-still-due">
               <strong>Still to collect {formatCurrency(stillDue.total)}</strong>
-              <p>Flats {stillDue.rows.map((row) => row.flat).join(', ')}. Kindly remind with care — this is only the common account.</p>
+              <p>{stillDueResidentCopy(stillDue)}</p>
             </div>
           )}
 
@@ -298,15 +291,16 @@ export default function Reports() {
             <h3 className="card-title mb-4">Maintenance received</h3>
             <div className="table-container">
               <table>
+                <caption className="sr-only">Maintenance received for {reportData.month}</caption>
                 <thead>
                   <tr>
-                    <th>Flat</th>
-                    <th>Owner</th>
-                    <th>Due</th>
-                    <th>Paid</th>
-                    <th>Date</th>
-                    <th>Mode</th>
-                    <th>Status</th>
+                    <th scope="col">Flat</th>
+                    <th scope="col">Owner</th>
+                    <th scope="col">Due</th>
+                    <th scope="col">Paid</th>
+                    <th scope="col">Date</th>
+                    <th scope="col">Mode</th>
+                    <th scope="col">Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -347,14 +341,15 @@ export default function Reports() {
             {reportData.expenses.length > 0 ? (
               <div className="table-container">
                 <table>
+                  <caption className="sr-only">Expenses for {reportData.month}</caption>
                   <thead>
                     <tr>
-                      <th>Date</th>
-                      <th>Description</th>
-                      <th>Category</th>
-                      <th>Amount</th>
-                      <th>Mode</th>
-                      <th>Receipt</th>
+                      <th scope="col">Date</th>
+                      <th scope="col">Description</th>
+                      <th scope="col">Category</th>
+                      <th scope="col">Amount</th>
+                      <th scope="col">Mode</th>
+                      <th scope="col">Receipt</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -383,7 +378,7 @@ export default function Reports() {
 
           {ytd.length > 0 && (
             <section className="card">
-              <h3 className="card-title mb-4">Year to date</h3>
+              <h3 className="card-title mb-4">Year to date through {selectedMonth}</h3>
               <div className="report-ytd-legend">
                 <span className="report-ytd-swatch report-ytd-collect" /> Collected
                 <span className="report-ytd-swatch report-ytd-spend" /> Spent
@@ -391,13 +386,14 @@ export default function Reports() {
               <YtdBars rows={ytd} />
               <div className="table-container mt-4">
                 <table>
+                  <caption className="sr-only">Year to date through {selectedMonth}</caption>
                   <thead>
                     <tr>
-                      <th>Month</th>
-                      <th>Collected</th>
-                      <th>Spent</th>
-                      <th>Net</th>
-                      <th>Available</th>
+                      <th scope="col">Month</th>
+                      <th scope="col">Collected</th>
+                      <th scope="col">Spent</th>
+                      <th scope="col">Net</th>
+                      <th scope="col">Available</th>
                     </tr>
                   </thead>
                   <tbody>

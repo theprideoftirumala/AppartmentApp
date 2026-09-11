@@ -19,8 +19,9 @@ import {
   SOCIETY_DISCLAIMER,
 } from '../config/constants';
 import { stillDueHighlights, ytdChartRows } from '../utils/expertReport';
-import { openingCardLabel, ytdRowsFromLedger } from '../utils/ledgerMath';
+import { openingCardLabel } from '../utils/ledgerMath';
 import { previousMonthLabel } from '../utils/months';
+import { shareReportText, stillDueResidentCopy, ytdRowsThroughMonth } from '../utils/reportViewModel';
 
 /** Ivory paper, espresso ink, India-flag saffron accents, forest / terracotta figures. */
 const TONE = {
@@ -436,14 +437,14 @@ function washPaper(doc) {
   doc.rect(0, 0, pageWidth, pageHeight, 'F');
 }
 
-function drawYearToDate(doc, ledger, y, pageWidth, margin, contentWidth) {
-  const rows = ytdChartRows(ytdRowsFromLedger(ledger));
+function drawYearToDate(doc, ledger, throughMonth, y, pageWidth, margin, contentWidth) {
+  const rows = ytdChartRows(ytdRowsThroughMonth(ledger, throughMonth));
   if (!rows.length) return y;
 
   y = checkPageBreak(doc, y, margin, 48 + rows.length * 7);
   y = drawSectionHeader(
     doc,
-    FEATURES.MISC_FUNDS ? '4. Year to date' : '3. Year to date',
+    FEATURES.MISC_FUNDS ? `4. Year to date through ${throughMonth}` : `3. Year to date through ${throughMonth}`,
     y,
     pageWidth,
     margin,
@@ -671,6 +672,7 @@ export async function generateMonthlyReport(reportData) {
     { label: openingCardLabel(opening), value: formatCurrency(opening), color: openingTone, bg: openingBg },
     { label: 'Collected this month', value: formatCurrency(totalCollection), color: TONE.collect, bg: TONE.collectBg },
     { label: 'Spent this month', value: formatCurrency(totalExpenses), color: TONE.spend, bg: TONE.spendBg },
+    { label: 'This month', value: formatCurrency(netBalance), color: Number(netBalance) < 0 ? TONE.spend : TONE.collect, bg: Number(netBalance) < 0 ? TONE.spendBg : TONE.collectBg },
     { label: 'Available balance', value: formatCurrency(available), color: available >= 0 ? TONE.collect : TONE.spend, bg: available >= 0 ? TONE.collectBg : TONE.spendBg },
   ];
   y = drawSummaryCards(doc, summaryCards, y, margin, contentWidth);
@@ -706,7 +708,7 @@ export async function generateMonthlyReport(reportData) {
     doc.setFontSize(8);
     doc.setTextColor(...TONE.pending);
     doc.text(
-      `Still to collect  ${formatCurrency(due.total)}  ·  Flats ${due.rows.map((row) => row.flat).join(', ')}`,
+      stillDueResidentCopy(due) || `Still to collect  ${formatCurrency(due.total)}`,
       margin + 4,
       y + 7.5,
     );
@@ -849,7 +851,7 @@ export async function generateMonthlyReport(reportData) {
     title: FEATURES.MISC_FUNDS ? '3. Expenses' : '2. Expenses',
   });
 
-  y = drawYearToDate(doc, ledger, y, pageWidth, margin, contentWidth);
+  y = drawYearToDate(doc, ledger, month, y, pageWidth, margin, contentWidth);
 
   finishWithNotesAndSeal(doc, y, margin, contentWidth, REPORT_NOTE_LINES, month, reportData, {
     waterQuote: true,
@@ -1010,7 +1012,7 @@ export async function shareReport(reportData) {
     try {
       await navigator.share({
         title: `${reportData.apartmentName} — ${reportData.month} Report`,
-        text: `Monthly financial report for ${reportData.month}. Collection: ${formatCurrency(reportData.totalCollection)}, Expenses: ${formatCurrency(reportData.totalExpenses)}, Balance: ${formatCurrency(reportData.netBalance)}`,
+        text: shareReportText(reportData),
         files: [file],
       });
       return { shared: true };
@@ -1022,8 +1024,11 @@ export async function shareReport(reportData) {
     }
   }
 
-  // Fallback: download the file
-  const doc = await generateMonthlyReport(reportData);
-  doc.save(fileName);
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
   return { shared: false, downloaded: true };
 }

@@ -70,7 +70,7 @@ TPT-APP-Tracker/
 └── backups/
 ```
 
-Backup on first Setup (if reconnecting), on each Google sign-in, and Settings → Create Backup. Guest PIN does not back up.
+Backup on first Setup (if reconnecting), on each Google sign-in, and Settings → Create Backup. Guest PIN does not back up. Owners can open Data Health to catch duplicate rows before publishing a report.
 
 ## Configuration
 

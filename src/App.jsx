@@ -40,6 +40,7 @@ import Settings from './pages/Settings';
 import Help from './pages/Help';
 import ActivityFunds from './pages/ActivityFunds';
 import Payees from './pages/Payees';
+import DataHealth from './pages/DataHealth';
 
 function AccessBootstrap() {
   const { user, isGuest, setAccessDenied } = useAuth();
@@ -183,6 +184,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <Payees />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/health"
+          element={
+            <ProtectedRoute requireOwner>
+              <DataHealth />
             </ProtectedRoute>
           }
         />

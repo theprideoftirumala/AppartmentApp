@@ -176,12 +176,12 @@ export default function Maintenance() {
               <option key={m} value={m}>{m}</option>
             ))}
           </select>
-          {isOwner !== false && (
+          {isOwner && (
             <button className="btn btn-secondary btn-sm" onClick={handleAddNextMonth} disabled={saving}>
               <Plus size={16} /> Add next month ({nextMonthLabel})
             </button>
           )}
-          {isOwner !== false && records.length > 0 && (
+          {isOwner && records.length > 0 && (
             <button
               className="btn btn-secondary btn-sm"
               onClick={() => openPaymentModal(null, checkedFlats.length ? checkedFlats : unpaidFlats(records))}
@@ -190,7 +190,7 @@ export default function Maintenance() {
               {checkedFlats.length ? `Mark ${checkedFlats.length} paid` : 'Mark unpaid paid'}
             </button>
           )}
-          {isOwner !== false && (
+          {isOwner && (
             <button className="btn btn-primary btn-sm" onClick={() => openPaymentModal()}>
               <Plus size={16} /> Record Payment
             </button>
@@ -205,7 +205,7 @@ export default function Maintenance() {
           <Building2 size={48} style={{ opacity: 0.3, margin: '0 auto' }} />
           <h3 className="mt-4">No records for {selectedMonth}</h3>
           <p className="text-muted mt-2">Initialize this month to start tracking payments.</p>
-          {isOwner !== false && (
+          {isOwner && (
             <button className="btn btn-primary mt-4" onClick={handleInitMonth} disabled={saving}>
               <Plus size={16} /> Initialize {selectedMonth}
             </button>
@@ -232,7 +232,7 @@ export default function Maintenance() {
             <table>
               <thead>
                 <tr>
-                  {isOwner !== false && (
+                  {isOwner && (
                     <th>
                       <input
                         type="checkbox"
@@ -259,7 +259,7 @@ export default function Maintenance() {
                     const flatKey = String(record.flat);
                     return (
                       <tr key={flatKey}>
-                        {isOwner !== false && (
+                        {isOwner && (
                           <td>
                             <input
                               type="checkbox"
@@ -282,7 +282,7 @@ export default function Maintenance() {
                         <td>{record.paymentMode || '-'}</td>
                         <td><StatusBadge status={record.status} /></td>
                         <td>
-                          {isOwner !== false && (
+                          {isOwner && (
                             <button
                               className="btn btn-ghost btn-sm"
                               onClick={() => openPaymentModal(record, [flatKey])}

@@ -731,7 +731,12 @@ tbody tr:last-child td {
     display: none;
   }
 
-  .no-print {
+  .no-print,
+  .navbar,
+  .sidebar,
+  .bottom-nav,
+  .sidebar-backdrop,
+  .toast-container {
     display: none !important;
   }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatCurrency, maskIdNumber, maskPhone, sanitizeForSheet, sheetAvailableBalance, sheetOpeningSurplus } from './helpers';
+import { formatCurrency, isRetryableGoogleError, maskIdNumber, maskPhone, sanitizeForSheet, sheetAvailableBalance, sheetOpeningSurplus, sheetPhone } from './helpers';
 
 describe('sanitizeForSheet', () => {
   it('strips formula prefixes', () => {
@@ -34,6 +34,24 @@ describe('formatCurrency', () => {
   it('formats rupees with the Indian grouping', () => {
     expect(formatCurrency(3000)).toBe('₹3,000');
     expect(formatCurrency(null)).toBe('₹0');
+  });
+});
+
+describe('sheetPhone', () => {
+  it('keeps a leading plus on an Indian mobile', () => {
+    expect(sheetPhone('+919876543210')).toBe('+919876543210');
+  });
+
+  it('keeps digits-only phones unchanged', () => {
+    expect(sheetPhone('9876543210')).toBe('9876543210');
+  });
+});
+
+describe('isRetryableGoogleError', () => {
+  it('retries 429 and 503, not 401', () => {
+    expect(isRetryableGoogleError({ result: { error: { code: 429 } } })).toBe(true);
+    expect(isRetryableGoogleError({ result: { error: { code: 503 } } })).toBe(true);
+    expect(isRetryableGoogleError({ result: { error: { code: 401 } } })).toBe(false);
   });
 });
 

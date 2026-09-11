@@ -7,10 +7,11 @@
  * Running / available after the month = that opening + collected − spent.
  */
 
+import { FIRST_APP_MONTH_LABEL, OPENING_SURPLUS } from '../config/constants';
 import { coerceMonthLabel, previousMonthLabel, sortMonthLabels } from './months';
 
-export const OPENING_SURPLUS = 612;
-export const FIRST_BOOKS_MONTH = 'Sep-26';
+export { OPENING_SURPLUS };
+export const FIRST_BOOKS_MONTH = FIRST_APP_MONTH_LABEL;
 
 export function asMoney(value) {
   const n = Number(value);

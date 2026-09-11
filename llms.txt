@@ -54,7 +54,7 @@ There is **one** workbook: `APP-TPT-Tracker` in Drive folder `TPT-APP-Tracker`.
 
 - Screen, PDF, and PNG share the same money story
 - Opening card label: Opening surplus or Opening deficit, subtitle “Available after {previous month}”
-- Year to date chart + table
+- Year to date through the selected month (chart + table)
 - Notes + Franklin quote (“When the well is dry, we know the worth of water.”) + volunteer disclaimer
 - Stamp: watercolor, **The Pride of Tirumala** on an inner circular arc; overlap last notes if the page is short — never a stamp-only page
 - Resident copy: no *society*, no `APP-TPT-Tracker`
@@ -102,4 +102,4 @@ Policy helpers live in `src/config/accessPolicy.js`.
 
 - Push to `main` → GitHub Actions Pages
 - After create, optionally paste the sheet id into `public/sheet-config.json`
-- Hard-refresh or Settings → Clear cache after deploy (PWA `tpt-v67`)
+- Hard-refresh or Settings → Clear cache after deploy (PWA cache id is in `vite.config.js`)

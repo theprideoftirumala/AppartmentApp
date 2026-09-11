@@ -8,7 +8,7 @@ export function CollectionDonut({ pct, paid, total }) {
   return (
     <div className="report-chart-block">
       <h4 className="report-chart-title">Collection</h4>
-      <svg className="report-donut" viewBox="0 0 120 120" aria-label={`${pct}% collected`}>
+      <svg className="report-donut" viewBox="0 0 120 120" role="img" aria-label={`${pct} percent of flats collected`}>
         <circle cx="62" cy="62" r="42" fill="none" stroke="#e4d8c6" strokeWidth="12" />
         <circle cx="60" cy="60" r="42" fill="none" stroke="#efe6d8" strokeWidth="12" />
         <circle
@@ -34,7 +34,7 @@ export function CompareBars({ collection, expenses, collectionPct, expensesPct }
   return (
     <div className="report-chart-block">
       <h4 className="report-chart-title">This month</h4>
-      <div className="report-compare">
+      <div className="report-compare" role="img" aria-label={`Collected ${formatCurrency(collection)} versus spent ${formatCurrency(expenses)}`}>
         <div className="report-compare-row">
           <span>Collected</span>
           <div className="report-compare-track">

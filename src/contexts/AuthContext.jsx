@@ -7,13 +7,14 @@
  * on the society Access Control tab (default Reader).
  */
 
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { initGoogleAuth, signIn as googleSignIn, signOut as googleSignOut } from '../services/googleAuth';
 import { FEATURES, STORAGE_KEYS } from '../config/constants';
 import { getAccessControl, resolveSpreadsheetForUser, isPermissionError } from '../services/googleSheets';
 import { backupAllWorkbooks } from '../services/googleDrive';
 import { effectiveAppRole, isFoundingOwner } from '../config/accessPolicy';
 import { normalizeEmail, parseJsonSafe, isValidSpreadsheetId } from '../utils/helpers';
+import { assertPinUnlocked, clearPinLock, pinAttemptDelayMs, readPinLock, registerFailedPinAttempt } from '../utils/pinGuard';
 
 const AuthContext = createContext(null);
 
@@ -40,7 +41,11 @@ function queueLoginBackup() {
   if (sessionStorage.getItem(STORAGE_KEYS.LOGIN_BACKUP_DONE) === '1') return;
   if (!isValidSpreadsheetId(localStorage.getItem(STORAGE_KEYS.SPREADSHEET_ID))) return;
   sessionStorage.setItem(STORAGE_KEYS.LOGIN_BACKUP_DONE, '1');
-  backupAllWorkbooks({ reason: 'login' }).catch((err) => {
+  backupAllWorkbooks({ reason: 'login' }).then(() => {
+    localStorage.setItem(STORAGE_KEYS.LAST_BACKUP_AT, new Date().toISOString());
+    localStorage.removeItem(STORAGE_KEYS.LAST_BACKUP_ERROR);
+  }).catch((err) => {
+    localStorage.setItem(STORAGE_KEYS.LAST_BACKUP_ERROR, new Date().toISOString());
     console.warn('Login backup skipped', err);
   });
 }
@@ -174,10 +179,16 @@ export function AuthProvider({ children }) {
     if (!storedHash) {
       throw new Error('Guest access is not configured on this device. An Owner must visit Settings > Configuration first to set the Guest PIN.');
     }
+    assertPinUnlocked();
+    const priorAttempts = readPinLock().attempts || 0;
+    if (priorAttempts > 0) {
+      await new Promise((resolve) => setTimeout(resolve, pinAttemptDelayMs(priorAttempts)));
+    }
     const entered = await hashPin(pin);
     if (entered !== storedHash) {
-      throw new Error('Incorrect PIN. Please try again.');
+      registerFailedPinAttempt();
     }
+    clearPinLock();
     const session = {
       isGuest: true,
       expiresAt: Date.now() + 24 * 3600 * 1000,
@@ -192,12 +203,12 @@ export function AuthProvider({ children }) {
     setIsGuest(false);
   }, []);
 
-  const value = {
+  const value = useMemo(() => ({
     user, loading, error, accessDenied, isGuest,
     signIn, signOut, loginAsGuest, signOutGuest, setAccessDenied,
     isAuthenticated: !!user || isGuest,
     isFoundingOwner: isFoundingOwner(user?.email),
-  };
+  }), [user, loading, error, accessDenied, isGuest, signIn, signOut, loginAsGuest, signOutGuest]);
 
   return (
     <AuthContext.Provider value={value}>

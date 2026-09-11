@@ -132,7 +132,7 @@ export default function Reminders() {
             {reminders.length} total reminders
           </p>
         </div>
-        {isOwner !== false && (
+        {isOwner && (
           <div className="flex gap-2">
             {reminders.length === 0 && (
               <button className="btn btn-secondary" onClick={handleAddDefaults} disabled={saving}>
@@ -153,7 +153,7 @@ export default function Reminders() {
           icon={Bell}
           title="No reminders yet"
           description="Add reminders for lift maintenance, water tanker booking, and more"
-          action={isOwner !== false && (
+          action={isOwner && (
             <div className="flex gap-2 justify-center">
               <button className="btn btn-secondary" onClick={handleAddDefaults}>
                 Add Default Reminders
@@ -189,7 +189,7 @@ export default function Reminders() {
                 )}
 
                 {/* Completion checkbox area */}
-                {isOwner !== false && (
+                {isOwner && (
                   <button
                     className={`reminder-complete-btn ${urgency === 'overdue' ? 'reminder-complete-overdue' : ''}`}
                     onClick={() => handleComplete(reminder.id)}
@@ -211,7 +211,7 @@ export default function Reminders() {
                       <span className="text-xs text-muted">Last done: {reminder.lastCompleted}</span>
                     )}
                   </div>
-                  {isOwner !== false && (
+                  {isOwner && (
                     <button
                       className="btn btn-ghost btn-sm text-danger"
                       onClick={() => handleDelete(reminder.id)}
