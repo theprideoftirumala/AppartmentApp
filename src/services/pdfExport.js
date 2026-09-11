@@ -150,8 +150,8 @@ function drawCompareBars(doc, collection, expenses, y, margin, contentWidth) {
   return base + 12;
 }
 
-function drawFriendlyNote(doc, y, margin, contentWidth, title, lines) {
-  const wrapped = lines.flatMap((line) => doc.splitTextToSize(line, contentWidth - 14));
+function drawFriendlyNote(doc, y, margin, contentWidth, title, lines, textInsetRight = 0) {
+  const wrapped = lines.flatMap((line) => doc.splitTextToSize(line, contentWidth - 14 - textInsetRight));
   const height = 14 + wrapped.length * 4.2;
   y = checkPageBreak(doc, y, margin, height + 6);
   drawRaisedCard(doc, margin, y, contentWidth, height, TONE.noteBg);
@@ -267,18 +267,6 @@ function stampFooters(doc, reportData) {
   }
 }
 
-function drawArcText(doc, text, cx, cy, radius, startDeg, endDeg) {
-  const chars = String(text).split('');
-  chars.forEach((ch, i) => {
-    const t = chars.length === 1 ? 0.5 : i / (chars.length - 1);
-    const deg = startDeg + (endDeg - startDeg) * t;
-    const rad = (deg * Math.PI) / 180;
-    const x = cx + radius * Math.cos(rad);
-    const y = cy + radius * Math.sin(rad);
-    doc.text(ch, x, y, { align: 'center', angle: -(deg + 90) });
-  });
-}
-
 function drawVerifiedTick(doc, cx, cy, ink) {
   doc.setDrawColor(...ink);
   doc.setLineWidth(0.45);
@@ -288,11 +276,7 @@ function drawVerifiedTick(doc, cx, cy, ink) {
   doc.line(cx - 0.25, cy + 1.05, cx + 1.35, cy - 1.05);
 }
 
-function drawMonthSeal(doc, monthLabel) {
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const cx = pageWidth - 30;
-  const cy = pageHeight - 42;
+function drawMonthSeal(doc, monthLabel, cx, cy) {
   const ink = [42, 74, 134];
   const label = stampMonthLabel(monthLabel);
 
@@ -319,24 +303,28 @@ function drawMonthSeal(doc, monthLabel) {
 
   doc.setTextColor(...ink);
   pdfFont(doc, 'bold');
-  doc.setFontSize(4.05);
-  drawArcText(doc, 'THE PRIDE OF TIRUMALA', cx, cy, 11.2, 200, 340);
-  drawVerifiedTick(doc, cx, cy - 1.8, ink);
-  doc.setFontSize(10.8);
-  doc.text(label, cx, cy + 5.6, { align: 'center' });
-  doc.setFontSize(4.1);
-  doc.text('DIGITALLY VERIFIED', cx, cy + 9.6, { align: 'center' });
+  doc.setFontSize(5.4);
+  doc.text('The Pride of', cx, cy - 5.6, { align: 'center' });
+  doc.setFontSize(6.4);
+  doc.text('Tirumala', cx, cy - 2.4, { align: 'center' });
+  drawVerifiedTick(doc, cx, cy + 1.6, ink);
+  doc.setFontSize(9.6);
+  doc.text(label, cx, cy + 7.4, { align: 'center' });
+  doc.setFontSize(3.8);
+  doc.text('DIGITALLY VERIFIED', cx, cy + 10.6, { align: 'center' });
 }
 
 function finishWithNotesAndSeal(doc, y, margin, contentWidth, noteLines, monthLabel, reportData) {
-  y = drawFriendlyNote(doc, y, margin, contentWidth, REPORT_NOTE_TITLE, noteLines);
-  y = drawDisclaimerBlock(doc, y, margin, contentWidth);
+  const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  if (y > pageHeight - 62) {
-    doc.addPage();
-    washPaper(doc);
-  }
-  drawMonthSeal(doc, monthLabel);
+  const stampReserve = 34;
+
+  y = drawFriendlyNote(doc, y, margin, contentWidth, REPORT_NOTE_TITLE, noteLines, stampReserve);
+  y = drawDisclaimerBlock(doc, y, margin, contentWidth, stampReserve);
+
+  const cx = pageWidth - 28;
+  const cy = Math.max(22, Math.min(pageHeight - 26, y - 12));
+  drawMonthSeal(doc, monthLabel, cx, cy);
   stampFooters(doc, reportData);
 }
 
@@ -394,9 +382,9 @@ function drawSummaryCards(doc, summaryCards, y, margin, contentWidth) {
   return y + 30;
 }
 
-function drawDisclaimerBlock(doc, y, margin, contentWidth) {
+function drawDisclaimerBlock(doc, y, margin, contentWidth, textInsetRight = 0) {
   y = checkPageBreak(doc, y, margin, 28);
-  const disclaimerLines = doc.splitTextToSize(SOCIETY_DISCLAIMER, contentWidth - 10);
+  const disclaimerLines = doc.splitTextToSize(SOCIETY_DISCLAIMER, contentWidth - 10 - textInsetRight);
   const discH = 11 + disclaimerLines.length * 4;
   drawRaisedCard(doc, margin, y, contentWidth, discH, TONE.discBg);
   doc.setFontSize(7);

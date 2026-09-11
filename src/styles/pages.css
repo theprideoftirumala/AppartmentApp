@@ -2168,6 +2168,14 @@
   text-align: center;
 }
 
+.report-closing {
+  position: relative;
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
 .report-friendly-note {
   margin: 0;
   padding: var(--space-4) var(--space-5);
@@ -2178,6 +2186,11 @@
   color: var(--color-text);
 }
 
+.report-closing .report-friendly-note,
+.report-closing .report-friendly-disclaimer {
+  padding-right: 9.75rem;
+}
+
 .report-friendly-disclaimer {
   background: #f6f3ec;
   border: 1px solid rgba(62, 42, 28, 0.08);
@@ -2186,9 +2199,13 @@
 }
 
 .report-month-seal {
-  display: flex;
-  justify-content: flex-end;
-  padding: 0 var(--space-2) var(--space-2);
+  position: absolute;
+  right: 0.15rem;
+  bottom: -0.35rem;
+  z-index: 2;
+  pointer-events: none;
+  margin: 0;
+  padding: 0;
   overflow: visible;
 }
 

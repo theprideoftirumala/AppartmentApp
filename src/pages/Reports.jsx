@@ -406,19 +406,21 @@ export default function Reports() {
             </section>
           )}
 
-          <div className="report-friendly-note">
-            <strong>{REPORT_NOTE_TITLE}</strong>
-            {REPORT_NOTE_LINES.map((line) => (
-              <p key={line}>{line}</p>
-            ))}
-          </div>
+          <div className="report-closing">
+            <div className="report-friendly-note">
+              <strong>{REPORT_NOTE_TITLE}</strong>
+              {REPORT_NOTE_LINES.map((line) => (
+                <p key={line}>{line}</p>
+              ))}
+            </div>
 
-          <div className="report-friendly-note report-friendly-disclaimer">
-            <p>{SOCIETY_DISCLAIMER}</p>
-          </div>
+            <div className="report-friendly-note report-friendly-disclaimer">
+              <p>{SOCIETY_DISCLAIMER}</p>
+            </div>
 
-          <div className="report-month-seal">
-            <ReportSeal month={reportData.month} />
+            <div className="report-month-seal">
+              <ReportSeal month={reportData.month} />
+            </div>
           </div>
 
           <footer className="report-page-footer">
