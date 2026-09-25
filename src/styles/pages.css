@@ -876,6 +876,7 @@
 .stat-card-value {
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-bold);
+  letter-spacing: -0.03em;
   color: var(--color-text);
   margin-bottom: var(--space-1);
 }
@@ -2636,6 +2637,78 @@
 
 .expert-report .report-summary-card {
   box-shadow: 0 10px 24px rgba(46, 32, 20, 0.08);
+}
+
+.edition-picker {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.edition-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-height: 44px;
+  padding: var(--space-3);
+  text-align: left;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+}
+
+.edition-card strong {
+  font-size: var(--font-size-sm);
+}
+
+.edition-card span:last-child {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.edition-version {
+  font-size: 10px;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+}
+
+.edition-card-active {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-glow);
+}
+
+@media (max-width: 900px) {
+  .edition-picker {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: var(--space-2);
+  }
+
+  .edition-card {
+    min-width: 11.5rem;
+    scroll-snap-align: start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stat-card,
+  .card,
+  .btn {
+    transition: none;
+  }
+
+  .stat-card:hover {
+    transform: none;
+  }
 }
 
 @media print {

@@ -10,6 +10,8 @@ Stack: React 19 · Vite 8 · Google Sheets API v4 · Google Drive API v3 · Goog
 
 The app has **no backend**. The browser talks to Google APIs with a short-lived OAuth token. `APP-TPT-Tracker` is the cash book.
 
+Flowchart connectors move: a slow dash is in-app wiring or cash carried forward; a fast dash is a live call, upload, or navigation. Sequence and entity diagrams have no moving-edge syntax, so those stay still.
+
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#2e7d32', 'secondaryColor': '#1565c0', 'tertiaryColor': '#f9a825', 'background': '#0b1220', 'primaryTextColor': '#e8f5e9', 'lineColor': '#80cbc4', 'edgeLabelBackground': '#102030'}}}%%
 flowchart TB
@@ -30,17 +32,29 @@ flowchart TB
         BAK["backups/"]
     end
 
-    UI --> AUTH
-    UI --> APP
-    APP --> MATH
-    UI --> PDF
-    UI --> VOICE
-    UI --> OCR
-    APP -->|"batchGet / append"| SHEET
-    PDF -->|"month opening + this month + available"| UI
-    UI --> EVID
-    UI --> ACT
-    AUTH -->|"login backup"| BAK
+    UI e1@--> AUTH
+    UI e2@--> APP
+    APP e3@--> MATH
+    UI e4@--> PDF
+    UI e5@--> VOICE
+    UI e6@--> OCR
+    APP e7@-->|"batchGet / append"| SHEET
+    PDF e8@-->|"month opening + this month + available"| UI
+    UI e9@--> EVID
+    UI e10@--> ACT
+    AUTH e11@-->|"login backup"| BAK
+
+    e1@{ animation: slow }
+    e2@{ animation: slow }
+    e3@{ animation: slow }
+    e4@{ animation: slow }
+    e5@{ animation: fast }
+    e6@{ animation: fast }
+    e7@{ animation: fast }
+    e8@{ animation: slow }
+    e9@{ animation: fast }
+    e10@{ animation: fast }
+    e11@{ animation: fast }
 ```
 
 ---
@@ -51,13 +65,21 @@ flowchart TB
 %%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#6a1b9a', 'background': '#120818', 'primaryTextColor': '#f3e5f5', 'lineColor': '#ce93d8'}}}%%
 flowchart LR
     ROOT["📁 TPT-APP-Tracker"]
-    ROOT --> BOOK["📗 APP-TPT-Tracker"]
-    ROOT --> EV["📁 expenses-evidence"]
-    ROOT --> AF["📁 activity-funds"]
-    ROOT --> BK["📁 backups"]
-    EV --> M["2026-09 / …"]
-    AF --> G["TPT-Activity-ganesh-festival"]
-    BK --> C["APP-TPT-Tracker_login_YYYYMMDD"]
+    ROOT e1@--> BOOK["📗 APP-TPT-Tracker"]
+    ROOT e2@--> EV["📁 expenses-evidence"]
+    ROOT e3@--> AF["📁 activity-funds"]
+    ROOT e4@--> BK["📁 backups"]
+    EV e5@--> M["2026-09 / …"]
+    AF e6@--> G["TPT-Activity-ganesh-festival"]
+    BK e7@--> C["APP-TPT-Tracker_login_YYYYMMDD"]
+
+    e1@{ animation: slow }
+    e2@{ animation: slow }
+    e3@{ animation: slow }
+    e4@{ animation: slow }
+    e5@{ animation: fast }
+    e6@{ animation: fast }
+    e7@{ animation: fast }
 ```
 
 ---
@@ -86,22 +108,35 @@ Status = SURPLUS if > 0, DEFICIT if < 0, BALANCED if 0
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#ef6c00', 'secondaryColor': '#2e7d32', 'tertiaryColor': '#c62828', 'background': '#1a1208', 'primaryTextColor': '#fff8e1', 'lineColor': '#ffcc80'}}}%%
 flowchart TD
-    O["Opening surplus ₹612<br/>after Aug 2026"] --> C["+ Collected<br/>Maintenance Amount Paid"]
-    C --> S["− Spent<br/>Expenses Amount"]
-    S --> A{"Available balance"}
-    A -->|"> 0"| SUR["🟢 SURPLUS"]
-    A -->|"= 0"| BAL["⚪ BALANCED"]
-    A -->|"< 0"| DEF["🔴 DEFICIT"]
+    O["Opening surplus ₹612<br/>after Aug 2026"] e1@--> C["+ Collected<br/>Maintenance Amount Paid"]
+    C e2@--> S["− Spent<br/>Expenses Amount"]
+    S e3@--> A{"Available balance"}
+    A e4@-->|"> 0"| SUR["🟢 SURPLUS"]
+    A e5@-->|"= 0"| BAL["⚪ BALANCED"]
+    A e6@-->|"< 0"| DEF["🔴 DEFICIT"]
+
+    e1@{ animation: slow }
+    e2@{ animation: slow }
+    e3@{ animation: slow }
+    e4@{ animation: fast }
+    e5@{ animation: slow }
+    e6@{ animation: fast }
 ```
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#1565c0', 'secondaryColor': '#2e7d32', 'tertiaryColor': '#c62828', 'background': '#061018', 'primaryTextColor': '#e3f2fd', 'lineColor': '#90caf9'}}}%%
 flowchart LR
-    AUG["After Aug-26<br/>₹612"] --> SEP["Sep-26 opening"]
-    SEP --> SEPA["Sep collected − spent<br/>= available after Sep"]
-    SEPA --> OCT["Oct-26 opening"]
-    OCT --> OCTA["Oct collected − spent<br/>= available after Oct"]
-    OCTA --> NOV["Nov-26 opening"]
+    AUG["After Aug-26<br/>₹612"] e1@--> SEP["Sep-26 opening"]
+    SEP e2@--> SEPA["Sep collected − spent<br/>= available after Sep"]
+    SEPA e3@--> OCT["Oct-26 opening"]
+    OCT e4@--> OCTA["Oct collected − spent<br/>= available after Oct"]
+    OCTA e5@--> NOV["Nov-26 opening"]
+
+    e1@{ animation: slow }
+    e2@{ animation: fast }
+    e3@{ animation: slow }
+    e4@{ animation: fast }
+    e5@{ animation: slow }
 ```
 
 A treasurer who never opens this website can still see surplus or deficit on the **Balance** tab. A monthly PDF’s first card is **available after the previous month**.
@@ -147,21 +182,34 @@ Max 20 users, max 2 owners.
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#4527a0', 'background': '#100818', 'primaryTextColor': '#ede7f6', 'lineColor': '#b39ddb'}}}%%
 flowchart TD
-    R["HashRouter"] --> L["#/login"]
-    R --> S["#/setup — founding owner"]
-    R --> D["#/ Dashboard"]
-    R --> M["#/maintenance"]
-    R --> E["#/expenses"]
-    R --> P["#/reports + PDF"]
-    R --> A["#/activities"]
-    R --> Y["#/payees"]
-    R --> N["#/reminders"]
-    R --> C["#/contacts"]
-    R --> T["#/settings"]
-    R --> H["#/help"]
+    R["HashRouter"] e1@--> L["#/login"]
+    R e2@--> S["#/setup — founding owner"]
+    R e3@--> D["#/ Dashboard"]
+    R e4@--> M["#/maintenance"]
+    R e5@--> E["#/expenses"]
+    R e6@--> P["#/reports + PDF"]
+    R e7@--> A["#/activities"]
+    R e8@--> Y["#/payees"]
+    R e9@--> N["#/reminders"]
+    R e10@--> C["#/contacts"]
+    R e11@--> T["#/settings"]
+    R e12@--> H["#/help"]
     style S fill:#6a1b9a,color:#fff
     style D fill:#1565c0,color:#fff
     style P fill:#2e7d32,color:#fff
+
+    e1@{ animation: fast }
+    e2@{ animation: fast }
+    e3@{ animation: fast }
+    e4@{ animation: fast }
+    e5@{ animation: fast }
+    e6@{ animation: fast }
+    e7@{ animation: fast }
+    e8@{ animation: fast }
+    e9@{ animation: fast }
+    e10@{ animation: fast }
+    e11@{ animation: fast }
+    e12@{ animation: fast }
 ```
 
 ---
@@ -231,6 +279,16 @@ Every monthly PDF / on-screen report prints:
 Footer on every PDF page: apartment · Monthly Report · treasurer · president · page number.
 
 Do not use the word *society* in resident-facing report copy. Do not print `APP-TPT-Tracker` on the report.
+
+The on-screen report and **PDF v1 (Classic)** stay on `pdfExport.js`. Versions 2–5 in `pdfEditions.js` are optional downloads with the same figures and the same resident rules:
+
+| Version | Style | Meant for |
+|---------|--------|-----------|
+| 1 Classic | Current monthly PDF | Unchanged |
+| 2 Phone brief | One large-type page | WhatsApp |
+| 3 Ledger | Opening, movements, closing | Filing |
+| 4 Notice | Oversized available balance | Lobby print |
+| 5 Owner pack | Counts, categories, year to date | Treasurer reading |
 
 ---
 

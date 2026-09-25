@@ -8,6 +8,12 @@ import { Download, ImageDown, Send, Mail } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { getDashboardData, parseApiError } from '../services/googleSheets';
 import { downloadReport, shareReport } from '../services/pdfExport';
+import {
+  PDF_EDITIONS,
+  downloadEdition,
+  isClassicEdition,
+  shareEdition,
+} from '../services/pdfEditions';
 import { formatCurrency, formatDate, getCurrentMonthLabel } from '../utils/helpers';
 import { useWorkingMonths } from '../hooks/useWorkingMonths';
 import { pickDefaultWorkingMonth } from '../utils/months';
@@ -71,7 +77,12 @@ export default function Reports() {
   const [loading, setLoading] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [exportingImage, setExportingImage] = useState(false);
+  const [pdfEdition, setPdfEdition] = useState(() => {
+    const saved = sessionStorage.getItem('tpt_pdf_edition');
+    return PDF_EDITIONS.some((item) => item.id === saved) ? saved : 'classic';
+  });
   const reportRef = useRef(null);
+  const chosenEdition = PDF_EDITIONS.find((item) => item.id === pdfEdition) || PDF_EDITIONS[0];
 
   const { months: monthOptions } = useWorkingMonths();
 
@@ -116,11 +127,21 @@ export default function Reports() {
     [reportData],
   );
 
+  const rememberEdition = (editionId) => {
+    setPdfEdition(editionId);
+    sessionStorage.setItem('tpt_pdf_edition', editionId);
+  };
+
+  const saveChosenPdf = async () => {
+    if (isClassicEdition(pdfEdition)) return downloadReport(reportData);
+    return downloadEdition(pdfEdition, reportData);
+  };
+
   const handleDownload = async () => {
     if (!reportData) return;
     try {
-      await downloadReport(reportData);
-      showToast(`PDF downloaded: TPT_Report_${reportData.month}.pdf`, 'success');
+      const fileName = await saveChosenPdf();
+      showToast(`PDF downloaded: ${fileName}`, 'success');
     } catch (err) {
       showToast(parseApiError(err) || 'Failed to generate PDF', 'error');
     }
@@ -130,7 +151,9 @@ export default function Reports() {
     if (!reportData) return;
     try {
       setSharing(true);
-      const result = await shareReport(reportData);
+      const result = isClassicEdition(pdfEdition)
+        ? await shareReport(reportData)
+        : await shareEdition(pdfEdition, reportData);
       if (result.shared) showToast('Report shared successfully!', 'success');
       else if (result.downloaded) showToast('Report downloaded! Share from your file manager.', 'info');
     } catch (err) {
@@ -164,7 +187,7 @@ export default function Reports() {
       `Available: ${reportData.availableStatus} ₹${Number(reportData.cumulativeBalance || 0).toLocaleString('en-IN')}\n\n` +
       `A PDF is in your downloads — please attach it if useful. We will sit with the Balance tab of the shared Google Sheet if any figure needs a second look.\n\nWith regards,\nTPT residents`,
     );
-    await downloadReport(reportData);
+    await saveChosenPdf();
     window.open(`mailto:?subject=${subject}&body=${body}`, '_self');
     showToast('PDF downloaded — attach it to the email that opened.', 'info');
   };
@@ -199,7 +222,7 @@ export default function Reports() {
           </label>
           <div className="page-toolbar-actions">
             <button className="btn btn-primary btn-sm" onClick={handleDownload} disabled={!reportData || loading}>
-              <Download size={14} /> PDF
+              <Download size={14} /> PDF · {chosenEdition.fileTag || 'Classic'}
             </button>
             <button className="btn btn-secondary btn-sm" onClick={handleExportImage} disabled={!reportData || loading || exportingImage}>
               <ImageDown size={14} /> {exportingImage ? 'Image…' : 'Image'}
@@ -212,6 +235,23 @@ export default function Reports() {
             </button>
           </div>
         </div>
+      </div>
+
+      <div className="edition-picker no-print" role="radiogroup" aria-label="PDF style">
+        {PDF_EDITIONS.map((edition) => (
+          <button
+            key={edition.id}
+            type="button"
+            role="radio"
+            aria-checked={pdfEdition === edition.id}
+            className={`edition-card ${pdfEdition === edition.id ? 'edition-card-active' : ''}`}
+            onClick={() => rememberEdition(edition.id)}
+          >
+            <span className="edition-version">v{edition.version}</span>
+            <strong>{edition.name}</strong>
+            <span>{edition.blurb}</span>
+          </button>
+        ))}
       </div>
 
       {loading ? (
