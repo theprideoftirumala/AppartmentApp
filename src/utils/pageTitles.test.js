@@ -25,6 +25,7 @@ describe('pageTitleForPath', () => {
       '/maintenance',
       '/expenses',
       '/reports',
+      '/analysis',
       '/activities',
       '/payees',
       '/reminders',

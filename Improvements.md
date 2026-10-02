@@ -34,7 +34,7 @@ Shipped in this change set, without altering cash-book math:
 - Dashboard “flats still due” includes partial payments
 - Reports, PDF, and image share one wording model; PDF has the fifth “This month” card
 - Theme bootstrap moved to `public/theme-init.js`; Azure microphone policy allows voice expenses
-- Documentation updated; PWA cache id is `tpt-v73`
+- Documentation updated; PWA cache id is `tpt-v74`
 
 Still later (not a silent rewrite): splitting `googleSheets.js` behind a facade, Playwright E2E, month-close workflow, and a guided backup restore.
 
@@ -47,7 +47,19 @@ Working-month menus and the monthly water line. Cash-book math is unchanged.
 - Exported monthly reports (classic PDF, editions 2–5, on-screen report, and image) use `waterQuoteForMonth`. Sep-26 Franklin, Oct-26 Fuller, Nov-26 Coleridge, Dec-26 Pindar, Jan-27 Plutarch, Feb-27 Julia Carney, then the list repeats. The same month always returns the same line. Activity-fund PDFs do not print a water line.
 - Tests cover the dropdown rule, the six-month quote cycle, September and October PDF text, and the activity PDF omitting the quote.
 - In-app Help states the month-menu rule and that the water line changes with the month.
-- PWA cache id is `tpt-v73`.
+- PWA cache id is `tpt-v74`.
+
+## Shipped 2 October 2026 — Analysis page
+
+A new page at `#/analysis`. The home dashboard, reports, and sheet writes are unchanged.
+
+- Sidebar entry **Analysis**. On a phone it sits under More, so the existing bottom bar is unchanged. Guests remain on the home dashboard.
+- The month menu uses the same rule as Maintenance and Reports: the current month when it is on the sheet, otherwise the latest real month.
+- Cards use `pdfMoneySummary`: opening, collected, spent, this month’s result, and available after the month. Collected and spent also show the change from the previous month on the books, when one exists.
+- D3 charts (`d3-scale`, `d3-shape`, `d3-array`): cash path through the selected month, collection-status donut, expense categories, expense payment modes, and each flat’s due versus paid.
+- Water spend is the sum of expense categories that contain “water”. A month with none shows zero.
+- Tests: `analysisView.test.js` checks September and October against the sample cash book, the water-category rule, and an empty month. `analysisCharts.test.js` checks bar heights, the donut sweep, and empty layouts.
+- PWA cache id is `tpt-v74`.
 
 ## Executive summary
 

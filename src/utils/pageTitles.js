@@ -8,6 +8,7 @@ export const PAGE_TITLES = {
   '/maintenance': 'Payments',
   '/expenses': 'Expenses',
   '/reports': 'Report',
+  '/analysis': 'Analysis',
   '/activities': 'Activities',
   '/payees': 'Payees',
   '/reminders': 'Reminders',

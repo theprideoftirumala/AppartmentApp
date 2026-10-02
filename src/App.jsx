@@ -34,6 +34,7 @@ import Dashboard from './pages/Dashboard';
 import Maintenance from './pages/Maintenance';
 import Expenses from './pages/Expenses';
 import Reports from './pages/Reports';
+import Analysis from './pages/Analysis';
 import Reminders from './pages/Reminders';
 import EmergencyContacts from './pages/EmergencyContacts';
 import Settings from './pages/Settings';
@@ -161,6 +162,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <Reports />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/analysis"
+          element={
+            <ProtectedRoute>
+              <Analysis />
             </ProtectedRoute>
           }
         />

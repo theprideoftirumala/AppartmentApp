@@ -292,7 +292,7 @@ The on-screen report and **PDF v1 (Classic)** stay on `pdfExport.js`. Versions 2
 
 ### Working-month dropdowns
 
-Maintenance, Expenses, and Reports open on the current calendar month after the sheet’s month list has loaded, and only when that label is already in the list. If the current month is not on the sheet, the menu uses the latest month that is. It does not invent a month. A choice made after that stays, including Expenses **All Months**. **Add next month** still selects the month just added. The rule is `dropdownMonthOnOptions` in `src/utils/months.js`, used by `useSelectedWorkingMonth`.
+Maintenance, Expenses, Reports, and Analysis open on the current calendar month after the sheet’s month list has loaded, and only when that label is already in the list. If the current month is not on the sheet, the menu uses the latest month that is. It does not invent a month. A choice made after that stays, including Expenses **All Months**. **Add next month** still selects the month just added. The rule is `dropdownMonthOnOptions` in `src/utils/months.js`, used by `useSelectedWorkingMonth`.
 
 ### Water quote by report month
 
@@ -307,6 +307,20 @@ Maintenance, Expenses, and Reports open on the current calendar month after the 
 | Jan-27 | Man may be without fire, but never was any man without water. | Plutarch |
 | Feb-27 | Little drops of water, little grains of sand, make the mighty ocean and the pleasant land. | Julia Carney |
 | Mar-27 | repeats Sep-26 | Benjamin Franklin |
+
+### Analysis page (`#/analysis`)
+
+A separate page. The home dashboard is unchanged. Analysis does not write to the sheet.
+
+It calls the same `getDashboardData()` payload. Headline figures use `pdfMoneySummary` and year-to-date uses `ytdRowsThroughMonth`, so they match the monthly report for the selected month. D3 (`d3-scale`, `d3-shape`, `d3-array`) draws:
+
+- Cash path: collected and spent bars, and a line of available cash after each month through the selection
+- Collection status: paid, partial, pending, and waived counts
+- Expense categories and payment modes for that month
+- Each flat’s amount due and amount paid (flat number only)
+- Water spend: sum of expense lines whose category contains “water”; zero when there are none
+
+The month menu follows `useSelectedWorkingMonth`. Guests stay on the home dashboard. On a phone, Analysis is under More, not the bottom bar.
 
 ---
 

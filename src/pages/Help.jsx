@@ -53,6 +53,13 @@ A copy also runs on each Google sign-in (not Guest PIN).
 If this browser forgets the sheet, the founding owner runs Setup. It finds ${SHEET_FILE_NAME} or creates it once.`,
   },
   {
+    heading: 'Analysis',
+    text: `Analysis is a separate page in the menu. It reads the same cash book and does not change any number.
+The month menu opens on the current month when that month is already on the sheet.
+Charts show collected, spent, and available through that month, how many flats are paid, partial, or pending, expense categories, how those expenses were paid, and each flat’s due and paid amounts.
+Water spend is only the total of expense lines whose category contains the word water. If there are none, it shows zero.`,
+  },
+  {
     heading: 'Payees',
     text: `GPay and PhonePe pay number@ybl from a 10-digit phone. Optional UPI ID overrides the phone.
 Same phone or same UPI is a duplicate. Do not invent a UPI ID.`,

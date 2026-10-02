@@ -22,7 +22,8 @@ Live: `https://theprideoftirumala.github.io/AppartmentApp/` (HashRouter, base `/
 - First card: **Opening surplus** or **Opening deficit** = available after the previous month.
 - Then this month collected / spent / net, then available after this month.
 - Include year-to-date **through the selected month**, notes, that month’s water quote (Sep-26 is Franklin; later months step through the public-domain list in `src/utils/waterQuotes.js`), volunteer disclaimer, **The Google Sheet is the source of truth**.
-- Month dropdowns on Maintenance, Expenses, and Reports open on the current month when it is on the sheet. If it is not, use the latest real month. Keep a later choice, including Expenses **All Months**. Do not invent a month.
+- Month dropdowns on Maintenance, Expenses, Reports, and Analysis open on the current month when it is on the sheet. If it is not, use the latest real month. Keep a later choice, including Expenses **All Months**. Do not invent a month.
+- `#/analysis` is a separate D3 page. Do not change the home dashboard to build it. Its money cards use `pdfMoneySummary`. Do not invent series.
 - Stamp: watercolor, name on an **inner** circular arc, month inside. If space is tight, overlap the last notes — **do not add a blank page for the stamp**.
 - Resident copy: no *society*, no `APP-TPT-Tracker`, no blaming a flat. Still-due on the report is a total and count, not a named list.
 

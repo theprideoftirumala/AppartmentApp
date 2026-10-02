@@ -49,7 +49,7 @@ export default defineConfig(() => {
           ],
         },
         workbox: {
-          cacheId: 'tpt-v73',
+          cacheId: 'tpt-v74',
           cleanupOutdatedCaches: true,
           skipWaiting: true,
           clientsClaim: true,
@@ -105,6 +105,9 @@ export default defineConfig(() => {
             }
             if (id.includes('node_modules/jspdf')) {
               return 'pdf';
+            }
+            if (/node_modules[\\/]d3/.test(id)) {
+              return 'd3';
             }
           },
         },

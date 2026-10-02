@@ -57,7 +57,8 @@ There is **one** workbook: `APP-TPT-Tracker` in Drive folder `TPT-APP-Tracker`.
 - Year to date through the selected month (chart + table)
 - Notes + the month’s water quote + volunteer disclaimer
 - Water quote is `waterQuoteForMonth` in `src/utils/waterQuotes.js`. Sep-26 is Franklin (“When the well is dry, we know the worth of water.”). Oct-26 Fuller, Nov-26 Coleridge, Dec-26 Pindar, Jan-27 Plutarch, Feb-27 Julia Carney, then repeat. Same month, same line. Activity-fund PDFs omit it
-- Month menus on Maintenance, Expenses, and Reports open on the current month when that label is on the sheet; otherwise the latest real month. Expenses can still choose All Months. Do not invent a month
+- Month menus on Maintenance, Expenses, Reports, and Analysis open on the current month when that label is on the sheet; otherwise the latest real month. Expenses can still choose All Months. Do not invent a month
+- `#/analysis` is a separate D3 page. It does not replace the home dashboard and does not write. Figures are `pdfMoneySummary` plus sums of that month’s maintenance and expense rows. Water spend counts only categories containing “water”
 - Stamp: watercolor, **The Pride of Tirumala** on an inner circular arc; overlap last notes if the page is short — never a stamp-only page
 - Resident copy: no *society*, no `APP-TPT-Tracker`
 
@@ -82,6 +83,9 @@ Policy helpers live in `src/config/accessPolicy.js`.
 - `src/utils/ledgerMath.js` — month opening + collected − spent
 - `src/utils/months.js` — Sep-26 sequence, `previousMonthLabel`, `dropdownMonthOnOptions`
 - `src/utils/waterQuotes.js` — one public-domain water line per report month
+- `src/utils/analysisView.js` — Analysis page figures from the ledger and that month’s rows
+- `src/utils/analysisCharts.js` — D3 layouts for the Analysis page
+- `src/pages/Analysis.jsx` — `#/analysis`
 - `src/utils/workbookCsv.js` — local CSV workbook for tests
 - `src/services/sheetSetup.js` — create/connect + formulas
 - `src/services/sheetFormulas.js`

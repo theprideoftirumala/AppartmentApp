@@ -2717,3 +2717,126 @@
     box-shadow: none;
   }
 }
+
+.analysis-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.analysis-stat-label {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.analysis-stat-value {
+  margin: 0.25rem 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-medium);
+}
+
+.analysis-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.analysis-panel {
+  margin-bottom: var(--space-4);
+}
+
+.analysis-chart {
+  width: 100%;
+  min-width: 0;
+}
+
+.analysis-svg {
+  display: block;
+  max-width: 100%;
+  color: var(--color-text-secondary);
+}
+
+.analysis-tick {
+  fill: currentColor;
+  font-size: 11px;
+}
+
+.analysis-grid {
+  stroke: var(--color-border);
+  stroke-width: 1;
+}
+
+.analysis-zero {
+  stroke: var(--color-text-muted);
+  stroke-width: 1;
+}
+
+.analysis-collected {
+  fill: var(--color-success);
+}
+
+.analysis-spent {
+  fill: var(--color-danger);
+}
+
+.analysis-due {
+  fill: var(--color-text-muted);
+  opacity: 0.45;
+}
+
+.analysis-running {
+  fill: none;
+  stroke: var(--color-primary);
+  stroke-width: 2.5;
+}
+
+.analysis-running-swatch {
+  background: var(--color-primary);
+  height: 3px;
+}
+
+.analysis-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.analysis-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.analysis-swatch {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.analysis-donut-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+}
+
+.analysis-donut-total {
+  fill: var(--color-text);
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.analysis-slice-paid { fill: var(--color-success); }
+.analysis-slice-partial { fill: var(--color-warning); }
+.analysis-slice-pending { fill: var(--color-danger); }
+.analysis-slice-waived { fill: var(--color-info); }
+.analysis-slice-other { fill: var(--color-text-muted); }

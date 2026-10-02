@@ -99,6 +99,7 @@ Reuse `isFoundingOwner`, `effectiveAppRole`, `normalizeRequestedRole`, `canCreat
 - Add a resident: Settings → Access Control (default Reader)
 - Add a month: Maintenance → Add next month
 - Month menus open on the current month when that month is on the sheet
+- Analysis page (`#/analysis`) charts the same cash book with D3. It does not replace the home dashboard
 - Monthly report first card: available after the previous month (Sep uses ₹612)
 - Monthly report water line follows the report month (`src/utils/waterQuotes.js`; Sep-26 stays Franklin)
 
