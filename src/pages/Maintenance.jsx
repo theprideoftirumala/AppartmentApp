@@ -13,10 +13,10 @@ import {
   getFlats, getConfiguration,
   addAuditLog, parseApiError,
 } from '../services/googleSheets';
-import { formatCurrency, getCurrentMonthLabel } from '../utils/helpers';
+import { formatCurrency } from '../utils/helpers';
 import { paidPaymentDefaults, unpaidFlats, uniqueFlats } from '../utils/maintenancePayment';
-import { useWorkingMonths } from '../hooks/useWorkingMonths';
-import { nextSequentialMonthLabel, pickDefaultWorkingMonth } from '../utils/months';
+import { useSelectedWorkingMonth } from '../hooks/useWorkingMonths';
+import { nextSequentialMonthLabel } from '../utils/months';
 import { FLATS, PAYMENT_MODES, MAINTENANCE_STATUS, MAINTENANCE_MIN_DATE } from '../config/constants';
 import Modal from '../components/common/Modal';
 import StatusBadge from '../components/common/StatusBadge';
@@ -30,13 +30,18 @@ export default function Maintenance() {
   const [flats, setFlats] = useState([]);
   const [config, setConfig] = useState({});
   const [loading, setLoading] = useState(true);
-  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthLabel());
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
   const [presetFlats, setPresetFlats] = useState(null);
   const [checkedFlats, setCheckedFlats] = useState([]);
   const [saving, setSaving] = useState(false);
-  const { months: monthOptions, refresh: refreshMonths } = useWorkingMonths();
+  const {
+    months: monthOptions,
+    loading: monthsLoading,
+    refresh: refreshMonths,
+    month: selectedMonth,
+    setMonth: setSelectedMonth,
+  } = useSelectedWorkingMonth();
   const nextMonthLabel = nextSequentialMonthLabel(monthOptions);
 
   const fetchData = useCallback(async () => {
@@ -65,13 +70,6 @@ export default function Maintenance() {
   useEffect(() => {
     setCheckedFlats([]);
   }, [selectedMonth]);
-
-  useEffect(() => {
-    if (!monthOptions.length) return;
-    setSelectedMonth((current) => (
-      monthOptions.includes(current) ? current : pickDefaultWorkingMonth(monthOptions, getCurrentMonthLabel())
-    ));
-  }, [monthOptions]);
 
   const handleAddNextMonth = async () => {
     try {
@@ -170,10 +168,12 @@ export default function Maintenance() {
             <span className="sr-only">Collection month</span>
             <select
               className="form-select"
-              value={selectedMonth}
+              value={monthOptions.includes(selectedMonth) ? selectedMonth : ''}
               onChange={e => setSelectedMonth(e.target.value)}
               aria-label="Collection month"
+              disabled={monthsLoading}
             >
+              {!monthOptions.includes(selectedMonth) && <option value="">Loading months…</option>}
               {monthOptions.map(m => (
                 <option key={m} value={m}>{m}</option>
               ))}

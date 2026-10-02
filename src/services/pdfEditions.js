@@ -8,10 +8,9 @@ import jsPDF from 'jspdf';
 import {
   REPORT_NOTE_LINES,
   REPORT_NOTE_TITLE,
-  REPORT_WATER_QUOTE,
-  REPORT_WATER_QUOTE_BY,
   SOCIETY_DISCLAIMER,
 } from '../config/constants';
+import { waterQuoteForMonth } from '../utils/waterQuotes';
 import { collectionCounts, categoryChartRows } from '../utils/expertReport';
 import { buildReportViewModel } from '../utils/reportViewModel';
 
@@ -207,8 +206,9 @@ function paintClose(doc, story, y, paper, ink) {
     y = write(doc, line, margin, y, textWidth, 8, 'normal', [55, 48, 40]);
   }
   y += 1;
-  y = write(doc, `"${REPORT_WATER_QUOTE}"`, margin, y, textWidth, 8.5, 'bold', ink);
-  y = write(doc, `— ${REPORT_WATER_QUOTE_BY}`, margin, y, textWidth, 7.5, 'normal', [70, 78, 110]);
+  const waterLine = waterQuoteForMonth(story.model.month);
+  y = write(doc, `"${waterLine.text}"`, margin, y, textWidth, 8.5, 'bold', ink);
+  y = write(doc, `— ${waterLine.by}`, margin, y, textWidth, 7.5, 'normal', [70, 78, 110]);
   y = write(doc, SOCIETY_DISCLAIMER, margin, y, textWidth, 7.5, 'normal', [70, 64, 56]);
   const cx = pageWidth - 26;
   const cy = Math.max(24, Math.min(pageHeight - 28, y - 8));

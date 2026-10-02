@@ -10,7 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getExpenses, addExpenses, deleteExpense, addAuditLog } from '../services/googleSheets';
 import { uploadReceipt } from '../services/googleDrive';
 import { formatCurrency, formatDate, getCurrentMonthLabel, getCurrentYearMonth } from '../utils/helpers';
-import { useWorkingMonths } from '../hooks/useWorkingMonths';
+import { useSelectedWorkingMonth } from '../hooks/useWorkingMonths';
 import { pickDefaultWorkingMonth } from '../utils/months';
 import { EXPENSE_CATEGORIES, PAYMENT_MODES, FEATURES } from '../config/constants';
 import { createSpeechRecognizer, parseExpensesFromSpeech, speechSupported } from '../utils/voiceExpense';
@@ -32,9 +32,13 @@ export default function Expenses() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterMonth, setFilterMonth] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
-  const { months: monthOptions } = useWorkingMonths();
+  const {
+    months: monthOptions,
+    loading: monthsLoading,
+    month: filterMonth,
+    setMonth: setFilterMonth,
+  } = useSelectedWorkingMonth();
 
   const fetchData = useCallback(async () => {
     try {
@@ -161,11 +165,14 @@ export default function Expenses() {
           </div>
           <select
             className="form-select"
-            value={filterMonth}
+            value={filterMonth === '' || monthOptions.includes(filterMonth) ? filterMonth : ''}
             onChange={e => setFilterMonth(e.target.value)}
             aria-label="Filter by month"
+            disabled={monthsLoading}
           >
-            <option value="">All Months</option>
+            {monthsLoading
+              ? <option value="">Loading months…</option>
+              : <option value="">All Months</option>}
             {monthOptions.map(m => <option key={m} value={m}>{m}</option>)}
           </select>
           <select

@@ -273,7 +273,7 @@ Every monthly PDF / on-screen report prints:
 3. This month SURPLUS / DEFICIT / BALANCED (collected − spent)  
 4. Available after this month (opening + collected − spent)  
 5. Year to date through the selected month (chart + table)  
-6. Notes, Franklin water quote, volunteer disclaimer — **The Google Sheet is the source of truth**  
+6. Notes, that month’s water quote (Sep-26 stays Franklin; each later month uses the next public-domain line), volunteer disclaimer — **The Google Sheet is the source of truth**  
 7. Watercolor digitally verified stamp (apartment name on an inner circular arc, month inside). If the page is tight, the stamp overlaps the last notes — it does not start a blank page  
 
 Footer on every PDF page: apartment · Monthly Report · treasurer · president · page number.

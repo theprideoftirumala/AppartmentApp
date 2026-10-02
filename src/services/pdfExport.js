@@ -14,10 +14,9 @@ import {
   FEATURES,
   REPORT_NOTE_LINES,
   REPORT_NOTE_TITLE,
-  REPORT_WATER_QUOTE,
-  REPORT_WATER_QUOTE_BY,
   SOCIETY_DISCLAIMER,
 } from '../config/constants';
+import { waterQuoteForMonth } from '../utils/waterQuotes';
 import { stillDueHighlights, ytdChartRows } from '../utils/expertReport';
 import { openingCardLabel } from '../utils/ledgerMath';
 import { previousMonthLabel } from '../utils/months';
@@ -328,8 +327,9 @@ function drawMonthSeal(doc, monthLabel, cx, cy) {
   doc.text('DIGITALLY VERIFIED', cx, cy + 9.2, { align: 'center' });
 }
 
-function drawWaterQuote(doc, y, margin, contentWidth, textInsetRight = 0) {
-  const quote = `“${REPORT_WATER_QUOTE}”`;
+function drawWaterQuote(doc, y, margin, contentWidth, textInsetRight = 0, monthLabel) {
+  const line = waterQuoteForMonth(monthLabel);
+  const quote = `“${line.text}”`;
   const wrapped = doc.splitTextToSize(quote, contentWidth - 14 - textInsetRight);
   const height = 14 + wrapped.length * 4.2;
   y = checkPageBreak(doc, y, margin, height + 6);
@@ -343,7 +343,7 @@ function drawWaterQuote(doc, y, margin, contentWidth, textInsetRight = 0) {
   pdfFont(doc, 'normal');
   doc.setFontSize(6.6);
   doc.setTextColor(77, 115, 179);
-  doc.text(`— ${REPORT_WATER_QUOTE_BY}`, margin + 8, y + height - 4);
+  doc.text(`— ${line.by}`, margin + 8, y + height - 4);
   return y + height + 5;
 }
 
@@ -354,7 +354,7 @@ function finishWithNotesAndSeal(doc, y, margin, contentWidth, noteLines, monthLa
 
   y = drawFriendlyNote(doc, y, margin, contentWidth, REPORT_NOTE_TITLE, noteLines, stampReserve);
   if (options.waterQuote) {
-    y = drawWaterQuote(doc, y, margin, contentWidth, stampReserve);
+    y = drawWaterQuote(doc, y, margin, contentWidth, stampReserve, monthLabel);
   }
   y = drawDisclaimerBlock(doc, y, margin, contentWidth, stampReserve);
 

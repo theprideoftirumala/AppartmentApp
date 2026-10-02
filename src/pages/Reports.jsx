@@ -14,9 +14,9 @@ import {
   isClassicEdition,
   shareEdition,
 } from '../services/pdfEditions';
-import { formatCurrency, formatDate, getCurrentMonthLabel } from '../utils/helpers';
-import { useWorkingMonths } from '../hooks/useWorkingMonths';
-import { pickDefaultWorkingMonth } from '../utils/months';
+import { formatCurrency, formatDate } from '../utils/helpers';
+import { useSelectedWorkingMonth } from '../hooks/useWorkingMonths';
+import { waterQuoteForMonth } from '../utils/waterQuotes';
 import { openingCardLabel, pdfMoneySummary } from '../utils/ledgerMath';
 import { stillDueResidentCopy, ytdRowsThroughMonth } from '../utils/reportViewModel';
 import {
@@ -35,8 +35,6 @@ import Navbar from '../components/common/Navbar';
 import {
   REPORT_NOTE_LINES,
   REPORT_NOTE_TITLE,
-  REPORT_WATER_QUOTE,
-  REPORT_WATER_QUOTE_BY,
   SOCIETY_DISCLAIMER,
 } from '../config/constants';
 
@@ -72,7 +70,6 @@ async function loadMonthReport(month) {
 
 export default function Reports() {
   const { showToast } = useApp();
-  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthLabel());
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [sharing, setSharing] = useState(false);
@@ -84,14 +81,13 @@ export default function Reports() {
   const reportRef = useRef(null);
   const chosenEdition = PDF_EDITIONS.find((item) => item.id === pdfEdition) || PDF_EDITIONS[0];
 
-  const { months: monthOptions } = useWorkingMonths();
-
-  useEffect(() => {
-    if (!monthOptions.length) return;
-    setSelectedMonth((current) => (
-      monthOptions.includes(current) ? current : pickDefaultWorkingMonth(monthOptions, getCurrentMonthLabel())
-    ));
-  }, [monthOptions]);
+  const {
+    months: monthOptions,
+    loading: monthsLoading,
+    month: selectedMonth,
+    setMonth: setSelectedMonth,
+  } = useSelectedWorkingMonth();
+  const waterQuote = waterQuoteForMonth(reportData?.month || selectedMonth);
 
   const loadReport = useCallback(async () => {
     try {
@@ -213,10 +209,12 @@ export default function Reports() {
             <span className="sr-only">Report month</span>
             <select
               className="form-select"
-              value={selectedMonth}
+              value={monthOptions.includes(selectedMonth) ? selectedMonth : ''}
               onChange={(e) => setSelectedMonth(e.target.value)}
               aria-label="Report month"
+              disabled={monthsLoading}
             >
+              {!monthOptions.includes(selectedMonth) && <option value="">Loading months…</option>}
               {monthOptions.map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
           </label>
@@ -466,8 +464,8 @@ export default function Reports() {
             </div>
 
             <blockquote className="report-water-quote">
-              <p>“{REPORT_WATER_QUOTE}”</p>
-              <cite>— {REPORT_WATER_QUOTE_BY}</cite>
+              <p>“{waterQuote.text}”</p>
+              <cite>— {waterQuote.by}</cite>
             </blockquote>
 
             <div className="report-friendly-note report-friendly-disclaimer">

@@ -113,6 +113,19 @@ export function pickDefaultWorkingMonth(months, currentLabel) {
   return list[list.length - 1];
 }
 
+/**
+ * First time the real month list is ready, choose the current month if it is on the list.
+ * A blank selection is "All months" and stays blank. A month the resident already picked stays
+ * put. A month that is not on the list is never left selected.
+ */
+export function dropdownMonthOnOptions({ months, selected, settle, currentLabel }) {
+  const list = Array.isArray(months) ? months.filter(Boolean) : [];
+  if (!settle) return pickDefaultWorkingMonth(list, currentLabel);
+  if (selected === '') return '';
+  if (selected && list.includes(selected)) return selected;
+  return pickDefaultWorkingMonth(list, currentLabel);
+}
+
 export function monthIndexKey(label) {
   return monthLabelToYearMonth(label);
 }

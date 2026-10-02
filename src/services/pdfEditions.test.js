@@ -75,4 +75,18 @@ describe('pdf editions', () => {
       }
     }
   });
+
+  it('prints a different water line for the next month, including the classic PDF', async () => {
+    const october = { ...sampleReport(), month: 'Oct-26' };
+    const classic = await generateMonthlyReport(october);
+    const classicText = pdfText(classic);
+    expect(classicText).toContain('We never know the worth of water');
+    expect(classicText).toContain('Thomas Fuller');
+    expect(classicText).not.toContain('When the well is dry');
+
+    const brief = await renderEdition('brief', october);
+    const briefText = pdfText(brief);
+    expect(briefText).toContain('Thomas Fuller');
+    expect(briefText).not.toContain('When the well is dry');
+  });
 });

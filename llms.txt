@@ -55,7 +55,7 @@ There is **one** workbook: `APP-TPT-Tracker` in Drive folder `TPT-APP-Tracker`.
 - Screen, PDF, and PNG share the same money story
 - Opening card label: Opening surplus or Opening deficit, subtitle “Available after {previous month}”
 - Year to date through the selected month (chart + table)
-- Notes + Franklin quote (“When the well is dry, we know the worth of water.”) + volunteer disclaimer
+- Notes + the month’s water quote (Sep-26 is Franklin, “When the well is dry, we know the worth of water.”; each later month has its own public-domain line) + volunteer disclaimer
 - Stamp: watercolor, **The Pride of Tirumala** on an inner circular arc; overlap last notes if the page is short — never a stamp-only page
 - Resident copy: no *society*, no `APP-TPT-Tracker`
 
