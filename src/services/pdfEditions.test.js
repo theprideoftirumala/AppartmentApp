@@ -76,17 +76,22 @@ describe('pdf editions', () => {
     }
   });
 
-  it('prints a different water line for the next month, including the classic PDF', async () => {
-    const october = { ...sampleReport(), month: 'Oct-26' };
-    const classic = await generateMonthlyReport(october);
-    const classicText = pdfText(classic);
-    expect(classicText).toContain('We never know the worth of water');
-    expect(classicText).toContain('Thomas Fuller');
-    expect(classicText).not.toContain('When the well is dry');
+  it('prints Franklin on a September classic PDF and the next line on every October edition', async () => {
+    const september = pdfText(await generateMonthlyReport(sampleReport()));
+    expect(september).toContain('When the well is dry');
+    expect(september).toContain('Benjamin Franklin');
 
-    const brief = await renderEdition('brief', october);
-    const briefText = pdfText(brief);
-    expect(briefText).toContain('Thomas Fuller');
-    expect(briefText).not.toContain('When the well is dry');
+    const october = { ...sampleReport(), month: 'Oct-26' };
+    const classic = pdfText(await generateMonthlyReport(october));
+    expect(classic).toContain('We never know the worth of water');
+    expect(classic).toContain('Thomas Fuller');
+    expect(classic).not.toContain('When the well is dry');
+
+    for (const edition of PDF_EDITIONS.filter((item) => item.version > 1)) {
+      const text = pdfText(await renderEdition(edition.id, october));
+      expect(text).toContain('Thomas Fuller');
+      expect(text).not.toContain('When the well is dry');
+      expect(text.toLowerCase()).not.toContain('society');
+    }
   });
 });

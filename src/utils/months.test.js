@@ -54,4 +54,25 @@ describe('months', () => {
       currentLabel: 'Oct-26',
     })).toBe('Oct-26');
   });
+
+  it('uses the latest real month when the current month is not on the sheet', () => {
+    expect(pickDefaultWorkingMonth(['Sep-26'], 'Oct-26')).toBe('Sep-26');
+    expect(pickDefaultWorkingMonth([], 'Oct-26')).toBe('Oct-26');
+    expect(pickDefaultWorkingMonth([], '')).toBe('Sep-26');
+    expect(dropdownMonthOnOptions({
+      months: ['Sep-26', null, ''],
+      selected: 'Oct-26',
+      settle: false,
+      currentLabel: 'Oct-26',
+    })).toBe('Sep-26');
+  });
+
+  it('keeps a newly added month after the list has already settled', () => {
+    expect(dropdownMonthOnOptions({
+      months: ['Sep-26', 'Oct-26', 'Nov-26'],
+      selected: 'Nov-26',
+      settle: true,
+      currentLabel: 'Oct-26',
+    })).toBe('Nov-26');
+  });
 });

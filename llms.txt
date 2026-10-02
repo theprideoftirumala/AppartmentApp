@@ -55,7 +55,9 @@ There is **one** workbook: `APP-TPT-Tracker` in Drive folder `TPT-APP-Tracker`.
 - Screen, PDF, and PNG share the same money story
 - Opening card label: Opening surplus or Opening deficit, subtitle “Available after {previous month}”
 - Year to date through the selected month (chart + table)
-- Notes + the month’s water quote (Sep-26 is Franklin, “When the well is dry, we know the worth of water.”; each later month has its own public-domain line) + volunteer disclaimer
+- Notes + the month’s water quote + volunteer disclaimer
+- Water quote is `waterQuoteForMonth` in `src/utils/waterQuotes.js`. Sep-26 is Franklin (“When the well is dry, we know the worth of water.”). Oct-26 Fuller, Nov-26 Coleridge, Dec-26 Pindar, Jan-27 Plutarch, Feb-27 Julia Carney, then repeat. Same month, same line. Activity-fund PDFs omit it
+- Month menus on Maintenance, Expenses, and Reports open on the current month when that label is on the sheet; otherwise the latest real month. Expenses can still choose All Months. Do not invent a month
 - Stamp: watercolor, **The Pride of Tirumala** on an inner circular arc; overlap last notes if the page is short — never a stamp-only page
 - Resident copy: no *society*, no `APP-TPT-Tracker`
 
@@ -78,7 +80,8 @@ Policy helpers live in `src/config/accessPolicy.js`.
 - `src/config/accessPolicy.js`
 - `src/config/constants.js` — folder + sheet names, `OPENING_SURPLUS`, report copy, water quote
 - `src/utils/ledgerMath.js` — month opening + collected − spent
-- `src/utils/months.js` — Sep-26 sequence, `previousMonthLabel`
+- `src/utils/months.js` — Sep-26 sequence, `previousMonthLabel`, `dropdownMonthOnOptions`
+- `src/utils/waterQuotes.js` — one public-domain water line per report month
 - `src/utils/workbookCsv.js` — local CSV workbook for tests
 - `src/services/sheetSetup.js` — create/connect + formulas
 - `src/services/sheetFormulas.js`

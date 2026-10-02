@@ -23,6 +23,24 @@ describe('waterQuoteForMonth', () => {
     expect(waterQuoteForMonth('not-a-month')).toEqual(WATER_QUOTES[0]);
   });
 
+  it('steps one public-domain line per month and repeats after six', () => {
+    const expected = [
+      ['Sep-26', 'When the well is dry, we know the worth of water.', 'Benjamin Franklin'],
+      ['Oct-26', 'We never know the worth of water till the well is dry.', 'Thomas Fuller'],
+      ['Nov-26', 'Water, water, every where, nor any drop to drink.', 'Samuel Taylor Coleridge'],
+      ['Dec-26', 'Water is the best of things.', 'Pindar'],
+      ['Jan-27', 'Man may be without fire, but never was any man without water.', 'Plutarch'],
+      ['Feb-27', 'Little drops of water, little grains of sand, make the mighty ocean and the pleasant land.', 'Julia Carney'],
+    ];
+    for (const [label, text, by] of expected) {
+      expect(waterQuoteForMonth(label)).toEqual({ text, by });
+    }
+    expect(waterQuoteForMonth('Mar-27')).toEqual(waterQuoteForMonth('Sep-26'));
+    expect(waterQuoteForMonth('Aug-26')).toEqual(WATER_QUOTES[0]);
+    const lines = expected.map(([label]) => waterQuoteForMonth(label).text);
+    expect(new Set(lines).size).toBe(lines.length);
+  });
+
   it('keeps resident wording free of society and the workbook name', () => {
     for (const quote of WATER_QUOTES) {
       expect(`${quote.text} ${quote.by}`).not.toMatch(/society/i);

@@ -290,6 +290,24 @@ The on-screen report and **PDF v1 (Classic)** stay on `pdfExport.js`. Versions 2
 | 4 Notice | Oversized available balance | Lobby print |
 | 5 Owner pack | Counts, categories, year to date | Treasurer reading |
 
+### Working-month dropdowns
+
+Maintenance, Expenses, and Reports open on the current calendar month after the sheet’s month list has loaded, and only when that label is already in the list. If the current month is not on the sheet, the menu uses the latest month that is. It does not invent a month. A choice made after that stays, including Expenses **All Months**. **Add next month** still selects the month just added. The rule is `dropdownMonthOnOptions` in `src/utils/months.js`, used by `useSelectedWorkingMonth`.
+
+### Water quote by report month
+
+`src/utils/waterQuotes.js` picks one public-domain line from the report month. Sep-26 is index 0. Each later month advances one line, then the list repeats. The same month always returns the same line. Classic PDF, editions 2–5, the on-screen report, and the image export all use that line. Activity-fund PDFs do not print it.
+
+| Month | Line | Author |
+|-------|------|--------|
+| Sep-26 | When the well is dry, we know the worth of water. | Benjamin Franklin |
+| Oct-26 | We never know the worth of water till the well is dry. | Thomas Fuller |
+| Nov-26 | Water, water, every where, nor any drop to drink. | Samuel Taylor Coleridge |
+| Dec-26 | Water is the best of things. | Pindar |
+| Jan-27 | Man may be without fire, but never was any man without water. | Plutarch |
+| Feb-27 | Little drops of water, little grains of sand, make the mighty ocean and the pleasant land. | Julia Carney |
+| Mar-27 | repeats Sep-26 | Benjamin Franklin |
+
 ---
 
 ## 8. Performance

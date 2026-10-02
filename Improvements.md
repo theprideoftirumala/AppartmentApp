@@ -34,9 +34,20 @@ Shipped in this change set, without altering cash-book math:
 - Dashboard “flats still due” includes partial payments
 - Reports, PDF, and image share one wording model; PDF has the fifth “This month” card
 - Theme bootstrap moved to `public/theme-init.js`; Azure microphone policy allows voice expenses
-- Documentation updated; PWA cache id is `tpt-v72`
+- Documentation updated; PWA cache id is `tpt-v73`
 
 Still later (not a silent rewrite): splitting `googleSheets.js` behind a facade, Playwright E2E, month-close workflow, and a guided backup restore.
+
+## Shipped 2 October 2026
+
+Working-month menus and the monthly water line. Cash-book math is unchanged.
+
+- Maintenance, Expenses, and Reports select the current calendar month after the sheet month list loads, when that label is in the list. If it is not, they select the latest real month. They do not invent a month.
+- A choice made after the first load stays. Expenses still offers **All Months**. **Add next month** still selects the month just added. The rule is `dropdownMonthOnOptions` / `useSelectedWorkingMonth`.
+- Exported monthly reports (classic PDF, editions 2–5, on-screen report, and image) use `waterQuoteForMonth`. Sep-26 Franklin, Oct-26 Fuller, Nov-26 Coleridge, Dec-26 Pindar, Jan-27 Plutarch, Feb-27 Julia Carney, then the list repeats. The same month always returns the same line. Activity-fund PDFs do not print a water line.
+- Tests cover the dropdown rule, the six-month quote cycle, September and October PDF text, and the activity PDF omitting the quote.
+- In-app Help states the month-menu rule and that the water line changes with the month.
+- PWA cache id is `tpt-v73`.
 
 ## Executive summary
 
